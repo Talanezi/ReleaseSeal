@@ -6,7 +6,7 @@ import { ErrorState } from "./components/ErrorState";
 import { ResultsView } from "./components/ResultsView";
 import { ProcessingState } from "./components/ProcessingState";
 import { blockedReport, needsReviewReport, readyReport } from "./mocks/reports";
-import type { PreflightReport, ScanProgress } from "./types/preflight";
+import type { PreflightReport, ScanProgress, VerificationReport } from "./types/preflight";
 import { formatTimecode } from "./utils/format";
 
 const createObjectURL = vi.fn(() => "blob:creator-preflight-local-preview");
@@ -222,7 +222,26 @@ describe("Creator Preflight frontend", () => {
 
   it("formats numeric timestamps as stable timecodes", () => {
     expect(formatTimecode(2)).toBe("00:02.00");
-    expect(formatTimecode(3723.5)).toBe("01:02:03.50");
+    expect(formatTimecode(78.041667)).toBe("01:18.04");
+    expect(formatTimecode(46.208333)).toBe("00:46.21");
+    expect(formatTimecode(126.034625)).toBe("02:06.03");
+    expect(formatTimecode(3723.5)).toBe("1:02:03.50");
+  });
+
+  it("does not show rejected provider commentary beneath a clean continuity result", async () => {
+    const report = {
+      ...readyReport,
+      viewer_pass: {
+        status: "clean" as const,
+        summary: "The video contains visible placeholder and template text.",
+        issue_count: 0,
+      },
+      review_mode: "full" as const,
+    };
+    render(<ResultsView report={report} />);
+    await userEvent.setup().click(screen.getByText("Review details"));
+    expect(screen.getByText("No high-confidence inconsistencies found")).toBeInTheDocument();
+    expect(screen.queryByText(/visible placeholder and template/i)).not.toBeInTheDocument();
   });
 
   it("seeks the local video when a timestamp action is clicked", async () => {
@@ -383,7 +402,7 @@ describe("Creator Preflight frontend", () => {
     render(<ResultsView report={report} />);
     expect(screen.getByRole("heading", { name: "Continuity review" })).toBeInTheDocument();
     expect(screen.getByText("No high-confidence inconsistencies found")).toBeInTheDocument();
-    expect(screen.getByText("No high-confidence internal inconsistencies were found.")).toBeInTheDocument();
+    expect(screen.queryByText("No high-confidence internal inconsistencies were found.")).not.toBeInTheDocument();
   });
 
   it("renders and seeks a Viewer Pass editorial finding", async () => {
@@ -458,12 +477,47 @@ describe("Creator Preflight frontend", () => {
     expect(screen.getByRole("tab", { name: "Repaired" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Review Reel" })).toBeInTheDocument();
     expect(screen.getAllByText(/2 fixed/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/No unexpected changes found/)).toBeInTheDocument();
+    expect(screen.getByText(/No deterministic unexpected media changes found/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Apply 2 approved repairs/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Download repaired video" })).toHaveAttribute(
       "download", "original cut.repaired.mp4",
     );
     expect(screen.getByRole("link", { name: "Download Review Reel" })).toBeInTheDocument();
+  });
+
+  it("separates repaired-scan finding variance from deterministic unexpected changes", async () => {
+    const user = userEvent.setup();
+    const report = repairWorkflowReport();
+    const source = new File(["original-video"], "original cut.mp4", { type: "video/mp4" });
+    const verification = verificationFixture("NEEDS_REVIEW");
+    verification.new = [{
+      status: "NEW",
+      original_finding: null,
+      repaired_finding: { ...report.findings[2], code: "AI_VISIBLE_PLACEHOLDER", source: "ai.gemini.viewer" },
+      expected_repaired_start_seconds: 7,
+      expected_repaired_end_seconds: 10,
+      deterministically_verified: false,
+      explanation: "This content finding appears only in the repaired export.",
+    }];
+    verification.unexpected_changes = [];
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: RequestInfo | URL) => {
+      const path = String(url);
+      if (path.endsWith("/repairs/preview")) return Promise.resolve(new Response(new Blob(["preview"]), { headers: { "Content-Type": "video/mp4", "X-Output-Duration-Seconds": "3" } }));
+      if (path.endsWith("/repairs/apply")) return Promise.resolve(new Response(new Blob(["repaired"]), { headers: { "Content-Type": "video/mp4", "X-Output-Duration-Seconds": "6" } }));
+      if (path.endsWith("/repairs/verify")) return Promise.resolve(jsonResponse(verification));
+      if (path.endsWith("/repairs/review-reel")) return Promise.resolve(new Response(new Blob(["reel"]), { headers: { "Content-Type": "video/mp4", "X-Output-Duration-Seconds": "4" } }));
+      throw new Error(`Unexpected URL ${path}`);
+    }));
+    render(<ResultsView report={report} previewUrl="blob:original" sourceFile={source} />);
+    await user.click(screen.getAllByRole("button", { name: "Preview repair" })[0]);
+    await screen.findByTestId("repair-preview-video");
+    await user.click(screen.getByRole("button", { name: "Approve repair" }));
+    await user.click(screen.getByRole("button", { name: /Apply 1 approved repair/ }));
+
+    expect(await screen.findByText(/Detected on repaired scan:/)).toBeInTheDocument();
+    expect(screen.getByText(/No deterministic unexpected media changes found/)).toBeInTheDocument();
+    expect(screen.queryByText(/New after repair/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Unexpected change$/)).not.toBeInTheDocument();
   });
 
   it("tracks timestamped and global human-review decisions without calling accepted items resolved", async () => {
@@ -553,7 +607,7 @@ describe("Creator Preflight frontend", () => {
     expect(await screen.findByRole("heading", { name: "Repair result" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Repaired" })).toBeInTheDocument();
     if (status === "NEEDS_REVIEW") {
-      expect(screen.getByText("Unexpected change")).toBeInTheDocument();
+      expect(screen.getByText("Unexpected media change")).toBeInTheDocument();
       await user.click(screen.getByRole("tab", { name: "Repaired" }));
       const repairedVideo = screen.getByTestId("preview-video") as HTMLVideoElement;
       await user.click(screen.getByRole("button", { name: "00:01.00–00:02.00" }));
@@ -1050,7 +1104,7 @@ function repairVideoResponse(): Response {
   });
 }
 
-function verificationFixture(status: "VERIFIED" | "NEEDS_REVIEW" | "INCOMPLETE") {
+function verificationFixture(status: "VERIFIED" | "NEEDS_REVIEW" | "INCOMPLETE"): VerificationReport {
   const original = repairWorkflowReport().findings;
   return {
     schema_version: "1.0",

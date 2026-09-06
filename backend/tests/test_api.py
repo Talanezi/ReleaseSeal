@@ -654,6 +654,41 @@ def test_verify_repair_rescans_and_returns_typed_report(api_anomaly_video: Path,
     assert payload["review_reel_available"] is True
 
 
+def test_verify_repair_rescans_with_repaired_timeline_captions(api_anomaly_video: Path, tmp_path: Path) -> None:
+    operation = RepairOperation(operation_type="REMOVE_RANGE", start_seconds=2, end_seconds=5)
+    caption_text = "1\n00:00:01,000 --> 00:00:06,000\nAcross the cut\n\n2\n00:00:10,000 --> 00:00:12,000\nEnding\n"
+    captions_path = tmp_path / "source.srt"
+    captions_path.write_text(caption_text, encoding="utf-8")
+    package = PublishingPackage(title="Repair verification", description="A valid package", captions_path=captions_path)
+    original_report = PreflightScanner().scan(api_anomaly_video, package)
+    repaired = tmp_path / "repaired-with-captions.mp4"
+    FFmpegRepairEngine().render(api_anomaly_video, repaired, [operation])
+
+    with api_anomaly_video.open("rb") as original, repaired.open("rb") as rendered:
+        response = client.post(
+            "/api/v1/repairs/verify",
+            files={
+                "original_file": ("original.mp4", original, "video/mp4"),
+                "repaired_file": ("repaired.mp4", rendered, "video/mp4"),
+                "captions": ("captions.srt", caption_text.encode(), "application/x-subrip"),
+            },
+            data={
+                "operations_json": json.dumps({"operations": [operation.model_dump(mode="json")]}),
+                "original_report_json": original_report.model_dump_json(),
+                "title": package.title,
+                "description": package.description,
+                "review_mode": "local",
+            },
+        )
+
+    assert response.status_code == 200
+    repaired_report = response.json()["repaired_preflight_report"]
+    assert repaired_report["caption_summary"]["cue_count"] == 2
+    assert repaired_report["caption_summary"]["last_caption_seconds"] == pytest.approx(9)
+    assert "CAPTION_CUE_OUT_OF_RANGE" not in [finding["code"] for finding in repaired_report["findings"]]
+    assert captions_path.read_text(encoding="utf-8") == caption_text
+
+
 def test_review_reel_api_returns_playable_mp4(api_anomaly_video: Path) -> None:
     manifest = {"entries": [{"reel_start_seconds": 0, "reel_end_seconds": 2, "source_start_seconds": 0, "source_end_seconds": 2, "reason": "Approved range removed", "category": "repair", "source_id": "repair-1"}], "total_duration_seconds": 2}
     with api_anomaly_video.open("rb") as rendered:

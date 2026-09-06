@@ -17,6 +17,7 @@ from creator_preflight.content_sketch import build_content_sketch
 from creator_preflight.models import Finding, FindingSeverity, FindingStatus, ScanCompleteness
 from creator_preflight.media import MediaInspector
 from creator_preflight.release_brief import ai_release_brief, deterministic_release_brief
+from creator_preflight.presentation import format_timecode
 from creator_preflight.repairs import build_repair_plan
 from creator_preflight.models import PublishingPackage, ReviewMode
 from creator_preflight.engine import PreflightScanner
@@ -36,6 +37,13 @@ def test_deterministic_release_brief_uses_trusted_findings() -> None:
     )
     assert brief.headline == "1 item needs attention"
     assert brief.top_actions == ["Black section at 00:02.00"]
+
+
+def test_canonical_creator_timecodes_round_to_hundredths() -> None:
+    assert format_timecode(78.041667) == "01:18.04"
+    assert format_timecode(46.208333) == "00:46.21"
+    assert format_timecode(126.034625) == "02:06.03"
+    assert format_timecode(3723.5) == "1:02:03.50"
 
 
 def test_release_brief_uses_direct_delivery_time_not_opening_interval_start() -> None:
@@ -79,8 +87,8 @@ def test_ai_review_prompt_is_about_findings_not_a_video_synopsis() -> None:
     ))
     finding = Finding(
         code="VIDEO_BLACK_SEGMENT", severity="warning", status="NEEDS_REVIEW",
-        message="Black section.", source="video.black", timestamp_start_seconds=12,
-        timestamp_end_seconds=15, details={"title": "Black section"},
+        message="Black section.", source="video.black", timestamp_start_seconds=78.041667,
+        timestamp_end_seconds=82.041667, details={"title": "Black section"},
     )
     brief = ai_release_brief(
         session, verdict=FindingStatus.NEEDS_REVIEW,
@@ -91,7 +99,22 @@ def test_ai_review_prompt_is_about_findings_not_a_video_synopsis() -> None:
     assert "Do not summarize what the creator's video is about" in captured["prompt"]
     assert "PREVIEW_REQUIRED" in captured["prompt"]
     assert "inconclusive_factual_claims" in captured["prompt"]
+    assert "01:18.04–01:22.04" in captured["prompt"]
+    assert "78.041667" not in captured["prompt"]
     assert brief.positive_note == "1 factual claim could not be verified with enough evidence."
+
+
+def test_ai_release_brief_rejects_raw_float_second_copy() -> None:
+    session = SimpleNamespace(generate_text_structured=lambda **kwargs: SimpleNamespace(output=SimpleNamespace(
+        headline="Review this", summary="The issue appears at 78.041667 seconds.",
+        top_action_codes=[], positive_note=None,
+    )))
+    brief = ai_release_brief(
+        session, verdict=FindingStatus.READY, completeness=ScanCompleteness.COMPLETE,
+        findings=[], repair_plan=build_repair_plan([]),
+    )
+    assert brief.source.value == "fallback"
+    assert "78.041667 seconds" not in " ".join(filter(None, [brief.headline, brief.summary, brief.positive_note]))
 
 
 def test_ai_release_brief_failure_is_a_deterministic_presentation_fallback() -> None:

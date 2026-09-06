@@ -321,7 +321,8 @@ function ViewerPassSummaryView({ report }: { report: PreflightReport }) {
         <h2 id="viewer-pass-title">Continuity review</h2>
         <strong>{labels[viewer.status]}</strong>
       </div>
-      {viewer.summary && viewer.status !== "unavailable" && <p>{viewer.summary}</p>}
+      {viewer.summary && viewer.status === "needs_review" && <p>{viewer.summary}</p>}
+      {viewer.status === "not_evaluable" && <p>Continuity could not be evaluated confidently from this video.</p>}
       {viewer.status === "unavailable" && <p>Content review could not finish.</p>}
     </section>
   );

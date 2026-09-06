@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import re
+
 from creator_preflight.ai_review import AIReviewError, GeminiReviewSession
 from creator_preflight.models import Finding, FindingStatus, ScanCompleteness
 from creator_preflight.repair_models import RepairPlan
 from creator_preflight.release_models import ReleaseBrief, ReleaseBriefDraft, ReleaseBriefSource
+from creator_preflight.presentation import format_timecode_interval
+
+
+_RAW_FLOAT_SECONDS = re.compile(r"\b\d+\.\d{3,}\s+seconds?\b", re.IGNORECASE)
 
 
 def deterministic_release_brief(
@@ -70,8 +76,14 @@ def ai_release_brief(
                 "code": finding.code,
                 "title": str((finding.details or {}).get("title") or finding.code),
                 "message": finding.message,
-                "start_seconds": finding.timestamp_start_seconds,
-                "end_seconds": finding.timestamp_end_seconds,
+                "timecode": (
+                    format_timecode_interval(
+                        finding.timestamp_start_seconds,
+                        finding.timestamp_end_seconds,
+                    )
+                    if finding.timestamp_start_seconds is not None
+                    else None
+                ),
                 "repairability": repairability.get((finding.code, finding.timestamp_start_seconds, finding.timestamp_end_seconds)),
             }
             for finding in findings[:20]
@@ -97,6 +109,8 @@ def ai_release_brief(
         if any(code not in allowed for code in result.output.top_action_codes):
             raise AIReviewError("ai_provider_response_invalid", "AI release brief referenced an unknown finding.")
         combined_copy = " ".join(filter(None, [result.output.headline, result.output.summary, result.output.positive_note])).lower()
+        if _RAW_FLOAT_SECONDS.search(combined_copy):
+            raise AIReviewError("ai_provider_response_invalid", "AI release brief used a raw numeric timestamp.")
         if inconclusive_claim_count and any(phrase in combined_copy for phrase in (
             "everything verified", "all claims supported", "fully verified", "every claim was verified",
         )):
@@ -120,5 +134,4 @@ def _action_text(finding: Finding) -> str:
     title = str((finding.details or {}).get("title") or finding.code)
     if finding.timestamp_start_seconds is None:
         return title[:200]
-    minutes, seconds = divmod(finding.timestamp_start_seconds, 60)
-    return f"{title} at {int(minutes):02d}:{seconds:05.2f}"[:200]
+    return f"{title} at {format_timecode_interval(finding.timestamp_start_seconds)}"[:200]

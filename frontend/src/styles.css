@@ -503,11 +503,11 @@ svg { flex: 0 0 auto; }
 .check-details { margin-top: 13px; }
 .check-details summary, .evidence-details summary { list-style: none; }
 .check-details summary::-webkit-details-marker, .evidence-details summary::-webkit-details-marker { display: none; }
-.check-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 8px 0; color: var(--muted); font-size: 12px; }
+.check-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 14px; color: var(--muted); font-size: 12px; }
 .check-details > summary span:last-child, .evidence-details summary { display: flex; align-items: center; gap: 5px; color: var(--action); font-weight: 600; }
 .check-details summary svg, .evidence-details summary svg { width: 14px; transition: transform 120ms ease; }
 .check-details[open] summary svg, .evidence-details[open] summary svg { transform: rotate(180deg); }
-.check-details ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; margin: 8px 0 0; padding: 10px 14px 0; border-top: 1px solid var(--line); list-style: none; }
+.check-details ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; margin: 0; padding: 10px 14px 12px; border-top: 1px solid var(--line); list-style: none; }
 .check-details li { min-width: 0; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 0; color: var(--muted); font-size: 12px; text-transform: capitalize; }
 .check-details li svg { width: 14px; }
 .check-details li.is-pass svg { color: var(--pass); }
@@ -633,6 +633,7 @@ svg { flex: 0 0 auto; }
   .filters { gap: 18px; padding-inline: 16px; }
   .finding-item { padding: 18px 16px; }
   .finding-title-row { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .check-details > summary { padding-inline: 8px; }
   .check-details ul { grid-template-columns: minmax(0, 1fr); padding-inline: 8px; }
   .timecode-button, .finding-category { align-self: flex-start; }
   .repair-header, .repair-item { align-items: stretch; flex-direction: column; }

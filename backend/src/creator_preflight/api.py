@@ -38,7 +38,7 @@ from creator_preflight.progress import ScanProgress, ScanProgressStage, ScanProg
 from creator_preflight.repair_models import RepairOperation, RepairOperationBatch
 from creator_preflight.repairs import FFmpegRepairEngine, RepairError
 from creator_preflight.thumbnails import ThumbnailValidationError, inspect_thumbnail
-from creator_preflight.verification import verify_repair
+from creator_preflight.verification import transform_caption_file, verify_repair
 from creator_preflight.verification_models import ReviewReelManifest, VerificationReport
 
 app = FastAPI(title="Creator Preflight", version="0.1.0")
@@ -469,6 +469,24 @@ async def verify_repaired_video(
                     maximum_height=config.ai_review.promise_check.maximum_thumbnail_height,
                     maximum_pixels=config.ai_review.promise_check.maximum_thumbnail_pixels,
                     maximum_decompressed_bytes=config.ai_review.promise_check.maximum_thumbnail_decompressed_bytes,
+                )
+            if caption_path is not None:
+                original_media = await anyio.to_thread.run_sync(
+                    partial(MediaInspector().inspect, original_path)
+                )
+                if original_media.duration_seconds is None:
+                    raise RepairError(
+                        "verification_media_invalid",
+                        "Repair verification requires a readable original media duration.",
+                    )
+                caption_path = await anyio.to_thread.run_sync(
+                    partial(
+                        transform_caption_file,
+                        caption_path,
+                        directory / "captions.repaired.srt",
+                        original_duration=original_media.duration_seconds,
+                        operations=batch.operations,
+                    )
                 )
             package = PublishingPackage(title=title, description=description, captions_path=caption_path, thumbnail_path=thumbnail_path)
             scanner = PreflightScanner(config=config, configuration_source=configuration_source)

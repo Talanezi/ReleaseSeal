@@ -17,6 +17,7 @@ from creator_preflight.ai_review import (
 )
 from creator_preflight.config import AIReviewConfig
 from creator_preflight.models import Finding, FindingSeverity, FindingStatus
+from creator_preflight.presentation import format_timecode
 from creator_preflight.thumbnails import ThumbnailInfo
 
 
@@ -281,7 +282,7 @@ def promise_findings(
                 status=FindingStatus.NEEDS_REVIEW,
                 message=(
                     "The opening appears unrelated to the advertised subject before the video begins "
-                    f"directly addressing it around {review.first_substantive_address_seconds:.1f} seconds."
+                    f"directly addressing it around {format_timecode(review.first_substantive_address_seconds)}."
                 ),
                 source=f"ai.{provider}.promise",
                 timestamp_start_seconds=review.first_substantive_address_seconds,

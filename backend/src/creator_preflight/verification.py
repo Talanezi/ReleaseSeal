@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from creator_preflight.config import VerificationConfig
+from creator_preflight.captions import CaptionCue, parse_caption_text, serialize_caption_cues
 from creator_preflight.media import MediaInspection, MediaInspector, require_media_tool
 from creator_preflight.models import Finding, PreflightReport, ScanCompleteness
 from creator_preflight.repair_models import RepairOperation, RepairProposal
@@ -109,6 +110,67 @@ class TimelineTransform:
         return [operation.start_seconds - sum(max(0.0, min(operation.start_seconds, prior.end_seconds) - prior.start_seconds) for prior in self.operations if prior.end_seconds <= operation.start_seconds) for operation in self.operations]
 
 
+def transform_caption_cues(cues: list[CaptionCue], transform: TimelineTransform) -> list[CaptionCue]:
+    """Map surviving caption text onto the repaired timeline."""
+
+    transformed: list[CaptionCue] = []
+    for cue in cues:
+        if (
+            not math.isfinite(cue.start_seconds)
+            or not math.isfinite(cue.end_seconds)
+            or cue.start_seconds < 0
+            or cue.end_seconds <= cue.start_seconds
+            or cue.end_seconds > transform.original_duration
+        ):
+            raise RepairError("verification_captions_invalid", "Captions could not be mapped onto the repaired timeline.")
+        interval = transform.interval_to_repaired(cue.start_seconds, cue.end_seconds)
+        if interval is None:
+            continue
+        start, end = interval
+        end = min(end, transform.expected_duration)
+        if start < 0 or end <= start or end > transform.expected_duration:
+            raise RepairError("verification_captions_invalid", "Captions could not be mapped onto the repaired timeline.")
+        transformed.append(CaptionCue(
+            start_seconds=start,
+            end_seconds=end,
+            text=cue.text,
+            identifier=cue.identifier,
+            source_format=cue.source_format,
+            line_number=cue.line_number,
+        ))
+    return sorted(transformed, key=lambda cue: (cue.start_seconds, cue.end_seconds, cue.identifier or ""))
+
+
+def transform_caption_file(
+    source_path: str | Path,
+    destination_path: str | Path,
+    *,
+    original_duration: float,
+    operations: list[RepairOperation],
+) -> Path:
+    """Create a non-destructive repaired-timeline caption file for verification."""
+
+    source = Path(source_path)
+    try:
+        parsed = parse_caption_text(source.read_text(encoding="utf-8-sig"))
+    except (OSError, UnicodeDecodeError) as exc:
+        raise RepairError("verification_captions_invalid", "Captions could not be prepared for repair verification.") from exc
+    if parsed.issues or parsed.source_format not in {"srt", "vtt"}:
+        # Preserve existing parser diagnostics when valid cues cannot be transformed safely.
+        return source
+    transform = TimelineTransform(original_duration, operations)
+    cues = transform_caption_cues(parsed.cues, transform)
+    destination = Path(destination_path)
+    try:
+        destination.write_text(
+            serialize_caption_cues(cues, source_format=parsed.source_format),
+            encoding="utf-8",
+        )
+    except (OSError, ValueError) as exc:
+        raise RepairError("verification_captions_invalid", "Captions could not be prepared for repair verification.") from exc
+    return destination
+
+
 def verify_repair(
     original_path: str | Path,
     repaired_path: str | Path,
@@ -171,7 +233,17 @@ def compare_findings(original: PreflightReport, repaired: PreflightReport, trans
             remaining.append(_comparison(FindingComparisonStatus.REMAINING, finding, None, mapped, False, "The repaired AI review did not repeat this observation; absence alone is not deterministic proof that it was resolved."))
         else:
             resolved.append(_comparison(FindingComparisonStatus.RESOLVED, finding, None, mapped, False, "The repaired scan no longer reports this deterministic finding."))
-    new = [_comparison(FindingComparisonStatus.NEW, None, finding, _finding_interval(finding), False, "This content finding appears only in the repaired export.") for finding in unused]
+    new = [
+        _comparison(
+            FindingComparisonStatus.NEW,
+            None,
+            finding,
+            _finding_interval(finding),
+            False,
+            "This finding was newly detected during the repaired scan; that alone does not show the repair caused it.",
+        )
+        for finding in unused
+    ]
     return resolved, remaining, new
 
 
@@ -207,7 +279,8 @@ def build_review_reel_manifest(repaired_duration: float, operations: list[Repair
         finding = item.repaired_finding
         if finding and finding.timestamp_start_seconds is not None:
             end = finding.timestamp_end_seconds or finding.timestamp_start_seconds + 0.5
-            candidates.append((1, finding.timestamp_start_seconds, end, f"{item.status.value.title()}: {finding.message}", "finding", finding.code))
+            label = "Detected on repaired scan" if item.status is FindingComparisonStatus.NEW else "Still needs attention"
+            candidates.append((1, finding.timestamp_start_seconds, end, f"{label}: {finding.message}", "finding", finding.code))
     for index, operation in enumerate(operations):
         boundary = transform.original_to_repaired(operation.end_seconds)
         if boundary is None:

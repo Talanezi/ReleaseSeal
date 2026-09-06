@@ -1,14 +1,15 @@
 import type { Finding } from "../types/preflight";
 
 export function formatTimecode(seconds: number): string {
-  const safeSeconds = Math.max(0, seconds);
-  const hours = Math.floor(safeSeconds / 3600);
-  const minutes = Math.floor((safeSeconds % 3600) / 60);
-  const remainder = safeSeconds % 60;
-  const base = `${minutes.toString().padStart(2, "0")}:${remainder
-    .toFixed(2)
-    .padStart(5, "0")}`;
-  return hours > 0 ? `${hours.toString().padStart(2, "0")}:${base}` : base;
+  const totalHundredths = Math.max(0, Math.round(seconds * 100));
+  const hours = Math.floor(totalHundredths / 360000);
+  const afterHours = totalHundredths % 360000;
+  const minutes = Math.floor(afterHours / 6000);
+  const afterMinutes = afterHours % 6000;
+  const wholeSeconds = Math.floor(afterMinutes / 100);
+  const hundredths = afterMinutes % 100;
+  const base = `${minutes.toString().padStart(2, "0")}:${wholeSeconds.toString().padStart(2, "0")}.${hundredths.toString().padStart(2, "0")}`;
+  return hours > 0 ? `${hours}:${base}` : base;
 }
 
 export function formatInterval(finding: Finding): string | null {

@@ -2,9 +2,9 @@
 
 ## Current milestone
 
-Milestone 19 — Final Product Release.
+Milestone 20 — Integrity Closure.
 
-Status: Milestone 19 real-world continuation implementation and release gate completed on 2026-09-05. Final acceptance requires the owner to repeat the documented long-video browser check; the visible brand also remains Creator Preflight pending the owner's separate final name selection.
+Status: Complete on 2026-09-05. Owner-selected renaming remains intentionally separate and does not block this milestone.
 
 ## Completed
 
@@ -122,6 +122,11 @@ Status: Milestone 19 real-world continuation implementation and release gate com
 - A typed, prioritized Review Reel manifest merges overlapping three-second contexts for unexpected, remaining/new, and repaired moments under 12-segment/180-second defaults; the backend returns a playable H.264/AAC MP4.
 - The React repaired-output flow automatically enters a verifying state, retains the repaired export on verification failure, renders resolved/remaining/new/unexpected evidence with repaired-video seeking, and exposes playable/downloadable repaired video and Review Reel blobs. New Scan releases all related object URLs.
 - Human-only repair-plan items now start pending and can be marked accepted-intentional or needs-change, changed later, and tracked through a concise reviewed/pending summary without altering the automated verdict or calling accepted content resolved. Timestamped items retain click-to-seek; global items remain reviewable without fabricated timestamps; New Scan clears every disposition.
+- REMOVE_RANGE verification now parses the original supplied SRT/WebVTT through the caption subsystem, maps surviving cues with the same validated `TimelineTransform` used for media verification, writes only a request-temporary repaired-timeline caption file, and leaves the source captions unchanged. Cues before cuts remain fixed, later cues shift left, removed cues disappear, and partially spanning cues compress around all approved cuts.
+- Repaired-scan-only findings remain typed `NEW` comparison records but are presented neutrally as newly detected during verification. Only the independent deterministic visual comparator uses unexpected-media-change/regression language; summaries, Review Reel reasons, and UI evidence keep those concepts separate.
+- Continuity consumer copy is now derived from accepted high-confidence Viewer findings. A clean or not-evaluable status cannot display contradictory provider summary commentary that failed the finding trust boundary.
+- Backend and frontend canonical timecode formatters now present creator-facing timestamps as `MM:SS.xx` or `H:MM:SS.xx`. AI Review receives formatted intervals rather than raw timestamp floats, rejects raw long-decimal seconds in provider copy, and deterministic Opening/repair/verification/export presentation uses the same convention while preserving numeric seconds for computation and seeking.
+- Technical Details now gives its shared checks summary/footer balanced panel inset and vertical spacing, while retaining the two-column desktop grid and reduced-inset single-column 430px layout.
 
 ## Not implemented
 
@@ -138,7 +143,7 @@ None known.
 - Repair Mode supports only removal of validated time ranges and normalizes repaired output to MP4/H.264/AAC. It is not a general editor.
 - The controlled live M17 Viewer fixture did not yield `AI_ACCIDENTAL_REPETITION` in either permitted acceptance attempt. The first returned only `AI_VISIBLE_PLACEHOLDER`; the provider-variance retry returned a clean Viewer result. Accepted M13 evidence and automated M17 tests cover the duplicate interval contract, removal of the repeated occurrence, and repair mapping, but a real provider-returned duplicate was not previewed or rendered during M17.
 - M18 unexpected-change detection is intentionally visual and sampled. Audio verification covers stream preservation, readability, and duration/synchronization expectations, not waveform identity or every transient change.
-- Finding comparison is stable-code/timeline based rather than semantic. Untimed findings are matched conservatively by code, and probabilistic AI absence is not treated as deterministic resolution unless the authorized operation itself removed the complete targeted interval.
+- Finding comparison is stable-code/timeline based rather than semantic. Untimed findings are matched conservatively by code, probabilistic AI absence is not treated as deterministic resolution unless the authorized operation itself removed the complete targeted interval, and repaired-scan-only findings are presented neutrally rather than attributed to the repair.
 - On very short inputs such as the 9-second acceptance fixture, merged Review Reel contexts can cover the entire repaired video, so the repaired export and reel can appear identical. This is a presentation issue deferred to Milestone 19; M18 reel generation is unchanged.
 
 ## Known detector limitations
@@ -164,10 +169,10 @@ None known.
 
 ## Known frontend limitations
 
-- Analysis uses one non-streaming request, so the processing view is intentionally indeterminate and cannot identify the currently running backend detector.
+- The scan request remains synchronous, while a separate bounded process-local progress record reports only real orchestration boundaries. Progress is not durable across a backend restart and does not expose detector-level streaming or an ETA.
 - No demo video is bundled. Click-to-seek depends on the browser being able to preview the selected media codec/container; report timestamps still render when preview playback is unavailable.
 - Timeline filtering is category-based only. Severity filtering and richer overlap lanes are intentionally deferred.
-- Provider-generated task summaries can mention cautious sub-threshold evidence even when the validated issue list is empty; the finding/confidence trust boundary, not summary prose, controls the content verdict.
+- Continuity consumer copy is derived from accepted Viewer findings; sub-threshold provider commentary is suppressed when the accepted status is clean.
 
 ## Known demo limitations
 
@@ -371,3 +376,6 @@ None known.
 - Technical Details now applies horizontal inset at the parent two-column checks grid, with a single-column mobile layout and reduced mobile inset. Code-level responsive audit covers the existing 1440/1024 two-column behavior and the 430px single-column rule; the in-app browser runtime exposed no connected browser, so final pixel/console acceptance remains a manual owner step.
 - Milestone 19 final-continuation targeted validation — 16 backend progress/release/demo tests and 56 frontend API/workflow tests passed, with one upstream Starlette warning on the backend. No live Gemini request or retry was used.
 - Milestone 19 final-continuation release gate — backend: 231 passed, 0 failed, with one upstream Starlette `TestClient` deprecation warning. Frontend: 2 files and 56 tests passed, 0 failed. TypeScript and Vite 8.2.2 production build passed with 1,827 modules transformed; Python compile, demo shell syntax, GitHub Actions YAML parse, `git diff --check`, deterministic demo, secret-pattern, ignore, and tracked-media checks passed. The deterministic engineering demo remained `NEEDS_REVIEW` with 15 passed, 5 warnings, 0 critical and its established timestamps. No live provider call or retry was used.
+- Milestone 20 targeted backend validation — 78 caption/verification/API/release-summary/Opening/Continuity tests passed, 0 failed, with one upstream Starlette warning. This includes actual local FFmpeg repair verification proving a 10–12 second source cue shifts to 7–9 seconds after removing 2–5 seconds and produces no stale `CAPTION_CUE_OUT_OF_RANGE` finding.
+- Milestone 20 targeted frontend validation — `src/App.test.tsx`: 47 passed, 0 failed. Coverage includes canonical sub-hour/hour-plus timecodes, numeric seeking, clean Continuity suppression, neutral repaired-scan finding variance, and distinct deterministic unexpected-media-change presentation.
+- Milestone 20 final release gate — backend: 237 passed, 0 failed, with one upstream Starlette `TestClient` deprecation warning; Python compile passed. Frontend: 2 files and 58 tests passed, 0 failed; TypeScript validation and Vite 8.2.2 production build passed with 1,827 modules transformed. `git diff --check`, ignored-secret, diff secret-pattern, and tracked/generated-artifact hygiene checks passed. No live Gemini call or retry was used.

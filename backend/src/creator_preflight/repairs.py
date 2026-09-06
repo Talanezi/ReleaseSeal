@@ -20,6 +20,7 @@ from creator_preflight.repair_models import (
     RepairProposal,
     Repairability,
 )
+from creator_preflight.presentation import format_timecode_interval
 
 MAXIMUM_REPAIRS_PER_RENDER = 10
 MINIMUM_REMOVE_DURATION_SECONDS = 0.1
@@ -346,7 +347,7 @@ def _proposal_for_finding(finding: Finding, index: int) -> RepairProposal:
             finding_code=finding.code,
             finding_title=title,
             explanation=(
-                f"Remove the repeated occurrence from {start:.2f}s to {end:.2f}s; "
+                f"Remove the repeated occurrence at {format_timecode_interval(start, end)}; "
                 "the original reference interval remains in the video."
             ),
             source=finding.source,
@@ -369,7 +370,7 @@ def _proposal_for_finding(finding: Finding, index: int) -> RepairProposal:
             finding_code=finding.code,
             finding_title=title,
             explanation=(
-                f"Remove the black interval from {start:.2f}s to {end:.2f}s and ripple "
+                f"Remove the black interval at {format_timecode_interval(start, end)} and ripple "
                 "the remaining video and audio together. Preview this pacing change first."
             ),
             source=finding.source,

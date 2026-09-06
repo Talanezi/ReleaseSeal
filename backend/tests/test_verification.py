@@ -13,8 +13,11 @@ from creator_preflight.verification import (
     build_review_reel_manifest,
     compare_findings,
     detect_unexpected_visual_changes,
+    transform_caption_cues,
+    transform_caption_file,
     verify_repair,
 )
+from creator_preflight.captions import CaptionCue, parse_caption_text
 from creator_preflight.verification_models import FindingComparison, FindingComparisonStatus, RepairVerificationStatus
 
 
@@ -43,6 +46,54 @@ def test_timeline_transform_multiple_ranges_and_round_trip() -> None:
         mapped = transform.original_to_repaired(timestamp)
         assert mapped is not None
         assert transform.repaired_to_original(mapped) == pytest.approx(timestamp)
+
+
+def test_caption_cues_follow_one_remove_range_without_mutating_source() -> None:
+    source = [
+        CaptionCue(0, 1, "Before", source_format="srt"),
+        CaptionCue(6, 8, "After", source_format="srt"),
+        CaptionCue(3, 4, "Inside", source_format="srt"),
+        CaptionCue(1, 3, "Overlaps start", source_format="srt"),
+        CaptionCue(4, 6, "Overlaps end", source_format="srt"),
+        CaptionCue(1, 6, "Spans cut", source_format="srt"),
+    ]
+    snapshot = list(source)
+
+    transformed = transform_caption_cues(source, TimelineTransform(10, [_remove(2, 5)]))
+    by_text = {cue.text: (cue.start_seconds, cue.end_seconds) for cue in transformed}
+
+    assert by_text == {
+        "Before": (0, 1),
+        "After": (3, 5),
+        "Overlaps start": (1, 2),
+        "Overlaps end": (2, 3),
+        "Spans cut": (1, 3),
+    }
+    assert "Inside" not in by_text
+    assert source == snapshot
+
+
+def test_caption_cues_follow_multiple_ranges_and_stay_inside_repaired_duration() -> None:
+    source = [CaptionCue(1, 9, "Across both", source_format="vtt"), CaptionCue(9, 10, "Ending", source_format="vtt")]
+    transform = TimelineTransform(10, [_remove(2, 4), _remove(7, 8)])
+
+    transformed = transform_caption_cues(source, transform)
+
+    assert [(cue.start_seconds, cue.end_seconds) for cue in transformed] == [(1, 6), (6, 7)]
+    assert transformed[-1].end_seconds == transform.expected_duration
+
+
+def test_caption_file_transform_serializes_valid_repaired_timeline(tmp_path: Path) -> None:
+    source = tmp_path / "source.srt"
+    destination = tmp_path / "repaired.srt"
+    original_text = "1\n00:00:01,000 --> 00:00:06,000\nAcross the cut\n\n2\n00:00:09,000 --> 00:00:10,000\nEnding\n"
+    source.write_text(original_text, encoding="utf-8")
+
+    result_path = transform_caption_file(source, destination, original_duration=10, operations=[_remove(2, 5)])
+    parsed = parse_caption_text(result_path.read_text(encoding="utf-8"))
+
+    assert [(cue.start_seconds, cue.end_seconds) for cue in parsed.cues] == [(1, 3), (6, 7)]
+    assert source.read_text(encoding="utf-8") == original_text
 
 
 def test_clean_black_repair_verifies_and_compares_findings(api_anomaly_video: Path, tmp_path: Path) -> None:
@@ -107,6 +158,10 @@ def test_global_finding_matches_and_repaired_only_finding_is_new(api_anomaly_vid
     _, remaining, new = compare_findings(original, repaired, TimelineTransform(12, [_remove(2, 5)]), [_remove(2, 5)])
     assert remaining[0].original_finding.code == global_finding.code
     assert new[0].repaired_finding.code == "REPAIRED_ONLY"
+    assert "newly detected during the repaired scan" in new[0].explanation
+    assert "unexpected" not in new[0].explanation.lower()
+    assert "regression" not in new[0].explanation.lower()
+    assert new[0].model_dump(mode="json")["status"] == "NEW"
 
 
 def test_review_reel_manifest_merges_context_and_is_bounded() -> None:

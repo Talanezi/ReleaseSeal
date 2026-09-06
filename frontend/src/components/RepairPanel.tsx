@@ -371,7 +371,7 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
         <section className="repaired-output" aria-labelledby="repaired-output-title">
           <div>
             <h3 id="repaired-output-title">Repair result</h3>
-            <p>{verification ? `${verification.resolved.length} fixed · ${verification.remaining.length} still need attention · ${verification.new.length} new · ${verification.unexpected_changes.length} unexpected` : `Repaired export created with ${appliedCount} ${plural(appliedCount, "repair")} applied.`}</p>
+            <p>{verification ? `${verification.resolved.length} fixed · ${verification.remaining.length} still need attention · ${verification.new.length} detected on repaired scan · ${verification.unexpected_changes.length} unexpected media changes` : `Repaired export created with ${appliedCount} ${plural(appliedCount, "repair")} applied.`}</p>
             <small>
               Original: {formatDuration(report.media.duration_seconds)} · Repaired: {formatDuration(repairedDuration)}
             </small>
@@ -399,17 +399,17 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
 
 function VerificationItems({ report, onSeek }: { report: VerificationReport; onSeek: (seconds: number) => void }) {
   return <div className="verification-items">
-    {!report.unexpected_changes.length && <p><Check aria-hidden="true" /> No unexpected changes found.</p>}
+    {!report.unexpected_changes.length && <p><Check aria-hidden="true" /> No deterministic unexpected media changes found.</p>}
     {[...report.remaining, ...report.new].map((item, index) => {
       const finding = item.repaired_finding ?? item.original_finding;
       const time = item.repaired_finding?.timestamp_start_seconds ?? item.expected_repaired_start_seconds;
       return <article key={`${item.status}-${finding?.code ?? index}-${index}`}>
-        <strong>{item.status === "RESOLVED" ? "Resolved" : item.status === "REMAINING" ? "Still needs attention" : "New after repair"}: {finding?.details?.title ? String(finding.details.title) : finding?.code}</strong>
+        <strong>{item.status === "RESOLVED" ? "Resolved" : item.status === "REMAINING" ? "Still needs attention" : "Detected on repaired scan"}: {finding?.details?.title ? String(finding.details.title) : finding?.code}</strong>
         <p>{item.explanation}</p>
         {time !== null && time !== undefined && <button className="repair-timecode" type="button" onClick={() => onSeek(time)}>{formatTimecode(time)}</button>}
       </article>;
     })}
-    {report.unexpected_changes.map((change) => <article key={`${change.start_seconds}-${change.end_seconds}`}><strong>Unexpected change</strong><p>This region changed materially outside the approved edit.</p><button className="repair-timecode" type="button" onClick={() => onSeek(change.start_seconds)}>{formatTimecode(change.start_seconds)}–{formatTimecode(change.end_seconds)}</button></article>)}
+    {report.unexpected_changes.map((change) => <article key={`${change.start_seconds}-${change.end_seconds}`}><strong>Unexpected media change</strong><p>Deterministic comparison found that this region changed materially outside the approved edit.</p><button className="repair-timecode" type="button" onClick={() => onSeek(change.start_seconds)}>{formatTimecode(change.start_seconds)}–{formatTimecode(change.end_seconds)}</button></article>)}
     {report.resolved.length > 0 && <details><summary>Show {report.resolved.length} fixed {plural(report.resolved.length, "item")}</summary>{report.resolved.map((item, index) => <p key={`${item.original_finding?.code ?? index}-fixed`}>{item.original_finding?.details?.title ? String(item.original_finding.details.title) : item.original_finding?.code}</p>)}</details>}
   </div>;
 }
@@ -435,6 +435,8 @@ function exportReport(format: "csv" | "markdown" | "json", report: PreflightRepo
       category: String(finding.details?.category ?? "other"),
       start: finding.timestamp_start_seconds,
       end: finding.timestamp_end_seconds,
+      start_timecode: finding.timestamp_start_seconds === null ? null : formatTimecode(finding.timestamp_start_seconds),
+      end_timecode: finding.timestamp_end_seconds === null ? null : formatTimecode(finding.timestamp_end_seconds),
       title: String(finding.details?.title ?? finding.code),
       evidence: finding.message,
       suggested_action: finding.suggestion,
@@ -444,8 +446,8 @@ function exportReport(format: "csv" | "markdown" | "json", report: PreflightRepo
     };
   });
   const content = format === "json" ? JSON.stringify({ verdict: report.verdict, completeness: report.scan_completeness, findings: rows }, null, 2)
-    : format === "markdown" ? ["# Review report", "", `Status: ${report.verdict}`, "", "| Status | Start | Finding | Decision |", "| --- | --- | --- | --- |", ...rows.map((row) => `| ${row.status} | ${row.start ?? "Global"} | ${escapeCell(row.title)} | ${row.human_decision ?? ""} |`)].join("\n")
-    : ["status,severity,category,start,end,title,evidence,suggested_action,repair_state,human_decision,verification_state", ...rows.map((row) => [row.status, row.severity, row.category, row.start ?? "", row.end ?? "", row.title, row.evidence, row.suggested_action ?? "", row.repair_state, row.human_decision ?? "", row.verification_state ?? ""].map(csvCell).join(","))].join("\n");
+    : format === "markdown" ? ["# Review report", "", `Status: ${report.verdict}`, "", "| Status | Start | Finding | Decision |", "| --- | --- | --- | --- |", ...rows.map((row) => `| ${row.status} | ${row.start_timecode ?? "Global"} | ${escapeCell(row.title)} | ${row.human_decision ?? ""} |`)].join("\n")
+    : ["status,severity,category,start,end,title,evidence,suggested_action,repair_state,human_decision,verification_state", ...rows.map((row) => [row.status, row.severity, row.category, row.start_timecode ?? "", row.end_timecode ?? "", row.title, row.evidence, row.suggested_action ?? "", row.repair_state, row.human_decision ?? "", row.verification_state ?? ""].map(csvCell).join(","))].join("\n");
   downloadText(`creator-preflight-report.${format === "markdown" ? "md" : format}`, content, format === "json" ? "application/json" : "text/plain");
 }
 

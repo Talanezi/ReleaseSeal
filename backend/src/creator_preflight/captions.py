@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -87,6 +88,40 @@ def parse_caption_text(text: str) -> CaptionParseResult:
         cues=[],
         issues=[CaptionParseIssue("parse", "No supported SRT or WebVTT cue timing was found.")],
     )
+
+
+def serialize_caption_cues(cues: list[CaptionCue], *, source_format: str) -> str:
+    """Serialize validated cues without retaining parser-specific state or raw blobs."""
+
+    if source_format not in {"srt", "vtt"}:
+        raise ValueError("caption serialization requires SRT or WebVTT input")
+    ordered = sorted(cues, key=lambda cue: (cue.start_seconds, cue.end_seconds, cue.identifier or ""))
+    blocks: list[str] = []
+    for index, cue in enumerate(ordered, start=1):
+        if (
+            not math.isfinite(cue.start_seconds)
+            or not math.isfinite(cue.end_seconds)
+            or cue.start_seconds < 0
+            or cue.end_seconds <= cue.start_seconds
+        ):
+            raise ValueError("caption cues must contain finite positive intervals")
+        if source_format == "srt":
+            timing = f"{_serialize_timestamp(cue.start_seconds, ',')} --> {_serialize_timestamp(cue.end_seconds, ',')}"
+            blocks.append(f"{index}\n{timing}\n{cue.text}")
+        else:
+            identifier = f"{cue.identifier}\n" if cue.identifier else ""
+            timing = f"{_serialize_timestamp(cue.start_seconds, '.')} --> {_serialize_timestamp(cue.end_seconds, '.')}"
+            blocks.append(f"{identifier}{timing}\n{cue.text}")
+    prefix = "WEBVTT\n\n" if source_format == "vtt" else ""
+    return prefix + "\n\n".join(blocks) + ("\n" if blocks else "")
+
+
+def _serialize_timestamp(seconds: float, separator: str) -> str:
+    total_milliseconds = max(0, round(seconds * 1000))
+    hours, remainder = divmod(total_milliseconds, 3_600_000)
+    minutes, remainder = divmod(remainder, 60_000)
+    whole_seconds, milliseconds = divmod(remainder, 1000)
+    return f"{hours:02d}:{minutes:02d}:{whole_seconds:02d}{separator}{milliseconds:03d}"
 
 
 def inspect_caption_file(

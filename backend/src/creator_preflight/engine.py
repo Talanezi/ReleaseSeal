@@ -457,7 +457,14 @@ class PreflightScanner:
                     if viewer_findings
                     else ViewerPassStatus.CLEAN
                 ),
-                summary=viewer_result.review.summary,
+                summary=(
+                    f"{len(viewer_findings)} high-confidence continuity "
+                    f"{('issue' if len(viewer_findings) == 1 else 'issues')} require review."
+                    if viewer_findings
+                    else "No high-confidence continuity inconsistencies were accepted."
+                    if viewer_result.review.overall_status is not ViewerPassOverallStatus.NOT_EVALUABLE
+                    else "Continuity could not be evaluated confidently from this video."
+                ),
                 issue_count=len(viewer_findings),
             )
         elif "viewer" in task_errors:

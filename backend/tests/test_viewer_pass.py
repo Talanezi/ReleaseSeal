@@ -161,6 +161,18 @@ def test_clean_summary_and_viewer_failure_isolation(video_with_audio: Path) -> N
     assert clean.checks[-1].check_id == "ai.viewer_pass"
     assert (clean.checks_run_count, clean.passed_check_count) == (16, 16)
 
+    contradictory = PreflightScanner(
+        config=_config(), promise_reviewer=StubPromiseReviewer(),
+        viewer_reviewer=StubViewerReviewer(result=ViewerPassResult(
+            overall_status="clean",
+            summary="The video contains visible placeholder and template text.",
+            issues=[],
+        )),
+    ).scan(video_with_audio, PublishingPackage(title="Aurora", description="Description"))
+    assert contradictory.viewer_pass.status.value == "clean"
+    assert contradictory.viewer_pass.summary == "No high-confidence continuity inconsistencies were accepted."
+    assert "placeholder" not in contradictory.viewer_pass.summary.lower()
+
     failed_viewer = StubViewerReviewer(error=AIReviewError("ai_generation_failed", "Viewer task failed."))
     failed = PreflightScanner(
         config=_config(), promise_reviewer=StubPromiseReviewer(), viewer_reviewer=failed_viewer
