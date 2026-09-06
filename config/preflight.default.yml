@@ -147,3 +147,29 @@ verification:
   review_reel_context_seconds: 3.0
   review_reel_maximum_segments: 12
   review_reel_maximum_duration_seconds: 180.0
+
+# Deterministic, local media-to-media Revision Map policy. M21 exposes this as
+# a backend service primitive only; no revision-note or semantic verification.
+revision_map:
+  visual_samples_per_second: 2.0
+  maximum_visual_samples: 1200
+  descriptor_width: 17
+  descriptor_height: 9
+  strong_match_threshold: 0.12
+  plausible_match_threshold: 0.28
+  visual_changed_threshold: 0.28
+  audio_changed_threshold: 0.30
+  gap_penalty: 0.04
+  maximum_substitution_cost: 0.64
+  low_information_variance_threshold: 80.0
+  low_information_edge_threshold: 4.0
+  low_information_penalty: 0.08
+  audio_weight: 0.20
+  audio_sample_rate: 8000
+  minimum_segment_duration_seconds: 0.35
+  merge_tolerance_seconds: 0.51
+  refinement_radius_seconds: 2.0
+  refinement_samples_per_second: 6.0
+  maximum_refinement_samples: 240
+  extraction_timeout_seconds: 180.0
+  alignment_timeout_seconds: 30.0

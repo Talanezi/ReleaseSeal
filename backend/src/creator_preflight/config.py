@@ -10,6 +10,7 @@ from pydantic import (
     Field,
     ValidationError,
     field_validator,
+    model_validator,
 )
 
 from creator_preflight.models import FindingSeverity
@@ -302,6 +303,41 @@ class VerificationConfig(BaseModel):
     review_reel_maximum_duration_seconds: float = Field(default=180.0, gt=0, le=600)
 
 
+class RevisionMapConfig(BaseModel):
+    """Bounded deterministic sampling and monotonic revision-alignment policy."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    visual_samples_per_second: float = Field(default=2.0, gt=0, le=10)
+    maximum_visual_samples: int = Field(default=1200, ge=10, le=1800)
+    descriptor_width: int = Field(default=17, ge=9, le=33)
+    descriptor_height: int = Field(default=9, ge=5, le=18)
+    strong_match_threshold: float = Field(default=0.12, ge=0, le=1)
+    plausible_match_threshold: float = Field(default=0.28, ge=0, le=1)
+    visual_changed_threshold: float = Field(default=0.28, ge=0, le=1)
+    audio_changed_threshold: float = Field(default=0.30, ge=0, le=1)
+    gap_penalty: float = Field(default=0.04, gt=0, le=2)
+    maximum_substitution_cost: float = Field(default=0.64, gt=0, le=2)
+    low_information_variance_threshold: float = Field(default=80.0, ge=0, le=10000)
+    low_information_edge_threshold: float = Field(default=4.0, ge=0, le=255)
+    low_information_penalty: float = Field(default=0.08, ge=0, le=1)
+    audio_weight: float = Field(default=0.20, ge=0, le=0.5)
+    audio_sample_rate: int = Field(default=8000, ge=1000, le=48000)
+    minimum_segment_duration_seconds: float = Field(default=0.35, ge=0, le=5)
+    merge_tolerance_seconds: float = Field(default=0.51, ge=0, le=5)
+    refinement_radius_seconds: float = Field(default=2.0, ge=0, le=10)
+    refinement_samples_per_second: float = Field(default=6.0, gt=0, le=20)
+    maximum_refinement_samples: int = Field(default=240, ge=20, le=1000)
+    extraction_timeout_seconds: float = Field(default=180.0, gt=0, le=900)
+    alignment_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+
+    @model_validator(mode="after")
+    def validate_revision_thresholds(self) -> "RevisionMapConfig":
+        if self.strong_match_threshold > self.plausible_match_threshold:
+            raise ValueError("strong match threshold must not exceed plausible match threshold")
+        return self
+
+
 class CreatorRuleConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -323,6 +359,7 @@ class PreflightConfig(BaseModel):
     ai_review: AIReviewConfig = Field(default_factory=AIReviewConfig)
     api: APIConfig = Field(default_factory=APIConfig)
     verification: VerificationConfig = Field(default_factory=VerificationConfig)
+    revision_map: RevisionMapConfig = Field(default_factory=RevisionMapConfig)
 
 
 class ConfigurationError(Exception):

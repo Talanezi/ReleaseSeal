@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -21,7 +22,9 @@ from creator_preflight.claim_review import (
     validate_claim_extraction,
     validate_grounded_assessments,
 )
+from creator_preflight import claim_fixture
 from creator_preflight.claim_fixture import generate_claim_review_fixture
+from creator_preflight.media import MediaInspector
 from creator_preflight.config import AIReviewConfig, PreflightConfig
 from creator_preflight.engine import PreflightScanner
 from creator_preflight.models import FindingStatus, PublishingPackage
@@ -299,7 +302,30 @@ def test_claim_failure_preserves_other_ai_tasks_and_never_blocks(video_with_audi
     assert (files.upload_count, files.delete_count) == (1, 1)
 
 
-def test_controlled_claim_fixture_contains_three_narrated_scenes(tmp_path: Path) -> None:
-    output = generate_claim_review_fixture(tmp_path / "claims.mp4")
+def test_controlled_claim_fixture_portable_media_assembly(tmp_path: Path) -> None:
+    frequencies = iter((330, 440, 550))
+
+    def render_test_audio(_text: str, output: Path) -> None:
+        subprocess.run(
+            [
+                "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+                "-f", "lavfi", "-i", f"sine=frequency={next(frequencies)}:sample_rate=48000:duration=4",
+                "-c:a", "pcm_s16be", str(output),
+            ],
+            check=True,
+            timeout=30,
+        )
+
+    output = generate_claim_review_fixture(tmp_path / "claims.mp4", speech_renderer=render_test_audio)
+    media = MediaInspector().inspect(output)
     assert output.exists()
     assert 100_000 < output.stat().st_size < 5_000_000
+    assert media.duration_seconds == pytest.approx(36, abs=0.2)
+    assert media.has_video is True
+    assert media.has_audio is True
+
+
+def test_default_claim_fixture_reports_missing_macos_speech_cleanly(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(claim_fixture.shutil, "which", lambda executable: None if executable == "say" else executable)
+    with pytest.raises(RuntimeError, match="macOS 'say' is required"):
+        generate_claim_review_fixture(tmp_path / "claims.mp4")

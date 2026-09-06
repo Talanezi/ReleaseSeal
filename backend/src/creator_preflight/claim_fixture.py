@@ -6,8 +6,11 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Callable
 
 from creator_preflight.promise_fixture import _canvas, _draw_text, _write_ppm
+
+SpeechRenderer = Callable[[str, Path], None]
 
 
 def generate_claim_review_fixture(
@@ -15,11 +18,11 @@ def generate_claim_review_fixture(
     *,
     ffmpeg_binary: str = "ffmpeg",
     timeout_seconds: float = 120,
+    speech_renderer: SpeechRenderer | None = None,
 ) -> Path:
     """Generate three 12s narrated scenes: supported, conflicting, subjective."""
 
-    if shutil.which("say") is None:
-        raise RuntimeError("macOS 'say' is required for the narrated Claim Review fixture.")
+    render_speech = speech_renderer or _render_macos_speech
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     scenes = [
@@ -39,12 +42,7 @@ def generate_claim_review_fixture(
             image = temp_path / f"scene-{index}.ppm"
             audio = temp_path / f"speech-{index}.aiff"
             _write_ppm(image, pixels)
-            spoken = subprocess.run(
-                ["say", "-r", "140", "-o", str(audio), speech],
-                capture_output=True, text=True, check=False, timeout=30,
-            )
-            if spoken.returncode != 0:
-                raise RuntimeError("Local speech synthesis could not generate the Claim Review fixture.")
+            render_speech(speech, audio)
             inputs.extend(["-loop", "1", "-framerate", "12", "-t", "12", "-i", str(image)])
             inputs.extend(["-i", str(audio)])
             video_chains.append(
@@ -74,3 +72,23 @@ def generate_claim_review_fixture(
             diagnostic = completed.stderr.strip() or "unknown FFmpeg error"
             raise RuntimeError(f"FFmpeg could not generate the Claim Review fixture: {diagnostic}")
     return output
+
+
+def _render_macos_speech(text: str, output_path: Path) -> None:
+    """Render real narrated speech for optional maintainer/provider fixture use."""
+
+    executable = shutil.which("say")
+    if executable is None:
+        raise RuntimeError("macOS 'say' is required for the narrated Claim Review fixture.")
+    try:
+        spoken = subprocess.run(
+            [executable, "-r", "140", "-o", str(output_path), text],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError("Local speech synthesis could not generate the Claim Review fixture.") from exc
+    if spoken.returncode != 0:
+        raise RuntimeError("Local speech synthesis could not generate the Claim Review fixture.")
