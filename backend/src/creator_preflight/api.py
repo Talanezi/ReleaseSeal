@@ -40,6 +40,12 @@ from creator_preflight.repairs import FFmpegRepairEngine, RepairError
 from creator_preflight.revision import RevisionMapError, RevisionMapper
 from creator_preflight.revision_check import RevisionCheckError, RevisionCheckService
 from creator_preflight.revision_check_models import RevisionCheckReport
+from creator_preflight.revision_semantic import (
+    GeminiRevisionSemanticReviewer,
+    RevisionSemanticReviewError,
+    RevisionSemanticReviewService,
+)
+from creator_preflight.revision_semantic_models import RevisionSemanticReviewReport
 from creator_preflight.thumbnails import ThumbnailValidationError, inspect_thumbnail
 from creator_preflight.verification import transform_caption_file, verify_repair
 from creator_preflight.verification_models import ReviewReelManifest, VerificationReport
@@ -178,6 +184,13 @@ async def revision_check_error_handler(request: Request, exc: RevisionCheckError
     return _error_response(400, exc.code, exc.message)
 
 
+@app.exception_handler(RevisionSemanticReviewError)
+async def revision_semantic_error_handler(request: Request, exc: RevisionSemanticReviewError) -> JSONResponse:
+    del request
+    status_code = 409 if exc.code == "revision_source_mismatch" else 400
+    return _error_response(status_code, exc.code, exc.message)
+
+
 @app.get("/api/v1/capabilities", response_model=PreflightCapabilities)
 async def capabilities() -> PreflightCapabilities:
     config, _ = _api_config()
@@ -201,12 +214,66 @@ async def capabilities() -> PreflightCapabilities:
         metadata_assist_available=local_available and gemini_dependency and gemini_key and config.ai_review.metadata_assist.enabled,
         local_checks_available=local_available,
         revision_check_available=local_available,
+        revision_semantic_review_available=(
+            local_available
+            and gemini_dependency
+            and gemini_key
+            and config.revision_semantic_review.enabled
+        ),
         transcription_dependency_available=_module_available("faster_whisper"),
         transcription_enabled=config.transcription.enabled,
         supported_review_modes=[ReviewMode.FULL, ReviewMode.LOCAL],
         maximum_video_upload_size_bytes=config.api.maximum_video_upload_size_bytes,
         full_review_unavailable_reasons=reasons,
     )
+
+
+@app.post("/api/v1/revisions/semantic-review", response_model=RevisionSemanticReviewReport)
+async def semantic_review_revision(
+    request: Request,
+    previous_file: UploadFile = File(...),
+    revised_file: UploadFile = File(...),
+    revision_check_json: str = Form(...),
+) -> RevisionSemanticReviewReport:
+    """Explicitly review only bounded clips around eligible deterministic changes."""
+
+    config, _ = _api_config()
+    try:
+        _require_allowed_origin(request, config)
+        try:
+            report = RevisionCheckReport.model_validate_json(revision_check_json)
+        except ValidationError as exc:
+            raise RevisionSemanticReviewError(
+                "revision_semantic_report_invalid",
+                "The supplied revision check could not be validated.",
+            ) from exc
+    except Exception:
+        await previous_file.close()
+        await revised_file.close()
+        raise
+    if not config.revision_semantic_review.enabled:
+        await previous_file.close()
+        await revised_file.close()
+        raise RevisionSemanticReviewError("revision_semantic_disabled", "AI revision review is disabled by server configuration.")
+    if not _scan_capacity.acquire(config.api.maximum_concurrent_scans):
+        await previous_file.close()
+        await revised_file.close()
+        raise ScanBusyError()
+    try:
+        with TemporaryDirectory(prefix="creator-preflight-revision-semantic-") as temporary_directory:
+            previous_path = _media_temp_path(temporary_directory, previous_file.filename, stem="previous")
+            revised_path = _media_temp_path(temporary_directory, revised_file.filename, stem="revised")
+            await _copy_upload(previous_file, previous_path, config.api.maximum_video_upload_size_bytes)
+            await _copy_upload(revised_file, revised_path, config.api.maximum_video_upload_size_bytes)
+            service = RevisionSemanticReviewService(
+                config=config.revision_semantic_review,
+                reviewer=GeminiRevisionSemanticReviewer(config.ai_review),
+            )
+            return await anyio.to_thread.run_sync(partial(service.review, previous_path, revised_path, report))
+    finally:
+        _scan_capacity.release()
+        await previous_file.close()
+        await revised_file.close()
 
 
 @app.post("/api/v1/revisions/check", response_model=RevisionCheckReport)

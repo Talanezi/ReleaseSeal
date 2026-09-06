@@ -636,6 +636,9 @@ svg { flex: 0 0 auto; }
 .revision-section h2, .revision-comparison h2 { margin: 0; font-size: 18px; }
 .revision-section header p, .revision-comparison header p { margin: 0; color: var(--muted); font-size: 12px; }
 .revision-change-list { display: grid; }
+.revision-request-item { border-bottom: 1px solid var(--line); }
+.revision-request-item:last-child { border-bottom: 0; }
+.revision-request-item .revision-request-row { border-bottom: 0; }
 .revision-request-row { min-width: 0; display: grid; grid-template-columns: 132px minmax(0, 1fr) minmax(110px, .45fr); gap: 18px; padding: 17px 20px; border-bottom: 1px solid var(--line); background: transparent; text-align: left; }
 .revision-request-row:last-child { border-bottom: 0; }
 .revision-request-row:hover { background: var(--surface-muted); }
@@ -646,6 +649,18 @@ svg { flex: 0 0 auto; }
 .revision-row-copy small { color: var(--action); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
 .revision-row-copy span, .revision-evidence { color: var(--muted); font-size: 12px; line-height: 1.45; }
 .revision-evidence { text-align: right; }
+.revision-semantic-action, .revision-semantic-summary { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-top: 1px solid var(--line); background: var(--surface-muted); }
+.revision-semantic-action > div, .revision-semantic-summary { min-width: 0; }
+.revision-semantic-action > div { display: grid; gap: 3px; margin-right: auto; }
+.revision-semantic-action span, .revision-semantic-action p, .revision-semantic-summary span, .revision-semantic-summary small { color: var(--muted); font-size: 11px; }
+.revision-semantic-action p { width: 100%; margin: 0; }
+.revision-semantic-summary { align-items: flex-start; flex-direction: column; gap: 4px; }
+.revision-semantic-result { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 5px 12px; margin: 0 20px 16px; padding: 13px 14px; border-left: 3px solid var(--line-strong); background: var(--surface-muted); }
+.revision-semantic-result > span { grid-row: 1 / 4; color: var(--quiet); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+.revision-semantic-result strong { font-size: 12px; }
+.revision-semantic-result p, .revision-semantic-result small { grid-column: 2 / 4; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.revision-semantic-result.semantic-appears_satisfied { border-left-color: var(--pass); }
+.revision-semantic-result.semantic-appears_unresolved { border-left-color: var(--warning); }
 .revision-comparison { margin-top: 30px; padding: 20px; border: 1px solid var(--line); background: var(--surface); }
 .revision-comparison > header { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
 .version-tabs { display: flex; gap: 3px; }
@@ -712,6 +727,10 @@ svg { flex: 0 0 auto; }
   .revision-files { grid-template-columns: minmax(0, 1fr); }
   .revision-surface { padding: 20px; }
   .revision-request-row { grid-template-columns: minmax(0, 1fr); gap: 7px; }
+  .revision-semantic-action { align-items: stretch; flex-direction: column; }
+  .revision-semantic-result { grid-template-columns: minmax(0, 1fr); }
+  .revision-semantic-result > span { grid-row: auto; }
+  .revision-semantic-result p, .revision-semantic-result small { grid-column: auto; }
   .revision-evidence { text-align: left; }
   .revision-section > header, .revision-comparison > header { align-items: flex-start; flex-direction: column; }
   .revision-counts { grid-template-columns: minmax(0, 1fr); }

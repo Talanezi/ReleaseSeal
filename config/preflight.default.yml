@@ -182,3 +182,17 @@ revision_check:
   maximum_notes: 100
   maximum_notes_characters: 50000
   maximum_note_characters: 500
+
+# Optional, explicit semantic review of short clips around detected revision regions.
+# Revision Check itself remains deterministic and does not invoke Gemini.
+revision_semantic_review:
+  enabled: true
+  maximum_requests: 5
+  maximum_parallel_requests: 2
+  context_before_seconds: 2.5
+  context_after_seconds: 2.5
+  maximum_clip_duration_seconds: 12.0
+  clip_width: 320
+  clip_height: 180
+  confidence_threshold: 0.80
+  clip_timeout_seconds: 60.0

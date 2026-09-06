@@ -2,9 +2,9 @@
 
 ## Current milestone
 
-Milestone 22 — Revision Check Product Workflow.
+Milestone 23 — Bounded Semantic Revision Review.
 
-Status: Complete on 2026-09-06. Owner-selected renaming remains intentionally separate and does not block this milestone.
+Status: Complete on 2026-09-06. Revision Check remains deterministic by default; semantic review is explicit, optional, bounded, and probabilistic.
 
 ## Completed
 
@@ -392,3 +392,7 @@ None known.
 - Milestone 22 targeted frontend validation — API and application suites passed 67 tests. Coverage includes the workflow selector, independent two-file form and upload limits, multipart request, truthful cancelable processing, identical/no-notes result, requested statuses, neutral additional changes, Previous/Revised evidence seeking, canonical timecodes, collapsed technical details, JSON/Markdown export, and preserved Final Export input behavior.
 - Milestone 22 controlled three-minute API acceptance — a generated 180-second source and normal H.264/AAC re-encode returned HTTP 200, 100.0% unchanged, zero changes, and no false difference. Files were approximately 12.61 MB and 3.58 MB; total local TestClient request time was 2.412 seconds, report analysis time was 2.349 seconds, and measured multipart/copy/HTTP overhead was approximately 0.063 seconds.
 - Milestone 22 final release gate — complete backend suite passed 289 tests with one upstream Starlette warning; complete frontend suite passed 67 tests across two files; TypeScript and the Vite production build passed with 1,830 modules transformed; Python compile and `git diff --check` passed. Secret/generated-media audit confirmed `.env.local` remains ignored and untracked, no generated revision media is tracked, and no provider call or retry was used.
+- Milestone 23 implementation — strict semantic statuses and evidence ranges are separate from the deterministic Revision Check report. Only located `CHANGE_DETECTED` notes are eligible; no-change, untimed, and unmentioned additional changes never invoke AI. Source hashes must match before evidence extraction. Up to five notes are reviewed in original order with provider concurrency capped at two.
+- Milestone 23 evidence/provider acceptance — each request renders 320×180 H.264 evidence clips with AAC when present, with 2.5-second context and a 12-second hard maximum. Changed regions map directly; removals and insertions use their safe surviving/insertion neighborhoods. Gemini receives only the two clips for that request, one native structured generation is made, and both uploads are deleted on success or failure. Low-confidence decisions become inconclusive and per-request failures remain isolated.
+- Milestone 23 live acceptance — one locally generated 8.0-second audiovisual Previous/Revised pair changed centered text from `YEAR 2024` to `YEAR 2025`, with a deterministic 2.0–6.0 changed region. `gemini-3.7-flash` returned `APPEARS_SATISFIED` at 1.0 confidence: previous showed `YEAR 2024`, revised showed `YEAR 2025`. Evidence rendering took 0.295s, provider work 11.107s, and total semantic review 11.712s. Two bounded clips were uploaded, one generation ran, both uploads were deleted, and no retry was used. One prior sandboxed attempt made zero uploads/generations because outbound access was unavailable.
+- Milestone 23 final gate — complete backend suite passed 299 tests with one upstream Starlette warning; complete frontend suite passed 70 tests across two files. Python compile, TypeScript validation, Vite 8.2.2 production build with 1,830 modules, and `git diff --check` passed. `.env.local` and generated `.demo/` acceptance media remain ignored and untracked; no provider ID, API key, evidence clip, or generated media artifact appears in the diff or tracked files.

@@ -350,6 +350,23 @@ class RevisionCheckConfig(BaseModel):
     maximum_note_characters: int = Field(default=500, ge=1, le=2_000)
 
 
+class RevisionSemanticReviewConfig(BaseModel):
+    """Bounded opt-in semantic comparison of deterministic revision regions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    maximum_requests: int = Field(default=5, ge=1, le=10)
+    maximum_parallel_requests: int = Field(default=2, ge=1, le=4)
+    context_before_seconds: float = Field(default=2.5, ge=0, le=6)
+    context_after_seconds: float = Field(default=2.5, ge=0, le=6)
+    maximum_clip_duration_seconds: float = Field(default=12.0, gt=1, le=20)
+    clip_width: int = Field(default=320, ge=160, le=640)
+    clip_height: int = Field(default=180, ge=90, le=360)
+    confidence_threshold: float = Field(default=0.80, ge=0, le=1)
+    clip_timeout_seconds: float = Field(default=60.0, gt=0, le=300)
+
+
 class CreatorRuleConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -373,6 +390,7 @@ class PreflightConfig(BaseModel):
     verification: VerificationConfig = Field(default_factory=VerificationConfig)
     revision_map: RevisionMapConfig = Field(default_factory=RevisionMapConfig)
     revision_check: RevisionCheckConfig = Field(default_factory=RevisionCheckConfig)
+    revision_semantic_review: RevisionSemanticReviewConfig = Field(default_factory=RevisionSemanticReviewConfig)
 
 
 class ConfigurationError(Exception):

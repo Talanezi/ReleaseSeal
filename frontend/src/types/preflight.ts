@@ -114,6 +114,7 @@ export interface PreflightCapabilities {
   metadata_assist_available: boolean;
   local_checks_available: boolean;
   revision_check_available: boolean;
+  revision_semantic_review_available: boolean;
   transcription_dependency_available: boolean;
   transcription_enabled: boolean;
   supported_review_modes: ReviewMode[];
@@ -204,6 +205,47 @@ export interface RevisionCheckReport {
   additional_changes: AdditionalRevisionChange[];
   additional_change_count: number;
   analysis_runtime_seconds: number;
+}
+
+export type RevisionSemanticStatus = "APPEARS_SATISFIED" | "APPEARS_UNRESOLVED" | "INCONCLUSIVE" | "NOT_REVIEWED";
+
+export interface RevisionEvidenceRange {
+  start_seconds: number;
+  end_seconds: number;
+}
+
+export interface RevisionSemanticResult {
+  request_id: string;
+  status: RevisionSemanticStatus;
+  confidence: number | null;
+  rationale: string;
+  observed_previous: string | null;
+  observed_revised: string | null;
+  reviewed_previous_range: RevisionEvidenceRange | null;
+  reviewed_revised_range: RevisionEvidenceRange | null;
+  partial_evidence: boolean;
+  limitation: string | null;
+  reason_code: string | null;
+}
+
+export interface RevisionSemanticReviewReport {
+  schema_version: string;
+  provider: string;
+  model: string;
+  eligible_count: number;
+  requested_count: number;
+  reviewed_count: number;
+  appears_satisfied_count: number;
+  appears_unresolved_count: number;
+  inconclusive_count: number;
+  not_reviewed_count: number;
+  results: RevisionSemanticResult[];
+  evidence_render_seconds: number;
+  provider_seconds: number;
+  total_seconds: number;
+  upload_count: number;
+  generation_count: number;
+  delete_count: number;
 }
 
 export type PromiseCheckStatus = "disabled" | "aligned" | "needs_review" | "not_evaluable" | "unavailable";

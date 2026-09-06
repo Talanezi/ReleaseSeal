@@ -224,7 +224,14 @@ export function App() {
           packageInput={{ title: inputs.title, description: inputs.description, captions: inputs.captions, thumbnail: inputs.thumbnail, reviewMode: inputs.reviewMode }}
         />
       )}
-      {view === "result" && workflow === "revision" && revisionReport && <RevisionResultsView report={revisionReport} previousUrl={previousUrl} revisedUrl={revisedUrl} />}
+      {view === "result" && workflow === "revision" && revisionReport && <RevisionResultsView
+        report={revisionReport}
+        previousUrl={previousUrl}
+        revisedUrl={revisedUrl}
+        previousFile={revisionInputs.previousVideo}
+        revisedFile={revisionInputs.revisedVideo}
+        semanticReviewAvailable={capabilities?.revision_semantic_review_available ?? false}
+      />}
       {view === "error" && error && <ErrorState {...error} onRetry={returnToForm} />}
     </div>
   );

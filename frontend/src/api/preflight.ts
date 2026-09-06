@@ -16,12 +16,19 @@ import type {
   MetadataAssistResult,
   ScanProgress,
   RevisionCheckReport,
+  RevisionSemanticReviewReport,
 } from "../types/preflight";
 
 export interface RevisionCheckInput {
   previousVideo: File;
   revisedVideo: File;
   notes: string;
+}
+
+export interface RevisionSemanticReviewInput {
+  previousVideo: File;
+  revisedVideo: File;
+  revisionCheck: RevisionCheckReport;
 }
 
 export interface PreflightScanInput {
@@ -145,6 +152,32 @@ export async function checkRevision(
   }
   if (!isRevisionCheckReport(payload)) {
     throw new PreflightApiError("The backend returned an unexpected revision report.", { code: "revision_invalid_response", status: response.status });
+  }
+  return payload;
+}
+
+export async function reviewRevisionSemantics(
+  input: RevisionSemanticReviewInput,
+  options: { signal?: AbortSignal } = {},
+): Promise<RevisionSemanticReviewReport> {
+  const form = new FormData();
+  form.append("previous_file", input.previousVideo, input.previousVideo.name);
+  form.append("revised_file", input.revisedVideo, input.revisedVideo.name);
+  form.append("revision_check_json", JSON.stringify(input.revisionCheck));
+  let response: Response;
+  try {
+    response = await fetch("/api/v1/revisions/semantic-review", { method: "POST", body: form, signal: options.signal });
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new PreflightApiError("Could not reach the local AI revision-review service.", { code: "revision_semantic_backend_unreachable", cause: error });
+  }
+  const payload = await parseJsonResponse(response);
+  if (!response.ok) {
+    const structured = parseStructuredError(payload);
+    throw new PreflightApiError(structured?.error.message ?? "AI revision review is unavailable.", { code: structured?.error.code ?? "revision_semantic_review_failed", status: response.status });
+  }
+  if (!isRevisionSemanticReviewReport(payload)) {
+    throw new PreflightApiError("The backend returned an unexpected AI revision review.", { code: "revision_semantic_invalid_response", status: response.status });
   }
   return payload;
 }
@@ -536,6 +569,7 @@ function isPreflightCapabilities(value: unknown): value is PreflightCapabilities
     && typeof value.metadata_assist_available === "boolean"
     && typeof value.local_checks_available === "boolean"
     && typeof value.revision_check_available === "boolean"
+    && typeof value.revision_semantic_review_available === "boolean"
     && typeof value.transcription_dependency_available === "boolean"
     && typeof value.transcription_enabled === "boolean"
     && Array.isArray(value.supported_review_modes)
@@ -572,6 +606,21 @@ export function isRevisionCheckReport(value: unknown): value is RevisionCheckRep
     && Array.isArray(map.ambiguity_notes) && map.ambiguity_notes.every((item) => typeof item === "string")
     && isNonnegativeNumber(map.analysis_runtime_seconds)
     && typeof map.identical_file_fast_path === "boolean";
+}
+
+export function isRevisionSemanticReviewReport(value: unknown): value is RevisionSemanticReviewReport {
+  if (!isRecord(value) || !Array.isArray(value.results)) return false;
+  const statuses = new Set(["APPEARS_SATISFIED", "APPEARS_UNRESOLVED", "INCONCLUSIVE", "NOT_REVIEWED"]);
+  return typeof value.schema_version === "string"
+    && typeof value.provider === "string"
+    && typeof value.model === "string"
+    && ["eligible_count", "requested_count", "reviewed_count", "appears_satisfied_count", "appears_unresolved_count", "inconclusive_count", "not_reviewed_count", "evidence_render_seconds", "provider_seconds", "total_seconds", "upload_count", "generation_count", "delete_count"].every((key) => typeof value[key] === "number")
+    && value.results.every((item) => isRecord(item)
+      && typeof item.request_id === "string"
+      && typeof item.status === "string" && statuses.has(item.status)
+      && (item.confidence === null || typeof item.confidence === "number")
+      && typeof item.rationale === "string"
+      && typeof item.partial_evidence === "boolean");
 }
 
 function isRevisionRequest(value: unknown): boolean {

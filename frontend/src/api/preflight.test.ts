@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { needsReviewReport, revisionCheckReport } from "../mocks/reports";
-import { applyRepairs, assistMetadata, checkRevision, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, scanPreflight, verifyRepair } from "./preflight";
+import { applyRepairs, assistMetadata, checkRevision, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, reviewRevisionSemantics, scanPreflight, verifyRepair } from "./preflight";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -79,6 +79,20 @@ describe("preflight API client", () => {
     await expect(checkRevision({
       previousVideo: new File(["a"], "a.mp4"), revisedVideo: new File(["b"], "b.mp4"), notes: "",
     })).rejects.toMatchObject({ code: "revision_invalid_response" });
+  });
+
+  it("constructs and validates the explicit semantic revision request", async () => {
+    let body: FormData | undefined;
+    vi.stubGlobal("fetch", vi.fn((_url: RequestInfo | URL, init?: RequestInit) => {
+      body = init?.body as FormData;
+      return Promise.resolve(jsonResponse(semanticReviewFixture));
+    }));
+    const previous = new File(["previous"], "previous.mp4");
+    const revised = new File(["revised"], "revised.mp4");
+    const result = await reviewRevisionSemantics({ previousVideo: previous, revisedVideo: revised, revisionCheck: revisionCheckReport });
+    expect((body?.get("previous_file") as File).name).toBe("previous.mp4");
+    expect(JSON.parse(String(body?.get("revision_check_json"))).schema_version).toBe("1.0");
+    expect(result.results[0].status).toBe("APPEARS_SATISFIED");
   });
 
   it("omits optional captions and thumbnail when none were selected", async () => {
@@ -263,6 +277,7 @@ function capabilitiesFixture() {
       metadata_assist_available: true,
     local_checks_available: true,
     revision_check_available: true,
+    revision_semantic_review_available: true,
     transcription_dependency_available: true,
     transcription_enabled: false,
     supported_review_modes: ["full", "local"],
@@ -270,6 +285,13 @@ function capabilitiesFixture() {
     full_review_unavailable_reasons: [],
   };
 }
+
+const semanticReviewFixture = {
+  schema_version: "1.0", provider: "gemini", model: "fake-flash", eligible_count: 1, requested_count: 1,
+  reviewed_count: 1, appears_satisfied_count: 1, appears_unresolved_count: 0, inconclusive_count: 0, not_reviewed_count: 0,
+  results: [{ request_id: "request-0001", status: "APPEARS_SATISFIED", confidence: .95, rationale: "The revised graphic appears to show 2025.", observed_previous: "2024", observed_revised: "2025", reviewed_previous_range: { start_seconds: 8, end_seconds: 16 }, reviewed_revised_range: { start_seconds: 3, end_seconds: 11 }, partial_evidence: false, limitation: null, reason_code: null }],
+  evidence_render_seconds: .2, provider_seconds: 1.2, total_seconds: 1.4, upload_count: 2, generation_count: 1, delete_count: 2,
+};
 
 function videoResponse(): Response {
   return new Response(new Blob(["repaired-video"], { type: "video/mp4" }), {

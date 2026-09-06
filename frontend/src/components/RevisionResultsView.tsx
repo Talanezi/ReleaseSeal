@@ -1,23 +1,51 @@
-import { CheckCircle2, Download, FileVideo2 } from "lucide-react";
+import { CheckCircle2, Download, FileVideo2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import type { AdditionalRevisionChange, RevisionCheckReport, RevisionRequest, RevisionSegment } from "../types/preflight";
+import { reviewRevisionSemantics } from "../api/preflight";
+import type { AdditionalRevisionChange, RevisionCheckReport, RevisionRequest, RevisionSegment, RevisionSemanticReviewReport, RevisionSemanticResult } from "../types/preflight";
 import { formatTimecode } from "../utils/format";
 
 type Version = "previous" | "revised";
 
-export function RevisionResultsView({ report, previousUrl, revisedUrl }: {
+export function RevisionResultsView({ report, previousUrl, revisedUrl, previousFile = null, revisedFile = null, semanticReviewAvailable = false }: {
   report: RevisionCheckReport;
   previousUrl: string | null;
   revisedUrl: string | null;
+  previousFile?: File | null;
+  revisedFile?: File | null;
+  semanticReviewAvailable?: boolean;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [version, setVersion] = useState<Version>("revised");
   const [selected, setSelected] = useState<RevisionSegment | null>(null);
+  const [semanticReport, setSemanticReport] = useState<RevisionSemanticReviewReport | null>(null);
+  const [semanticLoading, setSemanticLoading] = useState(false);
+  const [semanticError, setSemanticError] = useState<string | null>(null);
+  const semanticAbort = useRef<AbortController | null>(null);
   const meaningful = report.revision_map.segments.filter((segment) => segment.kind !== "UNCHANGED");
   const unchangedPercent = (report.revision_map.unchanged_ratio * 100).toFixed(1);
   const noChanges = meaningful.length === 0;
   const segmentById = useMemo(() => new Map(report.revision_map.segments.map((segment) => [segment.segment_id, segment])), [report]);
+  const semanticByRequest = useMemo(() => new Map(semanticReport?.results.map((item) => [item.request_id, item]) ?? []), [semanticReport]);
+  const eligibleCount = report.revision_requests.filter((item) => item.status === "CHANGE_DETECTED" && item.previous_start_seconds !== null).length;
+
+  useEffect(() => () => semanticAbort.current?.abort(), []);
+
+  const runSemanticReview = async () => {
+    if (!previousFile || !revisedFile || semanticLoading) return;
+    const controller = new AbortController();
+    semanticAbort.current = controller;
+    setSemanticLoading(true);
+    setSemanticError(null);
+    try {
+      setSemanticReport(await reviewRevisionSemantics({ previousVideo: previousFile, revisedVideo: revisedFile, revisionCheck: report }, { signal: controller.signal }));
+    } catch (error) {
+      if (!controller.signal.aborted) setSemanticError(error instanceof Error ? error.message : "AI revision review is unavailable.");
+    } finally {
+      if (semanticAbort.current === controller) semanticAbort.current = null;
+      setSemanticLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!selected || !video.current) return;
@@ -63,14 +91,27 @@ export function RevisionResultsView({ report, previousUrl, revisedUrl }: {
         <section className="revision-section" aria-labelledby="requested-changes-heading">
           <header><h2 id="requested-changes-heading">Requested changes</h2><p>Timecodes refer to the previous cut.</p></header>
           <div className="revision-change-list">
-            {report.revision_requests.map((request) => (
-              <button className="revision-request-row" type="button" key={request.request_id} onClick={() => inspectRequest(request)}>
-                <span className={`revision-status status-${request.status.toLowerCase()}`}>{requestStatusLabel(request.status)}</span>
-                <span className="revision-row-copy"><strong>{request.text}</strong><small>{requestTime(request)}</small><span>{request.evidence}</span></span>
-                <span className="revision-evidence">{requestEvidence(request, segmentById)}</span>
-              </button>
-            ))}
+            {report.revision_requests.map((request) => {
+              const semantic = semanticByRequest.get(request.request_id);
+              return <div className="revision-request-item" key={request.request_id}>
+                <button className="revision-request-row" type="button" onClick={() => inspectRequest(request)}>
+                  <span className={`revision-status status-${request.status.toLowerCase()}`}>{requestStatusLabel(request.status)}</span>
+                  <span className="revision-row-copy"><strong>{request.text}</strong><small>{requestTime(request)}</small><span>{request.evidence}</span></span>
+                  <span className="revision-evidence">{requestEvidence(request, segmentById)}</span>
+                </button>
+                {semantic && <SemanticResult result={semantic} onInspect={() => inspectRequest(request)} />}
+              </div>;
+            })}
           </div>
+          {!semanticReport && eligibleCount > 0 && semanticReviewAvailable && previousFile && revisedFile && (
+            <div className="revision-semantic-action">
+              <div><strong>Review the requested changes</strong><span>AI review sends only short clips around the requested changes.</span></div>
+              <button className="secondary-button" type="button" disabled={semanticLoading} onClick={() => void runSemanticReview()}><Sparkles aria-hidden="true" />{semanticLoading ? "Reviewing short clips…" : "Review requested changes with AI"}</button>
+              {semanticLoading && <button className="text-button" type="button" onClick={() => semanticAbort.current?.abort()}>Cancel</button>}
+              {semanticError && <p role="alert">{semanticError}</p>}
+            </div>
+          )}
+          {semanticReport && <div className="revision-semantic-summary"><strong>AI review</strong><span>{semanticReport.appears_satisfied_count} appear satisfied · {semanticReport.appears_unresolved_count} appear unresolved · {semanticReport.inconclusive_count} inconclusive{semanticReport.not_reviewed_count ? ` · ${semanticReport.not_reviewed_count} not reviewed` : ""}</span><small>Probabilistic review of bounded evidence clips. The physical comparison above remains the source of truth for where media changed.</small></div>}
         </section>
       )}
 
@@ -116,8 +157,8 @@ export function RevisionResultsView({ report, previousUrl, revisedUrl }: {
 
       <div className="revision-export">
         <span><CheckCircle2 aria-hidden="true" /> Physical change report ready</span>
-        <button className="secondary-button" type="button" onClick={() => downloadReport(report, "json")}><Download aria-hidden="true" /> JSON</button>
-        <button className="secondary-button" type="button" onClick={() => downloadReport(report, "md")}><Download aria-hidden="true" /> Markdown</button>
+        <button className="secondary-button" type="button" onClick={() => downloadReport(report, semanticReport, "json")}><Download aria-hidden="true" /> JSON</button>
+        <button className="secondary-button" type="button" onClick={() => downloadReport(report, semanticReport, "md")}><Download aria-hidden="true" /> Markdown</button>
       </div>
     </main>
   );
@@ -148,14 +189,24 @@ function requestEvidence(request: RevisionRequest, segments: Map<string, Revisio
 function changeRange(change: AdditionalRevisionChange): string { if (change.kind === "INSERTED") return `Revised ${range(change.revised_start_seconds, change.revised_end_seconds)}`; if (change.kind === "REMOVED") return `Previous ${range(change.previous_start_seconds, change.previous_end_seconds)}`; return `Previous ${range(change.previous_start_seconds, change.previous_end_seconds)} · Revised ${range(change.revised_start_seconds, change.revised_end_seconds)}`; }
 function range(start: number | null, end: number | null): string { return start === null || end === null ? "location unavailable" : `${formatTimecode(start)}–${formatTimecode(end)}`; }
 
-function downloadReport(report: RevisionCheckReport, kind: "json" | "md") {
-  const content = kind === "json" ? JSON.stringify(report, null, 2) : markdownReport(report);
+function SemanticResult({ result, onInspect }: { result: RevisionSemanticResult; onInspect: () => void }) {
+  return <div className={`revision-semantic-result semantic-${result.status.toLowerCase()}`}>
+    <span>AI review</span><strong>{semanticStatusLabel(result.status)}</strong><p>{result.rationale}</p>
+    {result.limitation && <small>{result.limitation}</small>}
+    {result.reviewed_previous_range && <button className="text-button" type="button" onClick={onInspect}>Review evidence</button>}
+  </div>;
+}
+function semanticStatusLabel(status: RevisionSemanticResult["status"]): string { return { APPEARS_SATISFIED: "Appears satisfied", APPEARS_UNRESOLVED: "Appears unresolved", INCONCLUSIVE: "Inconclusive", NOT_REVIEWED: "Review unavailable" }[status]; }
+
+function downloadReport(report: RevisionCheckReport, semantic: RevisionSemanticReviewReport | null, kind: "json" | "md") {
+  const content = kind === "json" ? JSON.stringify(semantic ? { revision_check: report, semantic_review: semantic } : report, null, 2) : markdownReport(report, semantic);
   const url = URL.createObjectURL(new Blob([content], { type: kind === "json" ? "application/json" : "text/markdown" }));
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = `creator-preflight-revision-report.${kind}`; anchor.click(); URL.revokeObjectURL(url);
 }
-function markdownReport(report: RevisionCheckReport): string {
+function markdownReport(report: RevisionCheckReport, semantic: RevisionSemanticReviewReport | null = null): string {
   const lines = ["# Creator Preflight Revision Check", "", `- Previous: ${report.previous_filename}`, `- Revised: ${report.revised_filename}`, `- Unchanged: ${(report.revision_map.unchanged_ratio * 100).toFixed(1)}%`, ""];
   if (report.revision_requests.length) { lines.push("## Requested changes", ""); report.revision_requests.forEach((item) => lines.push(`- ${requestTime(item)}: ${item.text}: ${requestStatusLabel(item.status)}`)); lines.push(""); }
   lines.push("## Physical change regions", ""); report.revision_map.segments.filter((item) => item.kind !== "UNCHANGED").forEach((item) => lines.push(`- ${kindLabel(item.kind)}: ${item.previous_start_seconds === null ? "previous n/a" : `previous ${range(item.previous_start_seconds, item.previous_end_seconds)}`}; ${item.revised_start_seconds === null ? "revised n/a" : `revised ${range(item.revised_start_seconds, item.revised_end_seconds)}`}`));
-  lines.push("", "## Limitation", "", "This report detects physical picture and sound changes. It does not prove that a revision request was semantically satisfied."); return `${lines.join("\n")}\n`;
+  if (semantic) { lines.push("", "## AI semantic review", ""); semantic.results.forEach((item) => lines.push(`- ${item.request_id}: ${semanticStatusLabel(item.status)}. ${item.rationale}`)); lines.push("", "These results are probabilistic reviews of short evidence clips and do not replace the deterministic physical comparison."); }
+  lines.push("", "## Limitation", "", "This report detects physical picture and sound changes. Optional AI review only indicates whether a requested change appears satisfied in bounded evidence."); return `${lines.join("\n")}\n`;
 }

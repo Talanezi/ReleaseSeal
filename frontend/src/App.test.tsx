@@ -80,6 +80,30 @@ describe("Creator Preflight frontend", () => {
     expect(screen.getByLabelText(/Removed on Previous cut timeline, 00:10.00 to 00:15.00/)).toBeInTheDocument();
   });
 
+  it("keeps deterministic revision evidence primary and adds explicit bounded AI review", async () => {
+    const semantic = {
+      schema_version: "1.0", provider: "gemini", model: "fake", eligible_count: 1, requested_count: 1, reviewed_count: 1,
+      appears_satisfied_count: 1, appears_unresolved_count: 0, inconclusive_count: 0, not_reviewed_count: 0,
+      results: [{ request_id: "request-0001", status: "APPEARS_SATISFIED", confidence: .94, rationale: "The revised evidence appears to satisfy the requested removal.", observed_previous: "Old section present", observed_revised: "Old section absent", reviewed_previous_range: { start_seconds: 8, end_seconds: 17 }, reviewed_revised_range: { start_seconds: 8, end_seconds: 13 }, partial_evidence: false, limitation: null, reason_code: null }],
+      evidence_render_seconds: .2, provider_seconds: 1, total_seconds: 1.2, upload_count: 2, generation_count: 1, delete_count: 2,
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(semantic)));
+    const user = userEvent.setup();
+    render(<RevisionResultsView report={revisionCheckReport} previousUrl="blob:previous" revisedUrl="blob:revised" previousFile={new File(["p"], "p.mp4")} revisedFile={new File(["r"], "r.mp4")} semanticReviewAvailable />);
+    expect(screen.getByText("Change detected")).toBeInTheDocument();
+    expect(screen.getByText(/AI review sends only short clips/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Review requested changes with AI" }));
+    expect(await screen.findByText("Appears satisfied")).toBeInTheDocument();
+    expect(screen.getByText(/physical comparison above remains the source of truth/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Verified|Passed|Failed/)).not.toBeInTheDocument();
+  });
+
+  it("shows semantic review as unavailable without disturbing deterministic results", () => {
+    render(<RevisionResultsView report={revisionCheckReport} previousUrl="blob:previous" revisedUrl="blob:revised" />);
+    expect(screen.getByText("Change detected")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review requested changes with AI" })).not.toBeInTheDocument();
+  });
+
   it("seeks removed, inserted, and changed evidence in the appropriate version", async () => {
     const user = userEvent.setup();
     render(<RevisionResultsView report={revisionCheckReport} previousUrl="blob:previous" revisedUrl="blob:revised" />);
@@ -1007,6 +1031,7 @@ function capabilitiesFixture(fullReviewAvailable = true) {
     metadata_assist_available: fullReviewAvailable,
     local_checks_available: true,
     revision_check_available: true,
+    revision_semantic_review_available: true,
     transcription_dependency_available: true,
     transcription_enabled: false,
     supported_review_modes: ["full", "local"],

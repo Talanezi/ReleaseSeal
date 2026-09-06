@@ -9,6 +9,11 @@ from fastapi.testclient import TestClient
 from creator_preflight import api as api_module
 from creator_preflight.api import app
 from creator_preflight.config import PreflightConfig
+from creator_preflight.media import MediaInspector
+from creator_preflight.revision_check import RevisionCheckService
+from creator_preflight.revision_fixture import generate_revision_source, replace_revision_picture
+from creator_preflight.revision_semantic import RevisionSemanticProviderResult
+from creator_preflight.revision_semantic_models import RevisionSemanticProviderOutput
 
 
 client = TestClient(app)
@@ -125,4 +130,71 @@ def test_capabilities_exposes_revision_independently_of_gemini(monkeypatch) -> N
     assert response.status_code == 200
     payload = response.json()
     assert payload["revision_check_available"] is True
+    assert payload["revision_semantic_review_available"] is False
     assert payload["gemini_api_key_configured"] is False
+
+
+def test_semantic_route_uses_real_multipart_scanner_evidence_boundary(tmp_path: Path, monkeypatch) -> None:
+    previous = generate_revision_source(tmp_path / "previous.mp4", duration_seconds=8)
+    revised = replace_revision_picture(previous, tmp_path / "revised.mp4", start_seconds=2, end_seconds=5)
+    report = RevisionCheckService().check(previous, revised, "00:03 Replace 2024 with 2025")
+    captured: list[tuple[Path, Path]] = []
+
+    class FakeReviewer:
+        provider = "gemini"
+        model = "fake-flash"
+
+        def review(self, previous_clip: Path, revised_clip: Path, *, prompt: str):
+            assert "Replace 2024 with 2025" in prompt
+            assert previous_clip not in (previous, revised) and revised_clip not in (previous, revised)
+            assert MediaInspector().inspect(previous_clip).duration_seconds <= 12.1
+            assert MediaInspector().inspect(revised_clip).duration_seconds <= 12.1
+            captured.append((previous_clip, revised_clip))
+            return RevisionSemanticProviderResult(
+                RevisionSemanticProviderOutput(
+                    status="APPEARS_SATISFIED", confidence=.95, rationale="The revised bounded clip shows 2025.",
+                    observed_previous="The previous clip shows 2024.", observed_revised="The revised clip shows 2025.",
+                ), .01, 2, 1, 2,
+            )
+
+    monkeypatch.setattr(api_module, "GeminiRevisionSemanticReviewer", lambda config: FakeReviewer())
+    with previous.open("rb") as previous_handle, revised.open("rb") as revised_handle:
+        response = client.post(
+            "/api/v1/revisions/semantic-review",
+            files={
+                "previous_file": ("previous.mp4", previous_handle, "video/mp4"),
+                "revised_file": ("revised.mp4", revised_handle, "video/mp4"),
+            },
+            data={"revision_check_json": report.model_dump_json()},
+        )
+    assert response.status_code == 200, response.text
+    assert response.json()["results"][0]["status"] == "APPEARS_SATISFIED"
+    assert response.json()["upload_count"] == response.json()["delete_count"] == 2
+    assert captured and all(not path.exists() for pair in captured for path in pair)
+
+
+def test_semantic_route_rejects_origin_and_stale_source(video_with_audio: Path, monkeypatch) -> None:
+    report = RevisionCheckService().check(video_with_audio, video_with_audio, "00:00 Opening")
+    with video_with_audio.open("rb") as previous, video_with_audio.open("rb") as revised:
+        denied = client.post(
+            "/api/v1/revisions/semantic-review",
+            headers={"Origin": "https://malicious.example"},
+            files={"previous_file": ("p.mp4", previous), "revised_file": ("r.mp4", revised)},
+            data={"revision_check_json": report.model_dump_json()},
+        )
+    assert denied.status_code == 403
+
+    stale = report.model_copy(update={"revision_map": report.revision_map.model_copy(update={"previous_sha256": "0" * 64})})
+    class NeverReviewer:
+        provider = "gemini"; model = "fake"
+        def review(self, *args, **kwargs):
+            raise AssertionError("provider must not be invoked")
+    monkeypatch.setattr(api_module, "GeminiRevisionSemanticReviewer", lambda config: NeverReviewer())
+    with video_with_audio.open("rb") as previous, video_with_audio.open("rb") as revised:
+        mismatch = client.post(
+            "/api/v1/revisions/semantic-review",
+            files={"previous_file": ("p.mp4", previous), "revised_file": ("r.mp4", revised)},
+            data={"revision_check_json": stale.model_dump_json()},
+        )
+    assert mismatch.status_code == 409
+    assert mismatch.json()["error"]["code"] == "revision_source_mismatch"

@@ -305,6 +305,7 @@ class PreflightCapabilities(BaseModel):
     metadata_assist_available: bool
     local_checks_available: bool
     revision_check_available: bool
+    revision_semantic_review_available: bool
     transcription_dependency_available: bool
     transcription_enabled: bool
     supported_review_modes: list[ReviewMode]

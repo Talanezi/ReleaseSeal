@@ -31,7 +31,9 @@ Finished video
   -> Repaired / Review Reel in the main player
 ```
 
-The browser also offers **Revision**, a fully local comparison workflow. Add a previous cut and revised cut, optionally paste one revision note per line, and Creator Preflight deterministically maps removed, inserted, changed, and unchanged media. Timestamped notes are correlated with nearby physical changes; untimed notes remain clearly unlocated. A detected change never claims that the requested wording, logo, mix, or other semantic intent is correct.
+The browser also offers **Revision**, a local deterministic comparison workflow. Add a previous cut and revised cut, optionally paste one revision note per line, and Creator Preflight maps removed, inserted, changed, and unchanged media. Timestamped notes are correlated with nearby physical changes; untimed notes remain clearly unlocated. A detected change never claims that the requested wording, logo, mix, or other semantic intent is correct.
+
+After that physical comparison, an explicit optional action can compare short Previous/Revised evidence clips against eligible timestamped requests. It reports only **Appears satisfied**, **Appears unresolved**, **Inconclusive**, or **Review unavailable**. The full source cuts are not uploaded for this semantic step, and the deterministic map remains authoritative for where media changed.
 
 Accepted note examples include `00:34 Remove the old logo`, `01:12.25 Lower the music`, `00:34-00:39 Remove this section`, and `1:02:14 Replace the end card`. Notes use the previous-cut timeline. The Revision result provides one Previous/Revised player, clickable change strips, and JSON or Markdown downloads.
 
