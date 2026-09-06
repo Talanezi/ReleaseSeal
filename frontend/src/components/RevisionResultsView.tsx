@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import { reviewRevisionSemantics } from "../api/preflight";
 import type { AdditionalRevisionChange, RevisionCheckReport, RevisionRequest, RevisionSegment, RevisionSemanticReviewReport, RevisionSemanticResult } from "../types/preflight";
 import { formatTimecode } from "../utils/format";
+import { PRODUCT_NAME } from "../brand";
 
 type Version = "previous" | "revised";
 
@@ -204,7 +205,7 @@ function downloadReport(report: RevisionCheckReport, semantic: RevisionSemanticR
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = `creator-preflight-revision-report.${kind}`; anchor.click(); URL.revokeObjectURL(url);
 }
 function markdownReport(report: RevisionCheckReport, semantic: RevisionSemanticReviewReport | null = null): string {
-  const lines = ["# Creator Preflight Revision Check", "", `- Previous: ${report.previous_filename}`, `- Revised: ${report.revised_filename}`, `- Unchanged: ${(report.revision_map.unchanged_ratio * 100).toFixed(1)}%`, ""];
+  const lines = [`# ${PRODUCT_NAME} Revision Check`, "", `- Previous: ${report.previous_filename}`, `- Revised: ${report.revised_filename}`, `- Unchanged: ${(report.revision_map.unchanged_ratio * 100).toFixed(1)}%`, ""];
   if (report.revision_requests.length) { lines.push("## Requested changes", ""); report.revision_requests.forEach((item) => lines.push(`- ${requestTime(item)}: ${item.text}: ${requestStatusLabel(item.status)}`)); lines.push(""); }
   lines.push("## Physical change regions", ""); report.revision_map.segments.filter((item) => item.kind !== "UNCHANGED").forEach((item) => lines.push(`- ${kindLabel(item.kind)}: ${item.previous_start_seconds === null ? "previous n/a" : `previous ${range(item.previous_start_seconds, item.previous_end_seconds)}`}; ${item.revised_start_seconds === null ? "revised n/a" : `revised ${range(item.revised_start_seconds, item.revised_end_seconds)}`}`));
   if (semantic) { lines.push("", "## AI semantic review", ""); semantic.results.forEach((item) => lines.push(`- ${item.request_id}: ${semanticStatusLabel(item.status)}. ${item.rationale}`)); lines.push("", "These results are probabilistic reviews of short evidence clips and do not replace the deterministic physical comparison."); }

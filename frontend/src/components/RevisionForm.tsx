@@ -1,8 +1,9 @@
-import { FileVideo2, RefreshCw, Upload, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { FileVideo2, Play, RefreshCw, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import type { PreflightCapabilities } from "../types/preflight";
 import { formatBytes } from "../utils/format";
+import { loadRevisionDemo, revisionDemoAvailable } from "../demoAssets";
 
 export interface RevisionInputs {
   previousVideo: File | null;
@@ -20,6 +21,10 @@ interface RevisionFormProps {
 export function RevisionForm({ inputs, capabilities, onChange, onCompare }: RevisionFormProps) {
   const previousInput = useRef<HTMLInputElement>(null);
   const revisedInput = useRef<HTMLInputElement>(null);
+  const [demoAvailable, setDemoAvailable] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
+  useEffect(() => { let active = true; void revisionDemoAvailable().then((available) => { if (active) setDemoAvailable(available); }); return () => { active = false; }; }, []);
   const maximum = capabilities?.maximum_video_upload_size_bytes;
   const previousTooLarge = Boolean(maximum && inputs.previousVideo && inputs.previousVideo.size > maximum);
   const revisedTooLarge = Boolean(maximum && inputs.revisedVideo && inputs.revisedVideo.size > maximum);
@@ -27,6 +32,13 @@ export function RevisionForm({ inputs, capabilities, onChange, onCompare }: Revi
     inputs.previousVideo && inputs.revisedVideo && !previousTooLarge && !revisedTooLarge
       && capabilities?.revision_check_available !== false,
   );
+  const loadDemo = async () => {
+    setDemoLoading(true);
+    setDemoError(null);
+    try { onChange(await loadRevisionDemo()); }
+    catch { setDemoError("The revision demo package could not be loaded. You can still choose your own files."); }
+    finally { setDemoLoading(false); }
+  };
 
   return (
     <main className="revision-form page-frame" data-testid="revision-input-state">
@@ -35,7 +47,9 @@ export function RevisionForm({ inputs, capabilities, onChange, onCompare }: Revi
           <h1>Compare a revision</h1>
           <p>See what changed between two finished cuts and match those changes to optional revision notes.</p>
         </div>
+        {demoAvailable && <button className="secondary-button demo-button" type="button" onClick={() => void loadDemo()} disabled={demoLoading}><Play aria-hidden="true" /> {demoLoading ? "Loading demo…" : "Load revision demo"}</button>}
       </header>
+      {demoError && <p className="demo-error" role="alert">{demoError}</p>}
       <form className="revision-surface" onSubmit={(event) => { event.preventDefault(); if (canCompare) onCompare(); }}>
         <div className="revision-files">
           <RevisionFilePicker

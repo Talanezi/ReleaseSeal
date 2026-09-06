@@ -3,6 +3,8 @@ import { Captions, FileImage, FileVideo2, Lightbulb, Play, RefreshCw, Upload, X 
 import { assistMetadata, errorPresentation, isAbortError } from "../api/preflight";
 import { formatBytes } from "../utils/format";
 import type { MetadataAssistResult, PreflightCapabilities, ReviewMode } from "../types/preflight";
+import { loadFinalExportDemo } from "../demoAssets";
+import { PRODUCT_NAME } from "../brand";
 
 export interface ScanInputs {
   video: File | null;
@@ -85,23 +87,9 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
     setDemoLoading(true);
     setDemoError(null);
     try {
-      const root = "/demo/creator-preflight-official";
-      const [videoResponse, thumbnailResponse, captionsResponse, titleResponse, descriptionResponse] = await Promise.all([
-        fetch(`${root}-demo.mp4`), fetch(`${root}-thumbnail.png`), fetch(`${root}-captions.srt`),
-        fetch(`${root}-title.txt`), fetch(`${root}-description.txt`),
-      ]);
-      if (![videoResponse, thumbnailResponse, captionsResponse, titleResponse, descriptionResponse].every((response) => response.ok)) {
-        throw new Error("Demo package unavailable");
-      }
-      const [videoBlob, thumbnailBlob, captionsBlob, title, description] = await Promise.all([
-        videoResponse.blob(), thumbnailResponse.blob(), captionsResponse.blob(), titleResponse.text(), descriptionResponse.text(),
-      ]);
+      const demo = await loadFinalExportDemo();
       onChange({
-        video: new File([videoBlob], "creator-preflight-official-demo.mp4", { type: "video/mp4" }),
-        thumbnail: new File([thumbnailBlob], "creator-preflight-official-thumbnail.png", { type: "image/png" }),
-        captions: new File([captionsBlob], "creator-preflight-official-captions.srt", { type: "application/x-subrip" }),
-        title: title.trim(),
-        description: description.trim(),
+        ...demo,
         reviewMode: capabilities?.full_review_available ? "full" : "local",
       });
     } catch {
@@ -127,7 +115,7 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
       <header className="page-intro">
         <div>
           <h1>Check a finished video</h1>
-          <p>Add the package you plan to publish. Creator Preflight reviews the media and its publishing details together.</p>
+          <p>Add the package you plan to publish. {PRODUCT_NAME} reviews the media and its publishing details together.</p>
         </div>
         <button className="secondary-button demo-button" type="button" onClick={() => void loadDemo()} disabled={demoLoading}>
           <Play aria-hidden="true" /> {demoLoading ? "Loading demo…" : "Load demo"}
@@ -197,7 +185,7 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
               <Upload className="drop-icon" aria-hidden="true" />
               <strong>Choose a video or drop it here</strong>
               <span>MP4, MOV, MKV, or WebM</span>
-              <small>Uploaded to your Creator Preflight backend for this scan.</small>
+              <small>Uploaded to your {PRODUCT_NAME} backend for this scan.</small>
             </button>
           )}
         </section>

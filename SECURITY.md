@@ -4,9 +4,13 @@ Creator Preflight is designed as a local, single-user application. It does not p
 
 ## Data flow
 
-**Local Checks Only** sends the selected files to the local FastAPI process. Media is analyzed with local FFmpeg/FFprobe and is not uploaded to Gemini.
+**Local Checks Only** sends the selected files to the local FastAPI process. Media is analyzed with local FFmpeg/FFprobe and is not uploaded to Gemini. **Revision Check** likewise compares the full Previous and Revised files locally and needs no Gemini key.
 
-**Full Review and Metadata Assist** are explicit actions. Full Review may temporarily upload the selected video and thumbnail to Google's Gemini service. Metadata Assist uploads a short, low-resolution audiovisual sketch generated locally from the selected video and may include supplied caption text. The API key remains in the backend process environment and is never sent to the browser. The backend attempts to delete each remote Gemini file after the request; provider-side retention and processing remain subject to Google's service terms.
+**Full Review and Metadata Assist** are explicit actions. Full Review may temporarily upload the selected video and thumbnail to Google's Gemini service. Metadata Assist uploads a bounded 32-second, 320×180 audiovisual sketch generated locally from the selected video and may include supplied caption text.
+
+**Optional semantic Revision review** occurs only after a deterministic comparison and another explicit action. The backend validates the submitted source hashes and uploads only bounded Previous/Revised evidence clips for eligible timestamped requests. It does not provide either whole source cut to Gemini for this step. Evidence clips are capped by configuration (12 seconds and 320×180 by default).
+
+The API key remains in the backend process environment and is never sent to the browser. The backend attempts to delete each remote Gemini file after the request; deletion cannot be guaranteed when cleanup itself fails, and provider retention/processing remain subject to Google's service terms.
 
 The backend stores request media only in per-request temporary directories and removes them after success or failure. Repair previews, repaired exports, and Review Reels are temporary responses retained by the browser, not permanent server media.
 

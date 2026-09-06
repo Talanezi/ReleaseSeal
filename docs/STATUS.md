@@ -2,9 +2,9 @@
 
 ## Current milestone
 
-Milestone 23 — Bounded Semantic Revision Review.
+Milestone 24 — Final Proof, Demo Readiness, and Release Polish.
 
-Status: Complete on 2026-09-06. Revision Check remains deterministic by default; semantic review is explicit, optional, bounded, and probabilistic.
+Status: Engineering complete on 2026-09-06. Authentic demo media and the final public name remain owner-controlled gates.
 
 ## Completed
 
@@ -396,3 +396,7 @@ None known.
 - Milestone 23 evidence/provider acceptance — each request renders 320×180 H.264 evidence clips with AAC when present, with 2.5-second context and a 12-second hard maximum. Changed regions map directly; removals and insertions use their safe surviving/insertion neighborhoods. Gemini receives only the two clips for that request, one native structured generation is made, and both uploads are deleted on success or failure. Low-confidence decisions become inconclusive and per-request failures remain isolated.
 - Milestone 23 live acceptance — one locally generated 8.0-second audiovisual Previous/Revised pair changed centered text from `YEAR 2024` to `YEAR 2025`, with a deterministic 2.0–6.0 changed region. `gemini-3.7-flash` returned `APPEARS_SATISFIED` at 1.0 confidence: previous showed `YEAR 2024`, revised showed `YEAR 2025`. Evidence rendering took 0.295s, provider work 11.107s, and total semantic review 11.712s. Two bounded clips were uploaded, one generation ran, both uploads were deleted, and no retry was used. One prior sandboxed attempt made zero uploads/generations because outbound access was unavailable.
 - Milestone 23 final gate — complete backend suite passed 299 tests with one upstream Starlette warning; complete frontend suite passed 70 tests across two files. Python compile, TypeScript validation, Vite 8.2.2 production build with 1,830 modules, and `git diff --check` passed. `.env.local` and generated `.demo/` acceptance media remain ignored and untracked; no provider ID, API key, evidence clip, or generated media artifact appears in the diff or tracked files.
+- Milestone 24 release presentation — README and submission material now describe creative release assurance through the first-class Final Export and Revision workflows, with deterministic, optional-AI, and human evidence kept distinct. Judge navigation, evidence matrix, final owner QA, privacy, limitations, recording, and screenshot guidance are current and milestone-free outside this status history.
+- Milestone 24 demo infrastructure — one owner-supplied 90–240 second audiovisual source can generate ignored 1280×720 Final Export and Revision packages plus a provenance manifest. A generated 90-second engineering control validated the builder: Final Export produced only the seeded black 24.0–27.041667s and silence 54.016–59.008s findings; Revision correlated all three notes and surfaced the unmentioned 65–69s visual change separately. The tracked Final Export fallback remains available, and the Revision demo action appears only when a valid owner manifest is installed.
+- Milestone 24 final gate — `./scripts/verify_release.sh` passed in 53.61 seconds without network or provider calls. Backend: 299 passed with one upstream Starlette warning. Frontend: 73 passed across three files. TypeScript/Vite production build passed with 1,831 modules; Python compile/import and `git diff --check` passed.
+- Milestone 24 owner gates — no authentic source existed at `.demo/owner/source.mp4`, so authentic demo recording remains pending owner media. No replacement public name was supplied; `frontend/src/brand.ts` remains the centralized naming authority.

@@ -18,6 +18,7 @@ import type {
   RevisionCheckReport,
   RevisionSemanticReviewReport,
 } from "../types/preflight";
+import { PRODUCT_NAME } from "../brand";
 
 export interface RevisionCheckInput {
   previousVideo: File;
@@ -102,7 +103,7 @@ export async function scanPreflight(
   } catch (error) {
     if (isAbortError(error)) throw error;
     throw new PreflightApiError(
-      "Could not reach the local Creator Preflight backend.",
+      `Could not reach the local ${PRODUCT_NAME} backend.`,
       { code: "backend_unreachable", cause: error },
     );
   }
@@ -316,7 +317,7 @@ export function errorPresentation(error: unknown): { title: string; message: str
   if (error instanceof PreflightApiError) {
     if (error.code === "backend_unreachable") {
       return {
-        title: "Creator Preflight is unavailable",
+        title: `${PRODUCT_NAME} is unavailable`,
         message: error.message,
         detail: "Start the local FastAPI backend, then return to the scan and try again.",
       };
@@ -351,7 +352,7 @@ export function errorPresentation(error: unknown): { title: string; message: str
     }
     if (error.code === "scan_capacity_reached") {
       return {
-        title: "Creator Preflight is busy",
+        title: `${PRODUCT_NAME} is busy`,
         message: error.message,
         detail: "Wait for the active scan to finish, then try again.",
       };
@@ -360,7 +361,7 @@ export function errorPresentation(error: unknown): { title: string; message: str
       return {
         title: "This browser cannot start a scan",
         message: error.message,
-        detail: "Open Creator Preflight from an allowed local frontend origin.",
+        detail: `Open ${PRODUCT_NAME} from an allowed local frontend origin.`,
       };
     }
     if (error.code.startsWith("ai_")) {
@@ -391,7 +392,7 @@ export function errorPresentation(error: unknown): { title: string; message: str
   }
   return {
     title: "The scan could not be completed",
-    message: "Creator Preflight encountered an unexpected application error.",
+    message: `${PRODUCT_NAME} encountered an unexpected application error.`,
   };
 }
 

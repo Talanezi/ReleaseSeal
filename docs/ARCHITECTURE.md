@@ -1,5 +1,27 @@
 # Architecture
 
+## Release workflows
+
+```text
+FINAL EXPORT
+Finished package
+  -> deterministic technical/package/caption checks
+  -> optional bounded content review
+  -> evidence + human judgment
+  -> allowlisted repair
+  -> repaired export
+  -> re-scan + deterministic regression verification
+
+REVISION
+Previous cut + Revised cut + optional notes
+  -> deterministic temporal alignment
+  -> physical change map
+  -> requested-area correlation + additional changes
+  -> optional hash-bound semantic review of short evidence clips
+```
+
+These workflows share validation, local media tooling, safe adapters, and presentation conventions but not conclusions. The Final Export scanner owns a content verdict. Revision deliberately has no global pass/fail verdict: its deterministic map states where media changed, and its separate optional semantic layer states only what short evidence appears to show.
+
 ## Current state
 
 `creator_preflight.media` validates and inspects local media; `creator_preflight.detectors` contains the independent FFmpeg checks; `creator_preflight.rules` parses creator-style chapter lines and validates video/package metadata; `creator_preflight.captions` parses and validates SRT/WebVTT content and performs interval coverage comparisons; `creator_preflight.ai_review` isolates optional Gemini lifecycle primitives; `creator_preflight.promise_check`, `creator_preflight.viewer_pass`, and `creator_preflight.claim_review` own independent final-export AI policies; `creator_preflight.content_sketch` builds bounded local audiovisual proxies for Metadata Assist; `creator_preflight.release_brief` and `creator_preflight.metadata_assist` own bounded presentation assistance; `creator_preflight.repairs` owns deterministic repair planning and the allowlisted FFmpeg rendering boundary; `creator_preflight.verification` owns repaired-timeline mapping, finding comparison, integrity/regression verification, and Review Reel manifests; `creator_preflight.revision` owns application-neutral physical timeline alignment; `creator_preflight.revision_check` owns deterministic revision-note parsing and correlation; `creator_preflight.revision_evidence` owns bounded Previous/Revised evidence planning and transcoding; `creator_preflight.revision_semantic` owns the focused optional semantic reviewer protocol, Gemini implementation, hash validation, request limits, and failure isolation; and `creator_preflight.engine.PreflightScanner` coordinates one complete final-export scan.

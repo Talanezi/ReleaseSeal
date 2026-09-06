@@ -1,52 +1,52 @@
-# Devpost draft material
+# Submission draft
 
-## Inspiration / problem
+## Inspiration
 
-Creators often discover export mistakes, missing package details, editorial inconsistencies, or an incorrect factual detail only after publishing. Creator Preflight applies the familiar idea of a software linter to the final upload package: inspect the artifact that viewers will actually receive and point directly to evidence worth reviewing.
+Creation tools increasingly automate making media, but somebody still has to prove the finished artifact is safe to release. Export defects, stale graphics, caption drift, and unintended revision changes are easiest to fix before an audience or client receives the file.
 
 ## What it does
 
-Creator Preflight accepts a finished video, title, description, optional captions, and optional thumbnail. It returns a typed report with a transparent `READY`, `NEEDS_REVIEW`, or `BLOCKED` verdict, exact timestamps, evidence, and suggested review actions. In the web interface, timestamped findings and timeline markers seek the locally selected video.
+Creator Preflight provides creative release assurance through two workflows. **Final Export** reviews one finished video, points to exact technical and editorial evidence, offers only safe allowlisted repair proposals, renders a new file after approval, and rechecks that export for regressions. **Revision** compares Previous and Revised cuts, aligns their timelines through insertions and removals, correlates revision notes, and exposes additional physical changes that were not mentioned.
 
-The report combines deterministic media QC and publishing rules with three optional Gemini review tasks: Opening review, Continuity review, and grounded Claim Review. SRT and WebVTT caption timing and coverage are inspected directly. Optional local Whisper can compare detected speech intervals with caption coverage.
+Local deterministic checks cover media structure, black/silence/freeze evidence, audio conditions, publishing-package rules, captions, physical version changes, repair execution, and regression comparison. Optional Gemini review interprets opening alignment, continuity evidence, selected grounded claims, and—only when requested—short revision evidence clips. Ambiguous creative decisions remain human judgments.
 
-## How it was built
+## How we built it
 
-FastAPI and the CLI call the same Python `PreflightScanner`. FFprobe normalizes media metadata; bounded FFmpeg filters detect sustained black, silence, freeze, and suspicious near-full-scale audio density. Pydantic models validate configuration, package inputs, findings, reports, and every AI trust boundary. React and TypeScript render the real API report without recalculating its verdict.
+FastAPI and the CLI share typed Python services. FFprobe normalizes streams; bounded FFmpeg processes extract detector evidence, render repairs, sample repaired regressions, align revision fingerprints, and create short semantic evidence clips. Strict Pydantic models form trust boundaries around reports, provider responses, repairs, timeline maps, and semantic results. React/TypeScript renders those backend decisions and uses numeric timestamps for seeking.
 
-When explicitly enabled, one Gemini Files API upload is shared by Opening review, Continuity review, and claim extraction. Each of at most three selected claims receives its own Google Search-grounded request, preventing citations from one claim being attached to another. Citation links come from provider grounding metadata, not model-authored URLs. Remote cleanup is attempted once after the video tasks.
+The deterministic revision mapper performs monotonic temporal alignment and remains usable without Gemini. For an eligible timestamped request, optional semantic review verifies source hashes, renders at most two 12-second 320×180 clips, uploads only those clips, validates structured output, and attempts provider cleanup. It never changes the physical map.
 
 ## Technical highlights
 
-- Deterministic, copyright-free FFmpeg fixtures with known anomaly timestamps.
-- One scanner and report contract across CLI, API, and web UI.
-- Conservative, review-only AI findings with confidence and evidence gates.
-- Task-level failure isolation: provider failure preserves deterministic results.
-- Real SRT/WebVTT parsing, merged coverage accounting, and optional local speech-gap comparison.
-- Real Gemini video upload, structured output, shared-session orchestration, grounded citations, and cleanup verified on controlled fixtures.
-- Backend-owned safe repair proposals, explicit preview/approval, automatic repaired-export verification, and one-player Original/Repaired/Review Reel review.
-- A concise AI review over trusted findings, deterministic local fallback, editor exports, and explicit cached title/description assistance generated from a bounded local content sketch rather than the full-resolution master.
-- Truthful live progress tied to actual scan boundaries, with elapsed time and calm long-stage reassurance rather than a simulated timer or ETA.
-- A portable three-minute 720p creator-style judge package that loads directly in the browser and remains useful even when semantic review conservatively abstains.
+- Bounded FFmpeg/FFprobe execution without shell commands.
+- Shared video/caption timeline transform for non-destructive removals.
+- Repaired-export comparison that separates probabilistic finding variance from deterministic unexpected media change.
+- Monotonic version alignment tolerant of ordinary re-encoding and downstream realignment after edits.
+- Deterministic note/change correlation with stable insertion anchors and unmentioned-change reporting.
+- Hash-bound, bounded semantic evidence clips with per-request failure isolation and cleanup.
+- Explicit trust hierarchy: deterministic evidence, optional interpretation, human approval.
+- Linux CI plus a one-command network-free release gate.
 
 ## Challenges
 
-The hardest work was calibrating deterministic checks to avoid treating legitimate creative content as corruption, enforcing schema and citation trust boundaries around probabilistic model output, and handling provider timeouts/quota without making deterministic scanning unreliable. AI prompts also needed to distinguish substantive delivery from a title card or superficial mention.
+The hard part was not producing more warnings; it was preserving meaning. A black frame may be intentional, a provider may vary, and physical change does not prove a note was satisfied. The architecture therefore separates content verdict from execution completeness, AI variance from deterministic regression, and physical revision evidence from semantic interpretation.
 
 ## Accomplishments
 
-Creator Preflight grew from a media inspector into an end-to-end release system: Scan, Fix, Verify. Its web workflow combines configurable deterministic checks, isolated multimodal review, click-to-seek evidence, safe typed repair operations, human judgment, regression verification, a Review Reel, and claim-specific provider citations.
+The project now supports a complete Scan → Fix → Verify loop for one finished export and a first-class Previous → Revised comparison. It can perform narrow repairs without overwriting the source, transform caption timelines through cuts, re-scan the output, detect unrelated deterministic mutations, map multi-edit revisions without cascading false changes, and optionally interpret only bounded evidence around requested revisions.
 
-The final demonstration keeps the evidence honest: the tracked three-minute creator package shows a brief flash, a repairable black export gap, and an audio dropout. Its opening is a relevant hook rather than a timer-based warning, and the workflow proceeds through preview, repair, verification, human review, and Review Reel. Focused controlled fixtures remain the separately verified Continuity and grounded Claim Review proofs; no single video is presented as proof of every subsystem.
+## What we learned
 
-## Built during the hackathon
+Trust comes from bounded claims and reproducible evidence. Provider output is most useful when it is schema-validated and subordinate to deterministic facts. Real creator workflows also need neutral abstention states: “inconclusive” is more honest than fabricated certainty.
 
-The repository contains the media inspection and detector core, report/rule engine, CLI and FastAPI surfaces, React interface, caption and optional transcription systems, Gemini provider boundary and review tasks, deterministic fixture generators, automated tests, and demo documentation.
+## Built with
+
+Python, FastAPI, Pydantic, FFmpeg/FFprobe, React, TypeScript, Vite, Vitest, pytest, optional `google-genai`, and optional `faster-whisper`.
 
 ## Limitations
 
-Detectors identify evidence, not creative intent. Gemini observations and claim verification can abstain, miss issues, or return approximate timestamps. Claim Review checks at most three selected public claims and does not certify the entire video. Search coverage and source quality vary. Initial Whisper model acquisition and Gemini review require network access; Gemini also requires the creator to opt in and provide a server-side API key.
+Semantic review is probabilistic and bounded to eligible timestamped requests. Untimed notes are not located automatically. Arbitrary scene reordering is unsupported; static or repetitive content can reduce boundary precision. Repair Mode is deliberately limited to validated range removal. Factual review checks only selected public claims. There is no project history, collaboration, hosted deployment, or automatic publishing.
 
 ## Future work
 
-Possible next steps include broader real-world evaluation, provider observability, saved local reports, and more accessible evidence comparison. These are not implemented in the hackathon release.
+Potential directions include untimed revision-note localization, broader evaluation on professional edit histories, NLE marker handoff, client delivery requirements, additional provably safe repair classes, and persistent team workflows. None is implemented in this release.
