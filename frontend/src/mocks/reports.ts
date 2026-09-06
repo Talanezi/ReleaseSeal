@@ -304,6 +304,50 @@ export const blockedReport: PreflightReport = {
   },
 };
 
+export const revisionCheckReport = {
+  schema_version: "1.0",
+  previous_filename: "previous.mp4",
+  revised_filename: "revised.mp4",
+  revision_map: {
+    schema_version: "1.0",
+    previous_sha256: "a".repeat(64),
+    revised_sha256: "b".repeat(64),
+    previous_duration_seconds: 60,
+    revised_duration_seconds: 59,
+    previous_streams: { width: 1280, height: 720, video_codec: "h264", has_audio: true, audio_codec: "aac" },
+    revised_streams: { width: 1280, height: 720, video_codec: "h264", has_audio: true, audio_codec: "aac" },
+    sampling_policy: { visual_samples_per_second: 2, maximum_visual_samples: 1200, descriptor_width: 17, descriptor_height: 9, audio_sample_rate: 8000, refinement_samples_per_second: 6, maximum_refinement_samples: 240 },
+    previous_sample_count: 120,
+    revised_sample_count: 118,
+    estimated_unchanged_duration_seconds: 50,
+    unchanged_ratio: 0.833333,
+    unchanged_ratio_basis: "previous_duration" as const,
+    segments: [
+      { segment_id: "segment-0001", kind: "REMOVED" as const, previous_start_seconds: 10, previous_end_seconds: 15, revised_start_seconds: null, revised_end_seconds: null, visual_distance: 0.7, audio_distance: 0.5, visual_changed: true, audio_changed: true, match_confidence: 0.9, boundary_confidence: "high" as const },
+      { segment_id: "segment-0002", kind: "INSERTED" as const, previous_start_seconds: null, previous_end_seconds: null, revised_start_seconds: 25, revised_end_seconds: 29, visual_distance: 0.6, audio_distance: 0.3, visual_changed: true, audio_changed: true, match_confidence: 0.85, boundary_confidence: "approximate" as const },
+      { segment_id: "segment-0003", kind: "CHANGED" as const, previous_start_seconds: 41, previous_end_seconds: 46, revised_start_seconds: 40, revised_end_seconds: 45, visual_distance: 0.45, audio_distance: 0.01, visual_changed: true, audio_changed: false, match_confidence: 0.88, boundary_confidence: "high" as const },
+    ],
+    ambiguity_notes: ["One boundary is approximate."],
+    analysis_runtime_seconds: 0.75,
+    identical_file_fast_path: false,
+  },
+  revision_requests: [
+    { request_id: "request-0001", source_line: 1, text: "Remove old section", previous_start_seconds: 12, previous_end_seconds: 12, explicit_range: false, status: "CHANGE_DETECTED" as const, matched_segment_ids: ["segment-0001"], evidence: "Media changed near this request: removed." },
+    { request_id: "request-0002", source_line: 2, text: "Adjust quiet opening", previous_start_seconds: 4, previous_end_seconds: 4, explicit_range: false, status: "NO_CHANGE_DETECTED" as const, matched_segment_ids: [], evidence: "No physical media change was detected near this request." },
+    { request_id: "request-0003", source_line: 3, text: "Replace statistic", previous_start_seconds: null, previous_end_seconds: null, explicit_range: false, status: "NEEDS_LOCATION" as const, matched_segment_ids: [], evidence: "Add a previous-cut timecode to check this request automatically." },
+  ],
+  requested_change_count: 3,
+  requested_changes_detected_count: 1,
+  requested_changes_not_detected_count: 1,
+  requests_needing_location_count: 1,
+  additional_changes: [
+    { segment_id: "segment-0002", kind: "INSERTED" as const, previous_start_seconds: null, previous_end_seconds: null, revised_start_seconds: 25, revised_end_seconds: 29, visual_changed: true, audio_changed: true, boundary_confidence: "approximate" as const },
+    { segment_id: "segment-0003", kind: "CHANGED" as const, previous_start_seconds: 41, previous_end_seconds: 46, revised_start_seconds: 40, revised_end_seconds: 45, visual_changed: true, audio_changed: false, boundary_confidence: "high" as const },
+  ],
+  additional_change_count: 2,
+  analysis_runtime_seconds: 0.8,
+};
+
 export const runtimeError = {
   title: "Analysis could not start",
   message: "The local Creator Preflight instance could not access FFmpeg.",

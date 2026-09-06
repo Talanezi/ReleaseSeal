@@ -37,6 +37,9 @@ from creator_preflight.models import (
 from creator_preflight.progress import ScanProgress, ScanProgressStage, ScanProgressStore
 from creator_preflight.repair_models import RepairOperation, RepairOperationBatch
 from creator_preflight.repairs import FFmpegRepairEngine, RepairError
+from creator_preflight.revision import RevisionMapError, RevisionMapper
+from creator_preflight.revision_check import RevisionCheckError, RevisionCheckService
+from creator_preflight.revision_check_models import RevisionCheckReport
 from creator_preflight.thumbnails import ThumbnailValidationError, inspect_thumbnail
 from creator_preflight.verification import transform_caption_file, verify_repair
 from creator_preflight.verification_models import ReviewReelManifest, VerificationReport
@@ -162,6 +165,19 @@ async def ai_review_error_handler(request: Request, exc: AIReviewError) -> JSONR
     return _error_response(status_code, exc.code, exc.message)
 
 
+@app.exception_handler(RevisionMapError)
+async def revision_map_error_handler(request: Request, exc: RevisionMapError) -> JSONResponse:
+    del request
+    status_code = 504 if "timeout" in exc.code else 503 if "unavailable" in exc.code else 400
+    return _error_response(status_code, exc.code, exc.message)
+
+
+@app.exception_handler(RevisionCheckError)
+async def revision_check_error_handler(request: Request, exc: RevisionCheckError) -> JSONResponse:
+    del request
+    return _error_response(400, exc.code, exc.message)
+
+
 @app.get("/api/v1/capabilities", response_model=PreflightCapabilities)
 async def capabilities() -> PreflightCapabilities:
     config, _ = _api_config()
@@ -184,12 +200,59 @@ async def capabilities() -> PreflightCapabilities:
         full_review_available=local_available and gemini_dependency and gemini_key,
         metadata_assist_available=local_available and gemini_dependency and gemini_key and config.ai_review.metadata_assist.enabled,
         local_checks_available=local_available,
+        revision_check_available=local_available,
         transcription_dependency_available=_module_available("faster_whisper"),
         transcription_enabled=config.transcription.enabled,
         supported_review_modes=[ReviewMode.FULL, ReviewMode.LOCAL],
         maximum_video_upload_size_bytes=config.api.maximum_video_upload_size_bytes,
         full_review_unavailable_reasons=reasons,
     )
+
+
+@app.post("/api/v1/revisions/check", response_model=RevisionCheckReport)
+async def check_revision(
+    request: Request,
+    previous_file: UploadFile = File(...),
+    revised_file: UploadFile = File(...),
+    notes: str = Form(default=""),
+) -> RevisionCheckReport:
+    """Compare two temporary finished cuts with the deterministic Revision Mapper."""
+
+    config, _ = _api_config()
+    try:
+        _require_allowed_origin(request, config)
+    except RequestOriginError:
+        await previous_file.close()
+        await revised_file.close()
+        raise
+    if not _scan_capacity.acquire(config.api.maximum_concurrent_scans):
+        await previous_file.close()
+        await revised_file.close()
+        raise ScanBusyError()
+    try:
+        with TemporaryDirectory(prefix="creator-preflight-revision-") as temporary_directory:
+            previous_path = _media_temp_path(temporary_directory, previous_file.filename, stem="previous")
+            revised_path = _media_temp_path(temporary_directory, revised_file.filename, stem="revised")
+            await _copy_upload(previous_file, previous_path, config.api.maximum_video_upload_size_bytes)
+            await _copy_upload(revised_file, revised_path, config.api.maximum_video_upload_size_bytes)
+            service = RevisionCheckService(
+                mapper=RevisionMapper(config.revision_map),
+                config=config.revision_check,
+            )
+            return await anyio.to_thread.run_sync(
+                partial(
+                    service.check,
+                    previous_path,
+                    revised_path,
+                    notes,
+                    previous_filename=previous_file.filename or "previous video",
+                    revised_filename=revised_file.filename or "revised video",
+                )
+            )
+    finally:
+        _scan_capacity.release()
+        await previous_file.close()
+        await revised_file.close()
 
 
 @app.post("/api/v1/preflight/progress", response_model=ScanProgress)
@@ -648,9 +711,9 @@ async def _copy_optional_bounded(upload: UploadFile | None, destination: Path, c
     return destination
 
 
-def _media_temp_path(directory: str, filename: str | None) -> Path:
+def _media_temp_path(directory: str, filename: str | None, *, stem: str = "upload") -> Path:
     suffix = Path(filename or "").suffix.lower()
-    return Path(directory) / f"upload{suffix if suffix in _VIDEO_SUFFIXES else '.media'}"
+    return Path(directory) / f"{stem}{suffix if suffix in _VIDEO_SUFFIXES else '.media'}"
 
 
 def _repair_download_filename(filename: str | None, *, preview: bool) -> str:

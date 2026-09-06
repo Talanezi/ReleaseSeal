@@ -113,11 +113,97 @@ export interface PreflightCapabilities {
   full_review_available: boolean;
   metadata_assist_available: boolean;
   local_checks_available: boolean;
+  revision_check_available: boolean;
   transcription_dependency_available: boolean;
   transcription_enabled: boolean;
   supported_review_modes: ReviewMode[];
   maximum_video_upload_size_bytes: number;
   full_review_unavailable_reasons: CapabilityReason[];
+}
+
+export type RevisionSegmentKind = "UNCHANGED" | "REMOVED" | "INSERTED" | "CHANGED";
+export type RevisionRequestStatus = "CHANGE_DETECTED" | "NO_CHANGE_DETECTED" | "NEEDS_LOCATION";
+
+export interface RevisionStreamSummary {
+  width: number;
+  height: number;
+  video_codec: string | null;
+  has_audio: boolean;
+  audio_codec: string | null;
+}
+
+export interface RevisionSegment {
+  segment_id: string;
+  kind: RevisionSegmentKind;
+  previous_start_seconds: number | null;
+  previous_end_seconds: number | null;
+  revised_start_seconds: number | null;
+  revised_end_seconds: number | null;
+  visual_distance: number | null;
+  audio_distance: number | null;
+  visual_changed: boolean;
+  audio_changed: boolean;
+  match_confidence: number;
+  boundary_confidence: "high" | "approximate" | "ambiguous";
+}
+
+export interface RevisionMap {
+  schema_version: string;
+  previous_sha256: string;
+  revised_sha256: string;
+  previous_duration_seconds: number;
+  revised_duration_seconds: number;
+  previous_streams: RevisionStreamSummary;
+  revised_streams: RevisionStreamSummary;
+  sampling_policy: Record<string, number>;
+  previous_sample_count: number;
+  revised_sample_count: number;
+  estimated_unchanged_duration_seconds: number;
+  unchanged_ratio: number;
+  unchanged_ratio_basis: "previous_duration";
+  segments: RevisionSegment[];
+  ambiguity_notes: string[];
+  analysis_runtime_seconds: number;
+  identical_file_fast_path: boolean;
+}
+
+export interface RevisionRequest {
+  request_id: string;
+  source_line: number;
+  text: string;
+  previous_start_seconds: number | null;
+  previous_end_seconds: number | null;
+  explicit_range: boolean;
+  status: RevisionRequestStatus;
+  matched_segment_ids: string[];
+  evidence: string;
+}
+
+export interface AdditionalRevisionChange {
+  segment_id: string;
+  kind: RevisionSegmentKind;
+  previous_start_seconds: number | null;
+  previous_end_seconds: number | null;
+  revised_start_seconds: number | null;
+  revised_end_seconds: number | null;
+  visual_changed: boolean;
+  audio_changed: boolean;
+  boundary_confidence: "high" | "approximate" | "ambiguous";
+}
+
+export interface RevisionCheckReport {
+  schema_version: string;
+  previous_filename: string;
+  revised_filename: string;
+  revision_map: RevisionMap;
+  revision_requests: RevisionRequest[];
+  requested_change_count: number;
+  requested_changes_detected_count: number;
+  requested_changes_not_detected_count: number;
+  requests_needing_location_count: number;
+  additional_changes: AdditionalRevisionChange[];
+  additional_change_count: number;
+  analysis_runtime_seconds: number;
 }
 
 export type PromiseCheckStatus = "disabled" | "aligned" | "needs_review" | "not_evaluable" | "unavailable";

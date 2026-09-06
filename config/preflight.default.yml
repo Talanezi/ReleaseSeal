@@ -173,3 +173,12 @@ revision_map:
   maximum_refinement_samples: 240
   extraction_timeout_seconds: 180.0
   alignment_timeout_seconds: 30.0
+
+# Optional previous-cut revision notes are matched to physical Revision Map
+# regions. Notes without timecodes are retained without inventing a location.
+revision_check:
+  point_neighborhood_seconds: 3.0
+  explicit_range_tolerance_seconds: 0.25
+  maximum_notes: 100
+  maximum_notes_characters: 50000
+  maximum_note_characters: 500

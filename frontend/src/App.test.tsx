@@ -5,7 +5,8 @@ import { App } from "./App";
 import { ErrorState } from "./components/ErrorState";
 import { ResultsView } from "./components/ResultsView";
 import { ProcessingState } from "./components/ProcessingState";
-import { blockedReport, needsReviewReport, readyReport } from "./mocks/reports";
+import { RevisionResultsView } from "./components/RevisionResultsView";
+import { blockedReport, needsReviewReport, readyReport, revisionCheckReport } from "./mocks/reports";
 import type { PreflightReport, ScanProgress, VerificationReport } from "./types/preflight";
 import { formatTimecode } from "./utils/format";
 
@@ -29,6 +30,105 @@ afterEach(() => {
 });
 
 describe("Creator Preflight frontend", () => {
+  it("offers Final export and Revision as first-class workflows without disturbing the scan form", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.getByRole("button", { name: /Final export/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Select video file")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Revision Compare/i }));
+    expect(screen.getByLabelText("Select previous cut")).toBeInTheDocument();
+    expect(screen.getByLabelText("Select revised cut")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Compare revision" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /Final export Review/i }));
+    expect(screen.getByLabelText("Select video file")).toBeInTheDocument();
+  });
+
+  it("submits two revision files and notes, with truthful processing and reset", async () => {
+    let resolveRevision: ((response: Response) => void) | undefined;
+    const fetchMock = vi.fn((url: RequestInfo | URL) => {
+      if (String(url).endsWith("/capabilities")) return Promise.resolve(jsonResponse(capabilitiesFixture()));
+      return new Promise<Response>((resolve) => { resolveRevision = resolve; });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: /Revision Compare/i }));
+    await user.upload(screen.getByLabelText("Select previous cut"), new File(["old"], "old cut.mp4", { type: "video/mp4" }));
+    await user.upload(screen.getByLabelText("Select revised cut"), new File(["new"], "new cut.mp4", { type: "video/mp4" }));
+    await user.type(screen.getByLabelText(/Revision notes/), "00:12 Remove old section");
+    await user.click(screen.getByRole("button", { name: "Compare revision" }));
+    expect(screen.getByTestId("revision-processing-state")).toHaveTextContent("old cut.mp4");
+    expect(screen.getByTestId("revision-processing-state")).toHaveTextContent("new cut.mp4");
+    expect(screen.queryByText(/%|ETA/i)).not.toBeInTheDocument();
+    resolveRevision?.(jsonResponse(revisionCheckReport));
+    expect(await screen.findByTestId("revision-result-state")).toHaveTextContent("83.3% unchanged");
+    await user.click(screen.getByRole("button", { name: "New comparison" }));
+    expect(screen.getByRole("button", { name: "Compare revision" })).toBeDisabled();
+    expect(screen.getByLabelText(/Revision notes/)).toHaveValue("");
+  });
+
+  it("renders revision statuses, evidence, additional changes, and canonical timecodes", () => {
+    render(<RevisionResultsView report={revisionCheckReport} previousUrl="blob:previous" revisedUrl="blob:revised" />);
+    expect(screen.getByText("Change detected")).toBeInTheDocument();
+    expect(screen.getByText("No change found")).toBeInTheDocument();
+    expect(screen.getByText("Needs a timecode")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Additional changes" })).toBeInTheDocument();
+    expect(screen.getAllByText("Visual + audio").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Visual").length).toBeGreaterThan(0);
+    expect(screen.getByText("Technical details").parentElement).not.toHaveAttribute("open");
+    expect(screen.queryByText(/\d+\.\d{4,}\s+seconds/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Removed on Previous cut timeline, 00:10.00 to 00:15.00/)).toBeInTheDocument();
+  });
+
+  it("seeks removed, inserted, and changed evidence in the appropriate version", async () => {
+    const user = userEvent.setup();
+    render(<RevisionResultsView report={revisionCheckReport} previousUrl="blob:previous" revisedUrl="blob:revised" />);
+    await user.click(screen.getByRole("button", { name: /Change detected Remove old section/ }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Previous" })).toHaveAttribute("aria-selected", "true"));
+    expect((screen.getByLabelText("previous cut video") as HTMLVideoElement).currentTime).toBe(10);
+    await user.click(screen.getByRole("button", { name: /Inserted Revised 00:25.00/ }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Revised" })).toHaveAttribute("aria-selected", "true"));
+    expect((screen.getByLabelText("revised cut video") as HTMLVideoElement).currentTime).toBe(25);
+    await user.click(screen.getByRole("button", { name: /Changed Previous 00:41.00/ }));
+    expect((screen.getByLabelText("revised cut video") as HTMLVideoElement).currentTime).toBe(40);
+    await user.click(screen.getByRole("tab", { name: "Previous" }));
+    await waitFor(() => expect((screen.getByLabelText("previous cut video") as HTMLVideoElement).currentTime).toBe(41));
+  });
+
+  it("enforces the configured upload limit independently for revision files", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ ...capabilitiesFixture(), maximum_video_upload_size_bytes: 3 })));
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: /Revision Compare/i }));
+    await user.upload(screen.getByLabelText("Select previous cut"), new File(["four"], "large.mp4", { type: "video/mp4" }));
+    await user.upload(screen.getByLabelText("Select revised cut"), new File(["ok"], "small.mp4", { type: "video/mp4" }));
+    expect(screen.getByText("This file exceeds the configured upload limit.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Compare revision" })).toBeDisabled();
+  });
+
+  it("shows a calm identical no-notes revision result", () => {
+    const identical = {
+      ...revisionCheckReport,
+      revision_map: { ...revisionCheckReport.revision_map, previous_sha256: "a".repeat(64), revised_sha256: "a".repeat(64), unchanged_ratio: 1, estimated_unchanged_duration_seconds: 60, revised_duration_seconds: 60, segments: [], ambiguity_notes: [], identical_file_fast_path: true },
+      revision_requests: [], requested_change_count: 0, requested_changes_detected_count: 0, requested_changes_not_detected_count: 0, requests_needing_location_count: 0, additional_changes: [], additional_change_count: 0,
+    };
+    render(<RevisionResultsView report={identical} previousUrl="blob:previous" revisedUrl="blob:revised" />);
+    expect(screen.getByText("No changes found")).toBeInTheDocument();
+    expect(screen.getByText("These two versions match across the analyzed timeline.")).toBeInTheDocument();
+    expect(screen.queryByText("Requested changes")).not.toBeInTheDocument();
+  });
+
+  it("exports revision reports as JSON and Markdown", async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    render(<RevisionResultsView report={revisionCheckReport} previousUrl="blob:previous" revisedUrl="blob:revised" />);
+    await user.click(screen.getByRole("button", { name: "JSON" }));
+    await user.click(screen.getByRole("button", { name: "Markdown" }));
+    expect(createObjectURL).toHaveBeenCalledTimes(2);
+    expect(revokeObjectURL).toHaveBeenCalledTimes(2);
+    expect(click).toHaveBeenCalledTimes(2);
+  });
+
   it("disables Run Preflight until a video is selected", () => {
     render(<App />);
     expect(screen.getByRole("button", { name: /run preflight/i })).toBeDisabled();
@@ -906,6 +1006,7 @@ function capabilitiesFixture(fullReviewAvailable = true) {
     full_review_available: fullReviewAvailable,
     metadata_assist_available: fullReviewAvailable,
     local_checks_available: true,
+    revision_check_available: true,
     transcription_dependency_available: true,
     transcription_enabled: false,
     supported_review_modes: ["full", "local"],

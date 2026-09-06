@@ -15,7 +15,14 @@ import type {
   VerificationReport,
   MetadataAssistResult,
   ScanProgress,
+  RevisionCheckReport,
 } from "../types/preflight";
+
+export interface RevisionCheckInput {
+  previousVideo: File;
+  revisedVideo: File;
+  notes: string;
+}
 
 export interface PreflightScanInput {
   video: File;
@@ -109,6 +116,35 @@ export async function scanPreflight(
       "The backend returned an unexpected preflight report.",
       { code: "invalid_response", status: response.status },
     );
+  }
+  return payload;
+}
+
+export async function checkRevision(
+  input: RevisionCheckInput,
+  options: { signal?: AbortSignal } = {},
+): Promise<RevisionCheckReport> {
+  const form = new FormData();
+  form.append("previous_file", input.previousVideo, input.previousVideo.name);
+  form.append("revised_file", input.revisedVideo, input.revisedVideo.name);
+  form.append("notes", input.notes);
+  let response: Response;
+  try {
+    response = await fetch("/api/v1/revisions/check", { method: "POST", body: form, signal: options.signal });
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new PreflightApiError("Could not reach the local revision service.", { code: "revision_backend_unreachable", cause: error });
+  }
+  const payload = await parseJsonResponse(response);
+  if (!response.ok) {
+    const structured = parseStructuredError(payload);
+    throw new PreflightApiError(
+      structured?.error.message ?? "These versions could not be compared.",
+      { code: structured?.error.code ?? "revision_check_failed", status: response.status },
+    );
+  }
+  if (!isRevisionCheckReport(payload)) {
+    throw new PreflightApiError("The backend returned an unexpected revision report.", { code: "revision_invalid_response", status: response.status });
   }
   return payload;
 }
@@ -303,6 +339,15 @@ export function errorPresentation(error: unknown): { title: string; message: str
         detail: error.status === 429 ? "Try again after the usage limit resets." : "Try again shortly or continue without suggestions.",
       };
     }
+    if (error.code.startsWith("revision_")) {
+      return {
+        title: "These versions could not be compared",
+        message: error.message,
+        detail: error.code.includes("unavailable")
+          ? "Confirm FFmpeg and FFprobe are available, then try again."
+          : "Check both video files and any revision-note timecodes, then try again.",
+      };
+    }
     return {
       title: "The scan could not be completed",
       message: error.message,
@@ -490,6 +535,7 @@ function isPreflightCapabilities(value: unknown): value is PreflightCapabilities
     && typeof value.full_review_available === "boolean"
     && typeof value.metadata_assist_available === "boolean"
     && typeof value.local_checks_available === "boolean"
+    && typeof value.revision_check_available === "boolean"
     && typeof value.transcription_dependency_available === "boolean"
     && typeof value.transcription_enabled === "boolean"
     && Array.isArray(value.supported_review_modes)
@@ -498,6 +544,66 @@ function isPreflightCapabilities(value: unknown): value is PreflightCapabilities
     && Array.isArray(value.full_review_unavailable_reasons)
     && value.full_review_unavailable_reasons.every((reason) => isRecord(reason)
       && typeof reason.code === "string" && typeof reason.message === "string");
+}
+
+export function isRevisionCheckReport(value: unknown): value is RevisionCheckReport {
+  if (!isRecord(value) || !isRecord(value.revision_map)) return false;
+  const map = value.revision_map;
+  return typeof value.schema_version === "string"
+    && typeof value.previous_filename === "string"
+    && typeof value.revised_filename === "string"
+    && isNonnegativeNumber(value.requested_change_count)
+    && isNonnegativeNumber(value.requested_changes_detected_count)
+    && isNonnegativeNumber(value.requested_changes_not_detected_count)
+    && isNonnegativeNumber(value.requests_needing_location_count)
+    && isNonnegativeNumber(value.additional_change_count)
+    && isNonnegativeNumber(value.analysis_runtime_seconds)
+    && Array.isArray(value.revision_requests) && value.revision_requests.every(isRevisionRequest)
+    && Array.isArray(value.additional_changes) && value.additional_changes.every(isRevisionChange)
+    && isNonnegativeNumber(map.previous_duration_seconds)
+    && isNonnegativeNumber(map.revised_duration_seconds)
+    && isNonnegativeNumber(map.estimated_unchanged_duration_seconds)
+    && isNonnegativeNumber(map.unchanged_ratio) && map.unchanged_ratio <= 1
+    && typeof map.previous_sha256 === "string" && typeof map.revised_sha256 === "string"
+    && isRecord(map.previous_streams) && isRecord(map.revised_streams)
+    && isRecord(map.sampling_policy)
+    && isNonnegativeNumber(map.previous_sample_count) && isNonnegativeNumber(map.revised_sample_count)
+    && Array.isArray(map.segments) && map.segments.every(isRevisionSegment)
+    && Array.isArray(map.ambiguity_notes) && map.ambiguity_notes.every((item) => typeof item === "string")
+    && isNonnegativeNumber(map.analysis_runtime_seconds)
+    && typeof map.identical_file_fast_path === "boolean";
+}
+
+function isRevisionRequest(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.request_id === "string" && isNonnegativeNumber(value.source_line)
+    && typeof value.text === "string"
+    && isNullableNumber(value.previous_start_seconds) && isNullableNumber(value.previous_end_seconds)
+    && typeof value.explicit_range === "boolean"
+    && (value.status === "CHANGE_DETECTED" || value.status === "NO_CHANGE_DETECTED" || value.status === "NEEDS_LOCATION")
+    && Array.isArray(value.matched_segment_ids) && value.matched_segment_ids.every((item) => typeof item === "string")
+    && typeof value.evidence === "string";
+}
+
+function isRevisionChange(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.segment_id === "string"
+    && isRevisionKind(value.kind)
+    && isNullableNumber(value.previous_start_seconds) && isNullableNumber(value.previous_end_seconds)
+    && isNullableNumber(value.revised_start_seconds) && isNullableNumber(value.revised_end_seconds)
+    && typeof value.visual_changed === "boolean" && typeof value.audio_changed === "boolean"
+    && (value.boundary_confidence === "high" || value.boundary_confidence === "approximate" || value.boundary_confidence === "ambiguous");
+}
+
+function isRevisionSegment(value: unknown): boolean {
+  return isRevisionChange(value)
+    && isRecord(value)
+    && isNullableNumber(value.visual_distance) && isNullableNumber(value.audio_distance)
+    && isNonnegativeNumber(value.match_confidence) && value.match_confidence <= 1;
+}
+
+function isRevisionKind(value: unknown): boolean {
+  return value === "UNCHANGED" || value === "REMOVED" || value === "INSERTED" || value === "CHANGED";
 }
 
 function isClaimReviewSummary(value: unknown): value is ClaimReviewSummary {

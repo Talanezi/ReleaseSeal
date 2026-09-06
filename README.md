@@ -2,7 +2,7 @@
 
 **Scan. Fix. Verify.**
 
-Upload a finished video before your audience sees it. Creator Preflight finds concrete release problems, points to the exact evidence, repairs the limited edits it can perform safely, asks for your judgment where it cannot, then checks the corrected export for regressions.
+Review a final export or compare a revised cut before your audience sees it. Creator Preflight finds concrete release problems, maps physical changes between versions, points to exact evidence, repairs the limited edits it can perform safely, and checks corrected exports for regressions.
 
 It combines deterministic media inspection with optional multimodal review. The browser keeps the workflow in one place: a concise AI review, one video player, an Action Queue, repair previews, automatic verification, and editor-friendly exports.
 
@@ -30,6 +30,10 @@ Finished video
   -> automatic re-scan and regression check
   -> Repaired / Review Reel in the main player
 ```
+
+The browser also offers **Revision**, a fully local comparison workflow. Add a previous cut and revised cut, optionally paste one revision note per line, and Creator Preflight deterministically maps removed, inserted, changed, and unchanged media. Timestamped notes are correlated with nearby physical changes; untimed notes remain clearly unlocated. A detected change never claims that the requested wording, logo, mix, or other semantic intent is correct.
+
+Accepted note examples include `00:34 Remove the old logo`, `01:12.25 Lower the music`, `00:34-00:39 Remove this section`, and `1:02:14 Replace the end card`. Notes use the previous-cut timeline. The Revision result provides one Previous/Revised player, clickable change strips, and JSON or Markdown downloads.
 
 Ambiguous findings stay in human review. Marking an item Accepted records a session-local decision; it does not pretend an automated repair resolved it.
 
@@ -124,6 +128,11 @@ React web app / CLI
              -> claim extraction and per-claim grounded verification
              -> text-only AI review over trusted report state
         -> typed repair and verification engine
+
+Previous cut + revised cut
+        -> deterministic RevisionMapper
+        -> optional note correlation
+        -> Revision Check report and comparison player
 ```
 
 Pydantic models form trust boundaries around configuration, reports, provider output, repairs, and verification. React renders the typed report and never recalculates the verdict or invents repairability. See [Architecture](docs/ARCHITECTURE.md), [Specification](docs/SPEC.md), and [Status](docs/STATUS.md).

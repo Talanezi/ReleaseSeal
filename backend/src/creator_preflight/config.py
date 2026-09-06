@@ -338,6 +338,18 @@ class RevisionMapConfig(BaseModel):
         return self
 
 
+class RevisionCheckConfig(BaseModel):
+    """Deterministic policy for correlating notes to physical revision regions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    point_neighborhood_seconds: float = Field(default=3.0, gt=0, le=30)
+    explicit_range_tolerance_seconds: float = Field(default=0.25, ge=0, le=3)
+    maximum_notes: int = Field(default=100, ge=1, le=500)
+    maximum_notes_characters: int = Field(default=50_000, ge=1, le=250_000)
+    maximum_note_characters: int = Field(default=500, ge=1, le=2_000)
+
+
 class CreatorRuleConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -360,6 +372,7 @@ class PreflightConfig(BaseModel):
     api: APIConfig = Field(default_factory=APIConfig)
     verification: VerificationConfig = Field(default_factory=VerificationConfig)
     revision_map: RevisionMapConfig = Field(default_factory=RevisionMapConfig)
+    revision_check: RevisionCheckConfig = Field(default_factory=RevisionCheckConfig)
 
 
 class ConfigurationError(Exception):

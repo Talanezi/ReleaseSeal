@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { needsReviewReport } from "../mocks/reports";
-import { applyRepairs, assistMetadata, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, scanPreflight, verifyRepair } from "./preflight";
+import { needsReviewReport, revisionCheckReport } from "../mocks/reports";
+import { applyRepairs, assistMetadata, checkRevision, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, scanPreflight, verifyRepair } from "./preflight";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -57,6 +57,28 @@ describe("preflight API client", () => {
     expect(uploadedThumbnail).toBeInstanceOf(File);
     expect((uploadedThumbnail as File).name).toBe("thumbnail.png");
     expect(report).toEqual(needsReviewReport);
+  });
+
+  it("constructs and validates the revision multipart request", async () => {
+    let body: FormData | undefined;
+    vi.stubGlobal("fetch", vi.fn((_url: RequestInfo | URL, init?: RequestInit) => {
+      body = init?.body as FormData;
+      return Promise.resolve(jsonResponse(revisionCheckReport));
+    }));
+    const previous = new File(["previous"], "previous cut.mp4", { type: "video/mp4" });
+    const revised = new File(["revised"], "revised cut.mp4", { type: "video/mp4" });
+    const report = await checkRevision({ previousVideo: previous, revisedVideo: revised, notes: "00:12 Remove old section" });
+    expect((body?.get("previous_file") as File).name).toBe("previous cut.mp4");
+    expect((body?.get("revised_file") as File).name).toBe("revised cut.mp4");
+    expect(body?.get("notes")).toBe("00:12 Remove old section");
+    expect(report.additional_change_count).toBe(2);
+  });
+
+  it("rejects a malformed revision response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ ...revisionCheckReport, revision_map: { unchanged_ratio: 2 } })));
+    await expect(checkRevision({
+      previousVideo: new File(["a"], "a.mp4"), revisedVideo: new File(["b"], "b.mp4"), notes: "",
+    })).rejects.toMatchObject({ code: "revision_invalid_response" });
   });
 
   it("omits optional captions and thumbnail when none were selected", async () => {
@@ -240,6 +262,7 @@ function capabilitiesFixture() {
       full_review_available: true,
       metadata_assist_available: true,
     local_checks_available: true,
+    revision_check_available: true,
     transcription_dependency_available: true,
     transcription_enabled: false,
     supported_review_modes: ["full", "local"],
