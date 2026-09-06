@@ -223,6 +223,25 @@ def _generate_short_black_transition_video(path: Path) -> Path:
     return path
 
 
+def _generate_black_flash_video(path: Path) -> Path:
+    filter_graph = ";".join(
+        [
+            "testsrc2=size=160x90:rate=25:duration=2[v0]",
+            "color=c=black:size=160x90:rate=25:duration=0.12[v1]",
+            "testsrc2=size=160x90:rate=25:duration=2[v2]",
+            "[v0][v1][v2]concat=n=3:v=1:a=0,format=yuv420p[video]",
+            "sine=frequency=440:sample_rate=48000:duration=4.12[audio]",
+        ]
+    )
+    command = [
+        _ffmpeg_executable(), "-hide_banner", "-loglevel", "error", "-y",
+        "-filter_complex", filter_graph, "-map", "[video]", "-map", "[audio]",
+        "-c:v", "mpeg4", "-pix_fmt", "yuv420p", "-c:a", "aac", str(path),
+    ]
+    _run_ffmpeg(command)
+    return path
+
+
 def _generate_near_full_scale_transient_video(path: Path) -> Path:
     filter_graph = ";".join(
         [
@@ -318,6 +337,13 @@ def ambient_pause_video(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def short_black_transition_video(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return _generate_short_black_transition_video(
         tmp_path_factory.mktemp("media") / "short-black-transition.mp4"
+    )
+
+
+@pytest.fixture(scope="session")
+def black_flash_video(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return _generate_black_flash_video(
+        tmp_path_factory.mktemp("media") / "brief-black-flash.mp4"
     )
 
 

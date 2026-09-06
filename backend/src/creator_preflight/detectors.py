@@ -12,6 +12,7 @@ from creator_preflight.config import (
     BlackDetectorConfig,
     FreezeDetectorConfig,
     SilenceDetectorConfig,
+    ShortBlackDetectorConfig,
     StreamExpectationConfig,
 )
 from creator_preflight.media import MediaInspectionError, require_media_tool
@@ -61,7 +62,20 @@ def detect_black_segments(
     *,
     ffmpeg_binary: str = "ffmpeg",
     timeout_seconds: float = 60,
+    short_config: ShortBlackDetectorConfig | None = None,
 ) -> list[Finding]:
+    analysis_minimum = min(
+        config.min_duration_seconds,
+        short_config.min_duration_seconds if short_config and short_config.enabled else config.min_duration_seconds,
+    )
+    pixel_threshold = min(
+        config.pixel_black_threshold,
+        short_config.pixel_black_threshold if short_config and short_config.enabled else config.pixel_black_threshold,
+    )
+    picture_ratio = max(
+        config.picture_black_ratio,
+        short_config.picture_black_ratio if short_config and short_config.enabled else config.picture_black_ratio,
+    )
     output = _run_ffmpeg(
         media_path,
         [
@@ -69,9 +83,9 @@ def detect_black_segments(
             "0:v:0",
             "-vf",
             (
-                f"blackdetect=d={config.min_duration_seconds:.6f}:"
-                f"pic_th={config.picture_black_ratio:.6f}:"
-                f"pix_th={config.pixel_black_threshold:.6f}"
+                f"blackdetect=d={analysis_minimum:.6f}:"
+                f"pic_th={picture_ratio:.6f}:"
+                f"pix_th={pixel_threshold:.6f}"
             ),
             "-an",
         ],
@@ -86,7 +100,8 @@ def detect_black_segments(
         duration = float(match.group("duration"))
         if end < start:
             continue
-        findings.append(
+        if duration >= config.min_duration_seconds:
+            findings.append(
             Finding(
                 code="VIDEO_BLACK_SEGMENT",
                 severity=FindingSeverity.WARNING,
@@ -104,8 +119,29 @@ def detect_black_segments(
                     "picture_black_ratio": config.picture_black_ratio,
                 },
                 suggestion="Check whether this dark section is intentional and appropriately timed.",
-            )
-        )
+            ))
+        elif (
+            short_config is not None
+            and short_config.enabled
+            and short_config.min_duration_seconds <= duration <= short_config.max_duration_seconds
+        ):
+            findings.append(Finding(
+                code="VIDEO_SHORT_BLACK_FLASH",
+                severity=FindingSeverity.WARNING,
+                status=FindingStatus.NEEDS_REVIEW,
+                message="A very brief near-black flash was detected between surrounding frames.",
+                source="video.black",
+                timestamp_start_seconds=start,
+                timestamp_end_seconds=end,
+                details={
+                    "category": "video",
+                    "title": "Brief black flash candidate",
+                    "duration_seconds": duration,
+                    "minimum_duration_seconds": short_config.min_duration_seconds,
+                    "maximum_duration_seconds": short_config.max_duration_seconds,
+                },
+                suggestion="Review this moment frame by frame to confirm whether the flash is an intentional edit.",
+            ))
     return findings
 
 

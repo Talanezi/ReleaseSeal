@@ -319,6 +319,51 @@ class GeminiReviewSession:
         except Exception as exc:
             raise _classify_provider_error(exc, phase="grounding") from exc
 
+    def generate_text_structured(
+        self,
+        *,
+        prompt: str,
+        response_model: type[StructuredModel],
+        validate_output: Callable[[StructuredModel], StructuredModel] | None = None,
+    ) -> StructuredAIReviewResult[StructuredModel]:
+        """Generate structured text without attaching the uploaded video again."""
+
+        if self.client is None or self.started_at is None:
+            raise AIReviewError("ai_session_not_started", "AI review session is not active.")
+        generation_started = self.adapter._clock()
+        try:
+            response = self.client.models.generate_content(
+                model=self.config.model,
+                contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_json_schema": response_model.model_json_schema(),
+                    "thinking_config": {"thinking_level": "LOW"},
+                    "max_output_tokens": 1536,
+                    "automatic_function_calling": {"disable": True},
+                    "http_options": {"timeout": max(1, round(self.config.timeout_seconds * 1000))},
+                },
+            )
+            generation_seconds = self.adapter._clock() - generation_started
+            output = _validate_structured_output(getattr(response, "text", None), response_model)
+            if validate_output is not None:
+                output = validate_output(output)
+            self.generation_count += 1
+            return StructuredAIReviewResult(
+                provider=self.config.provider,
+                model=self.config.model,
+                output=output,
+                upload_seconds=self.upload_seconds,
+                processing_seconds=self.processing_seconds,
+                generation_seconds=generation_seconds,
+                total_seconds=self.adapter._clock() - self.started_at,
+                cleanup_succeeded=False,
+            )
+        except AIReviewError:
+            raise
+        except Exception as exc:
+            raise _classify_provider_error(exc, phase="generation") from exc
+
     def close(self) -> None:
         if self.client is None:
             return

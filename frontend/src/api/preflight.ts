@@ -13,6 +13,8 @@ import type {
   ReviewMode,
   ReviewReelManifest,
   VerificationReport,
+  MetadataAssistResult,
+  ScanProgress,
 } from "../types/preflight";
 
 export interface PreflightScanInput {
@@ -65,13 +67,14 @@ export class PreflightApiError extends Error {
 
 export async function scanPreflight(
   input: PreflightScanInput,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; progressId?: string } = {},
 ): Promise<PreflightReport> {
   const form = new FormData();
   form.append("file", input.video, input.video.name);
   form.append("title", input.title);
   form.append("description", input.description);
   form.append("review_mode", input.reviewMode);
+  if (options.progressId) form.append("progress_id", options.progressId);
   if (input.captions) form.append("captions", input.captions, input.captions.name);
   if (input.thumbnail) form.append("thumbnail", input.thumbnail, input.thumbnail.name);
 
@@ -110,6 +113,34 @@ export async function scanPreflight(
   return payload;
 }
 
+export async function createScanProgress(reviewMode: ReviewMode, options: { signal?: AbortSignal } = {}): Promise<ScanProgress> {
+  const form = new FormData();
+  form.append("review_mode", reviewMode);
+  const response = await fetch("/api/v1/preflight/progress", { method: "POST", body: form, signal: options.signal });
+  const payload = await parseJsonResponse(response);
+  if (!response.ok || !isScanProgress(payload)) {
+    throw new PreflightApiError("Live scan progress could not be started.", { code: response.ok ? "invalid_response" : "request_failed", status: response.status });
+  }
+  return payload;
+}
+
+export async function fetchScanProgress(progressId: string, options: { signal?: AbortSignal } = {}): Promise<ScanProgress> {
+  const response = await fetch(`/api/v1/preflight/progress/${encodeURIComponent(progressId)}`, { signal: options.signal });
+  const payload = await parseJsonResponse(response);
+  if (!response.ok || !isScanProgress(payload)) {
+    throw new PreflightApiError("Live scan progress is temporarily unavailable.", { code: response.ok ? "invalid_response" : "request_failed", status: response.status });
+  }
+  return payload;
+}
+
+export async function discardScanProgress(progressId: string): Promise<void> {
+  try {
+    await fetch(`/api/v1/preflight/progress/${encodeURIComponent(progressId)}`, { method: "DELETE" });
+  } catch {
+    // Progress records are bounded and ephemeral; scan/reset must not fail on cleanup.
+  }
+}
+
 export async function fetchCapabilities(
   options: { signal?: AbortSignal } = {},
 ): Promise<PreflightCapabilities> {
@@ -130,6 +161,29 @@ export async function fetchCapabilities(
       status: response.status,
     });
   }
+  return payload;
+}
+
+export async function assistMetadata(
+  video: File,
+  options: { signal?: AbortSignal; captions?: File | null } = {},
+): Promise<MetadataAssistResult> {
+  const form = new FormData();
+  form.append("file", video, video.name);
+  if (options.captions) form.append("captions", options.captions, options.captions.name);
+  let response: Response;
+  try {
+    response = await fetch("/api/v1/metadata/assist", { method: "POST", body: form, signal: options.signal });
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new PreflightApiError("AI suggestions could not reach the local backend.", { code: "backend_unreachable", cause: error });
+  }
+  const payload = await parseJsonResponse(response);
+  if (!response.ok) {
+    const structured = parseStructuredError(payload);
+    throw new PreflightApiError(structured?.error.message ?? "AI suggestions could not be generated.", { code: structured?.error.code ?? "metadata_assist_failed", status: response.status });
+  }
+  if (!isMetadataAssistResult(payload)) throw new PreflightApiError("The backend returned unexpected AI suggestions.", { code: "invalid_response", status: response.status });
   return payload;
 }
 
@@ -240,6 +294,15 @@ export function errorPresentation(error: unknown): { title: string; message: str
         detail: "Open Creator Preflight from an allowed local frontend origin.",
       };
     }
+    if (error.code.startsWith("ai_")) {
+      return {
+        title: "AI assistance is unavailable",
+        message: error.code === "ai_provider_quota_exhausted"
+          ? "AI assistance has reached its current usage limit."
+          : "AI assistance could not finish this request.",
+        detail: error.status === 429 ? "Try again after the usage limit resets." : "Try again shortly or continue without suggestions.",
+      };
+    }
     return {
       title: "The scan could not be completed",
       message: error.message,
@@ -311,7 +374,24 @@ function isPreflightReport(value: unknown): value is PreflightReport {
     && isViewerPassSummary(value.viewer_pass)
     && isClaimReviewSummary(value.claim_review)
     && isRepairPlan(value.repair_plan)
+    && isReleaseBrief(value.release_brief)
     && isNonnegativeNumber(value.scan_duration_seconds);
+}
+
+function isScanProgress(value: unknown): value is ScanProgress {
+  return isRecord(value)
+    && typeof value.progress_id === "string"
+    && (value.review_mode === "full" || value.review_mode === "local")
+    && (value.state === "RUNNING" || value.state === "COMPLETE" || value.state === "PARTIAL" || value.state === "FAILED")
+    && typeof value.stage === "string"
+    && isNonnegativeNumber(value.percent) && value.percent <= 100
+    && typeof value.message === "string"
+    && isNonnegativeNumber(value.created_at_epoch_seconds)
+    && isNonnegativeNumber(value.updated_at_epoch_seconds)
+    && Array.isArray(value.tasks)
+    && value.tasks.every((task) => isRecord(task) && typeof task.task_id === "string"
+      && typeof task.label === "string"
+      && (task.status === "Done" || task.status === "Working" || task.status === "Waiting" || task.status === "Unavailable"));
 }
 
 function isVerificationReport(value: unknown): value is VerificationReport {
@@ -408,6 +488,7 @@ function isPreflightCapabilities(value: unknown): value is PreflightCapabilities
     && typeof value.gemini_dependency_available === "boolean"
     && typeof value.gemini_api_key_configured === "boolean"
     && typeof value.full_review_available === "boolean"
+    && typeof value.metadata_assist_available === "boolean"
     && typeof value.local_checks_available === "boolean"
     && typeof value.transcription_dependency_available === "boolean"
     && typeof value.transcription_enabled === "boolean"
@@ -422,12 +503,29 @@ function isPreflightCapabilities(value: unknown): value is PreflightCapabilities
 function isClaimReviewSummary(value: unknown): value is ClaimReviewSummary {
   return isRecord(value)
     && (value.status === "disabled" || value.status === "no_claims" || value.status === "clean"
-      || value.status === "needs_review" || value.status === "unavailable")
+      || value.status === "inconclusive" || value.status === "needs_review" || value.status === "unavailable")
     && isNonnegativeNumber(value.claims_checked)
     && isNonnegativeNumber(value.supported_count)
     && isNonnegativeNumber(value.conflict_count)
     && isNonnegativeNumber(value.insufficient_evidence_count)
     && isNullableString(value.explanation);
+}
+
+function isReleaseBrief(value: unknown): boolean {
+  return isRecord(value)
+    && (value.source === "ai" || value.source === "deterministic" || value.source === "fallback")
+    && typeof value.headline === "string"
+    && typeof value.summary === "string"
+    && Array.isArray(value.top_actions) && value.top_actions.length <= 3 && value.top_actions.every((item) => typeof item === "string")
+    && isNullableString(value.positive_note);
+}
+
+function isMetadataAssistResult(value: unknown): value is MetadataAssistResult {
+  return isRecord(value)
+    && Array.isArray(value.title_suggestions) && value.title_suggestions.length === 5
+    && value.title_suggestions.every((item) => typeof item === "string")
+    && typeof value.description_draft === "string"
+    && typeof value.cleanup_succeeded === "boolean";
 }
 
 function isViewerPassSummary(value: unknown): value is ViewerPassSummary {
@@ -460,6 +558,10 @@ function isPromiseCheckSummary(value: unknown): value is PromiseCheckSummary {
     && isNullableString(value.inferred_promise)
     && isNullableNumber(value.first_substantive_address_seconds)
     && isNullableString(value.first_substantive_address_evidence)
+    && (value.opening_alignment === null || value.opening_alignment === "direct_delivery"
+      || value.opening_alignment === "relevant_hook" || value.opening_alignment === "relevant_setup"
+      || value.opening_alignment === "unrelated_delay" || value.opening_alignment === "contradiction"
+      || value.opening_alignment === "not_evaluable")
     && (value.overall_delivery === null || value.overall_delivery === "aligned"
       || value.overall_delivery === "partial" || value.overall_delivery === "mismatched"
       || value.overall_delivery === "not_evaluable")

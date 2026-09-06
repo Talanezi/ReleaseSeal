@@ -143,6 +143,14 @@ def test_short_black_edit_transition_is_below_interval_thresholds(
     assert "VIDEO_FREEZE_SEGMENT" not in [finding.code for finding in result.findings]
 
 
+def test_brief_black_flash_is_a_review_candidate(black_flash_video: Path) -> None:
+    result = MediaAnomalyScanner().scan(black_flash_video)
+    finding = _finding(result.findings, "VIDEO_SHORT_BLACK_FLASH", near=2.0)
+    assert finding.timestamp_start_seconds == pytest.approx(2.0, abs=0.08)
+    assert finding.timestamp_end_seconds == pytest.approx(2.12, abs=0.08)
+    assert finding.status.value == "NEEDS_REVIEW"
+
+
 def test_video_without_audio_returns_only_missing_audio_finding(
     video_without_audio: Path,
 ) -> None:

@@ -1,52 +1,40 @@
 # Creator Preflight judge demo
 
-## Prepare the package
+## Official browser demo
 
-From the repository root:
+Start the backend and frontend with the README Quick Start, open `http://127.0.0.1:5173`, and click **Load demo**. The browser loads one deliberately tracked, copyright-free package through the normal product form:
 
-```sh
-.venv/bin/python scripts/prepare_judge_demo.py
-```
+- video: `frontend/public/demo/creator-preflight-official-demo.mp4`
+- thumbnail, captions, title, and description: adjacent files with the same `creator-preflight-official-` prefix
+- duration: approximately 3:00
+- format: 1280×720 H.264/AAC
+- story: a narrated, creator-style explainer about the return of European night trains
 
-This generates ignored local media under `demo/generated/judge/` and uses the tracked package inputs under `demo/judge/`:
+The tracked binary makes the judge path portable. It does not require macOS speech synthesis, a media download, or fixture generation. Maintainers can regenerate the locally drawn/narrated asset with `.venv/bin/python scripts/generate_official_demo.py`; that optional regeneration command currently uses macOS `say`.
 
-- defective video: `demo/generated/judge/creator-preflight-judge-defective.mp4`
-- corrected video: `demo/generated/judge/creator-preflight-judge-corrected.mp4`
-- thumbnail: `demo/generated/judge/creator-preflight-judge-thumbnail.png`
-- title: `demo/judge/title.txt`
-- description: `demo/judge/description.txt`
-- captions: `demo/judge/captions-defective.srt` or `captions-corrected.srt`
-- opt-in Gemini profile: `demo/judge/ai-config.yml`
+## Expected deterministic evidence
 
-The generator uses only locally drawn graphics and macOS speech synthesis. No generated binary is tracked.
+The sample has only three deliberate issues:
 
-For deterministic-only judging, use the default backend configuration. For all three optional Gemini tasks, export `GEMINI_API_KEY` in the backend terminal and start FastAPI with:
+| Evidence | Expected interval | Intended workflow |
+|---|---:|---|
+| Brief black flash candidate | about `00:46.00–00:46.21` | review evidence; no automatic repair |
+| Sustained black export gap | about `01:18.04–01:22.04` | preview and approve the backend-owned removal |
+| Sustained audio dropout | about `02:06.03–02:12.01` | human judgment; no fabricated audio repair |
 
-```sh
-CREATOR_PREFLIGHT_CONFIG=demo/judge/ai-config.yml \
-  .venv/bin/uvicorn creator_preflight.api:app --app-dir backend/src --host 127.0.0.1 --port 8000
-```
-
-Then start `cd frontend && npm run dev -- --host 127.0.0.1` and open `http://127.0.0.1:5173`.
+The opening is a relevant hook that immediately establishes the title's value. Full Review should treat direct-delivery timing as informational rather than applying a fixed timer. Semantic checks may conservatively abstain; the deterministic repair story remains complete without forcing a probabilistic finding.
 
 ## Recommended 90–120 second sequence
 
-1. **0–10s — problem.** “A final export can look finished and still contain mistakes that are painful to discover after publishing.”
-2. **10–25s — load the defective package.** Select the defective video, tracked title/description/captions, and aligned thumbnail, then run Preflight.
-3. **25–45s — technical evidence.** Open the black-section finding and click `00:12.00–00:15.07`; the local video seeks to the export gap.
-4. **45–65s — editorial evidence.** Show the Promise summary and seek the delayed-promise finding to its evidence interval.
-5. **65–85s — verified AI evidence.** Briefly reference the controlled M13 Viewer Pass proof (spoken `2021` versus visible `2020`, placeholder, and accidental repetition) and the controlled M14 Claim Review proof (Apollo 11/1968 at 12s, one grounded conflict, and real provider citations). State clearly that these are focused acceptance fixtures, not findings from the realistic video.
-6. **85–105s — corrected ending.** Start a new scan and load the corrected video with `captions-corrected.srt`. Its full production scan is `READY`: 23/23 checks, Promise aligned from 0s, Viewer clean, and no Claim conflict.
-7. **105–115s — close.** “Creator Preflight reviews the finished upload before your audience does.”
+1. **0–10s — problem.** “A finished upload can still hide an export gap, a dropped track, or an editorial detail that is painful to discover after publishing.”
+2. **10–20s — load.** Click **Load demo**. Briefly show that video, title, description, captions, and thumbnail are already present.
+3. **20–35s — check.** Choose Full Review when credentials are configured, then show truthful stage progress, elapsed time, and the optional **What’s happening?** disclosure.
+4. **35–52s — understand.** Read the compact AI review. In the Action Queue, click the black export gap and show the main player seeking to `01:18`.
+5. **52–70s — fix.** Preview the black removal, compare Original and Proposed repair, approve it, and apply the new export.
+6. **70–88s — verify.** Show the automatic repaired scan, no unintended changes, and the Original/Repaired/Review Reel choices in the same player. The Review Reel should be substantially shorter than the three-minute source.
+7. **88–102s — judgment.** Use **Review next** on the audio dropout, mark a session-local decision, and point out that acceptance is not mislabeled as an automated resolution.
+8. **102–115s — proof and close.** Briefly mention the separately verified controlled Continuity example (narration/graphic conflict, placeholder, repetition) and Claim Review example (Apollo 11/1968 at 12s with provider citations). End with: “Scan. Fix. Verify.”
 
-## Evidence map
+## Separate engineering fixture
 
-| Layer | Defective evidence | Corrected behavior |
-|---|---|---|
-| Technical integrity | black video at 12.0–15.07s | no technical findings |
-| Promise Check | subject begins at about 24s, beyond the 20s policy | subject begins immediately |
-| Final Viewer Pass | demonstrated separately by the verified M13 controlled fixture | clean on the corrected realistic package |
-| Claim Review | demonstrated separately by the verified M14 Apollo 11/1968 fixture at 12s | no conflict on the corrected realistic package |
-| Captions | five valid cues, full timeline coverage | five valid cues, full timeline coverage |
-
-The main realistic demo intentionally promises only the evidence verified reliably on that package: `AI_PROMISE_DELAY` at 0–24s and `VIDEO_BLACK_SEGMENT` at 12.0–15.066667s. Claim Review abstained on that defective package, so no claim result should be fabricated or attributed to it. The verified M13 and M14 focused fixtures provide the Viewer Pass and grounded Claim Review proof. The corrected realistic package completed a full production scan as `READY` with 23/23 checks, one shared upload, four generation requests, and successful cleanup.
+`./scripts/run_demo.sh` generates the 12-second anomaly fixture with black at 2–5s, silence at 3–6s, freeze at 7–10s, hard-limited audio, and a title warning. It is intentionally fast and synthetic for regression work. It is not the official judge video and should not be presented as the creator-style demo.

@@ -8,6 +8,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from creator_preflight.repair_models import RepairPlan
+from creator_preflight.release_models import ReleaseBrief, ReleaseBriefSource
 
 
 class FindingSeverity(str, Enum):
@@ -190,6 +191,10 @@ class PromiseCheckSummary(BaseModel):
     first_substantive_address_evidence: str | None = Field(
         default=None, max_length=1000
     )
+    opening_alignment: Literal[
+        "direct_delivery", "relevant_hook", "relevant_setup", "unrelated_delay",
+        "contradiction", "not_evaluable"
+    ] | None = None
     overall_delivery: Literal["aligned", "partial", "mismatched", "not_evaluable"] | None = None
     explanation: str | None = Field(default=None, max_length=1500)
     confidence: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
@@ -218,6 +223,7 @@ class ClaimReviewStatus(str, Enum):
     DISABLED = "disabled"
     NO_CLAIMS = "no_claims"
     CLEAN = "clean"
+    INCONCLUSIVE = "inconclusive"
     NEEDS_REVIEW = "needs_review"
     UNAVAILABLE = "unavailable"
 
@@ -240,7 +246,7 @@ class PreflightReport(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = "1.6"
+    schema_version: str = "1.8"
     verdict: FindingStatus
     scan_completeness: ScanCompleteness = ScanCompleteness.COMPLETE
     review_mode: ReviewMode = ReviewMode.LOCAL
@@ -260,6 +266,11 @@ class PreflightReport(BaseModel):
     viewer_pass: ViewerPassSummary
     claim_review: ClaimReviewSummary
     repair_plan: RepairPlan = Field(default_factory=RepairPlan)
+    release_brief: ReleaseBrief = Field(default_factory=lambda: ReleaseBrief(
+        source=ReleaseBriefSource.DETERMINISTIC,
+        headline="Review complete",
+        summary="The completed checks are summarized in this report.",
+    ))
     scan_duration_seconds: float = Field(ge=0)
 
 
@@ -291,6 +302,7 @@ class PreflightCapabilities(BaseModel):
     gemini_dependency_available: bool
     gemini_api_key_configured: bool
     full_review_available: bool
+    metadata_assist_available: bool
     local_checks_available: bool
     transcription_dependency_available: bool
     transcription_enabled: bool

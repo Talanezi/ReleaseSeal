@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from time import perf_counter
+from typing import Callable
 
 from creator_preflight.ai_review import (
     AIReviewError,
@@ -52,6 +53,7 @@ from creator_preflight.promise_check import (
     promise_findings,
 )
 from creator_preflight.repairs import build_repair_plan
+from creator_preflight.release_brief import ai_release_brief, deterministic_release_brief
 from creator_preflight.rules import evaluate_package_rules
 from creator_preflight.transcription import (
     SpeechTranscriber,
@@ -98,6 +100,7 @@ class MediaAnomalyScanner:
                     self.config.black,
                     ffmpeg_binary=self.ffmpeg_binary,
                     timeout_seconds=self.timeout_seconds,
+                    short_config=self.config.short_black,
                 )
             )
             findings.extend(
@@ -191,6 +194,7 @@ class PreflightScanner:
         package: PublishingPackage,
         *,
         review_mode: ReviewMode | None = None,
+        progress: Callable[[str, int, str], None] | None = None,
     ) -> PreflightReport:
         started_at = perf_counter()
         effective_review_mode = review_mode or (
@@ -200,6 +204,8 @@ class PreflightScanner:
         detector_config.streams.expect_video = self.config.rules.video.require_video
         detector_config.streams.expect_audio = self.config.rules.video.require_audio
 
+        report_progress = progress or (lambda stage, percent, message: None)
+        report_progress("technical_checks", 12, "Checking picture and sound")
         anomaly_result = MediaAnomalyScanner(
             config=detector_config,
             ffprobe_binary=self.ffprobe_binary,
@@ -266,6 +272,11 @@ class PreflightScanner:
                 maximum_pixels=self.config.ai_review.promise_check.maximum_thumbnail_pixels,
                 maximum_decompressed_bytes=self.config.ai_review.promise_check.maximum_thumbnail_decompressed_bytes,
             )
+        report_progress(
+            "technical_checks",
+            34 if effective_review_mode is ReviewMode.FULL else 78,
+            "Checking picture and sound",
+        )
         ai_findings: list[Finding] = []
         ai_checks: list[CheckResult] = []
         ai_summary = AIReviewSummary(
@@ -306,6 +317,7 @@ class PreflightScanner:
         needs_provider = claim_enabled or viewer_enabled or (promise_enabled and bool(package.title.strip()))
         if needs_provider and self.ai_adapter is not None:
             try:
+                report_progress("preparing_ai_media", 38, "Getting the review media ready")
                 media_mime_type = provider_video_mime_type(
                     anomaly_result.media.format_name, media_path
                 )
@@ -329,8 +341,10 @@ class PreflightScanner:
                 if claim_enabled:
                     task_errors["claims"] = exc
 
-        if promise_enabled and package.title.strip() and "promise" not in task_errors:
+        promise_attempted = promise_enabled and bool(package.title.strip()) and "promise" not in task_errors
+        if promise_attempted:
             try:
+                report_progress("opening_review", 43, "Reviewing the opening")
                 if session is not None:
                     promise_result = self.promise_reviewer.review_in_session(
                         session,
@@ -353,9 +367,13 @@ class PreflightScanner:
                     )
             except AIReviewError as exc:
                 task_errors["promise"] = exc
+        if promise_attempted:
+            report_progress("opening_review", 55, "Reviewing the opening")
 
-        if viewer_enabled and "viewer" not in task_errors:
+        viewer_attempted = viewer_enabled and "viewer" not in task_errors
+        if viewer_attempted:
             try:
+                report_progress("continuity_review", 58, "Checking the final edit")
                 if session is not None:
                     viewer_result = self.viewer_reviewer.review_in_session(
                         session,
@@ -370,9 +388,13 @@ class PreflightScanner:
                     )
             except AIReviewError as exc:
                 task_errors["viewer"] = exc
+        if viewer_attempted:
+            report_progress("continuity_review", 70, "Checking the final edit")
 
-        if claim_enabled and "claims" not in task_errors:
+        claim_attempted = claim_enabled and "claims" not in task_errors
+        if claim_attempted:
             try:
+                report_progress("factual_review", 73, "Checking factual claims")
                 if session is not None:
                     claim_result = self.claim_reviewer.review_in_session(
                         session,
@@ -391,9 +413,8 @@ class PreflightScanner:
                     )
             except AIReviewError as exc:
                 task_errors["claims"] = exc
-
-        if session is not None:
-            session.close()
+        if claim_attempted:
+            report_progress("factual_review", 86, "Checking factual claims")
 
         if promise_result is not None:
             promise_task_findings = promise_findings(
@@ -467,6 +488,7 @@ class PreflightScanner:
                 status=(
                     ClaimReviewStatus.NO_CLAIMS if not claim_result.review.claims
                     else ClaimReviewStatus.NEEDS_REVIEW if conflicts
+                    else ClaimReviewStatus.INCONCLUSIVE if insufficient
                     else ClaimReviewStatus.CLEAN
                 ),
                 claims_checked=len(claim_result.review.claims),
@@ -564,13 +586,39 @@ class PreflightScanner:
             if warning_count
             else FindingStatus.READY
         )
+        completeness = (
+            ScanCompleteness.PARTIAL
+            if execution_issues
+            else ScanCompleteness.COMPLETE
+        )
+        repair_plan = build_repair_plan(findings)
+        release_brief = deterministic_release_brief(
+            verdict=verdict,
+            completeness=completeness,
+            findings=findings,
+            inconclusive_claim_count=claim_summary.insufficient_evidence_count,
+        )
+        if (
+            effective_review_mode is ReviewMode.FULL
+            and self.config.ai_review.release_brief.enabled
+            and session is not None
+        ):
+            report_progress("preparing_review", 89, "Preparing your review")
+            release_brief = ai_release_brief(
+                session,
+                verdict=verdict,
+                completeness=completeness,
+                findings=findings,
+                repair_plan=repair_plan,
+                inconclusive_claim_count=claim_summary.insufficient_evidence_count,
+            )
+        if session is not None:
+            session.close()
+            ai_summary.cleanup_succeeded = session.cleanup_succeeded
+        report_progress("final_report", 97, "Almost there")
         return PreflightReport(
             verdict=verdict,
-            scan_completeness=(
-                ScanCompleteness.PARTIAL
-                if execution_issues
-                else ScanCompleteness.COMPLETE
-            ),
+            scan_completeness=completeness,
             review_mode=effective_review_mode,
             execution_issues=execution_issues,
             media=anomaly_result.media,
@@ -589,7 +637,8 @@ class PreflightScanner:
             promise_check=promise_summary,
             viewer_pass=viewer_summary,
             claim_review=claim_summary,
-            repair_plan=build_repair_plan(findings),
+            repair_plan=repair_plan,
+            release_brief=release_brief,
             scan_duration_seconds=perf_counter() - started_at,
         )
 
@@ -670,7 +719,7 @@ def _technical_check_results(
     if media.has_video:
         checks.extend(
             [
-                ("detector.black", {"VIDEO_BLACK_SEGMENT"}),
+                ("detector.black", {"VIDEO_BLACK_SEGMENT", "VIDEO_SHORT_BLACK_FLASH"}),
                 ("detector.freeze", {"VIDEO_FREEZE_SEGMENT"}),
             ]
         )
@@ -721,6 +770,7 @@ def _promise_summary(review, findings: list[Finding]) -> PromiseCheckSummary:
         inferred_promise=review.inferred_promise,
         first_substantive_address_seconds=review.first_substantive_address_seconds,
         first_substantive_address_evidence=review.first_substantive_address_evidence,
+        opening_alignment=review.opening_alignment.value,
         overall_delivery=review.overall_delivery.value,
         explanation=review.overall_delivery_explanation,
         confidence=review.confidence,

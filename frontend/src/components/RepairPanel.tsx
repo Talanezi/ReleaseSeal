@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, Film, Play, RotateCcw, Scissors, X } from "lucide-react";
+import { Check, Film, Play, RotateCcw, Scissors, X } from "lucide-react";
 import { applyRepairs, errorPresentation, isAbortError, previewRepair, renderReviewReel, verifyRepair } from "../api/preflight";
 import type { PreflightReport, RepairOperation, RepairProposal, ReviewMode, VerificationReport } from "../types/preflight";
 import { formatDuration, formatTimecode } from "../utils/format";
@@ -9,12 +9,15 @@ interface RepairPanelProps {
   sourceFile: File | null;
   originalPreviewUrl?: string | null;
   onSeek: (seconds: number) => void;
+  onRepairedMedia: (file: File | null, duration: number | null) => void;
+  onReviewReelMedia: (file: File | null) => void;
+  onSelectMedia: (mode: "original" | "repaired" | "reel", seconds?: number) => void;
   packageInput?: { title: string; description: string; captions?: File | null; thumbnail?: File | null; reviewMode: ReviewMode };
 }
 
 type HumanDisposition = "PENDING" | "ACCEPTED_INTENTIONAL" | "NEEDS_CHANGE";
 
-export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, packageInput }: RepairPanelProps) {
+export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, onRepairedMedia, onReviewReelMedia, onSelectMedia, packageInput }: RepairPanelProps) {
   const [activeProposal, setActiveProposal] = useState<RepairProposal | null>(null);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
@@ -26,15 +29,15 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, pa
   const [repairedDuration, setRepairedDuration] = useState<number | null>(null);
   const [appliedCount, setAppliedCount] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [repairedUrl, setRepairedUrl] = useState<string | null>(null);
   const [verification, setVerification] = useState<VerificationReport | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [reviewReel, setReviewReel] = useState<File | null>(null);
-  const [reviewReelUrl, setReviewReelUrl] = useState<string | null>(null);
   const [humanDispositions, setHumanDispositions] = useState<Record<string, HumanDisposition>>({});
+  const [showAccepted, setShowAccepted] = useState(false);
+  const [appliedSignature, setAppliedSignature] = useState<string | null>(null);
+  const [activeReviewId, setActiveReviewId] = useState<string | null>(null);
   const originalContextRef = useRef<HTMLVideoElement>(null);
-  const repairedVideoRef = useRef<HTMLVideoElement>(null);
   const requestRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -46,26 +49,6 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, pa
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [previewBlob]);
-
-  useEffect(() => {
-    if (!repairedFile || typeof URL.createObjectURL !== "function") {
-      setRepairedUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(repairedFile);
-    setRepairedUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [repairedFile]);
-
-  useEffect(() => {
-    if (!reviewReel || typeof URL.createObjectURL !== "function") {
-      setReviewReelUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(reviewReel);
-    setReviewReelUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [reviewReel]);
 
   useEffect(() => () => requestRef.current?.abort(), []);
 
@@ -87,6 +70,24 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, pa
     const needsChange = proposals.filter((proposal) => humanDispositions[proposal.proposal_id] === "NEEDS_CHANGE").length;
     return { total: proposals.length, accepted, needsChange, pending: proposals.length - accepted - needsChange };
   }, [humanDispositions, report.repair_plan.proposals]);
+  const humanProposals = useMemo(
+    () => report.repair_plan.proposals.filter((proposal) => proposal.repairability === "HUMAN_ONLY"),
+    [report.repair_plan.proposals],
+  );
+  const openHumanReview = (proposal: RepairProposal) => {
+    setActiveReviewId(proposal.proposal_id);
+    if (proposal.start_seconds !== null) onSeek(proposal.start_seconds);
+  };
+  const reviewNext = () => {
+    const next = humanProposals.find((proposal) => (humanDispositions[proposal.proposal_id] ?? "PENDING") === "PENDING");
+    if (next) openHumanReview(next);
+  };
+  const approvedSignature = approvedOperations.map((operation) => `${operation.start_seconds}:${operation.end_seconds}`).join("|");
+  const hasUnappliedApprovals = approvedOperations.length > 0 && approvedSignature !== appliedSignature;
+  const orderedProposals = useMemo(() => report.repair_plan.proposals
+    .filter((proposal) => showAccepted || humanDispositions[proposal.proposal_id] !== "ACCEPTED_INTENTIONAL")
+    .sort((left, right) => proposalRank(left, humanDispositions) - proposalRank(right, humanDispositions)),
+  [humanDispositions, report.repair_plan.proposals, showAccepted]);
 
   if (!report.repair_plan.proposals.length) return null;
 
@@ -146,13 +147,16 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, pa
       const name = repairedFilename(sourceFile.name);
       const repaired = new File([result.blob], name, { type: "video/mp4" });
       setRepairedFile(repaired);
+      onRepairedMedia(repaired, result.outputDurationSeconds);
       setRepairedDuration(result.outputDurationSeconds);
       setAppliedCount(approvedOperations.length);
+      setAppliedSignature(approvedSignature);
       setApplying(false);
       setVerifying(true);
       setVerification(null);
       setVerificationError(null);
       setReviewReel(null);
+      onReviewReelMedia(null);
       try {
         const verified = await verifyRepair({
           originalVideo: sourceFile,
@@ -169,7 +173,11 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, pa
         setVerification(verified);
         if (verified.review_reel_available) {
           const reel = await renderReviewReel(repaired, verified.review_reel_manifest, { signal: controller.signal });
-          if (!controller.signal.aborted) setReviewReel(new File([reel.blob], "creator-preflight.review-reel.mp4", { type: "video/mp4" }));
+          if (!controller.signal.aborted) {
+            const reelFile = new File([reel.blob], "creator-preflight.review-reel.mp4", { type: "video/mp4" });
+            setReviewReel(reelFile);
+            onReviewReelMedia(reelFile);
+          }
         }
       } catch (error) {
         if (!isAbortError(error) && !controller.signal.aborted) setVerificationError(errorPresentation(error).message);
@@ -189,22 +197,25 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, pa
   const plan = report.repair_plan;
   function clearRenderedOutput() {
     setRepairedFile(null);
+    onRepairedMedia(null, null);
     setRepairedDuration(null);
     setAppliedCount(0);
+    setAppliedSignature(null);
     setVerification(null);
     setVerificationError(null);
     setReviewReel(null);
+    onReviewReelMedia(null);
   }
   return (
     <section className="repair-panel" aria-labelledby="repair-heading">
       <header className="repair-header">
         <div>
-          <h2 id="repair-heading">Repair queue</h2>
+          <h2 id="repair-heading">Action queue</h2>
           <p>
-            {plan.safe_count} safe {plural(plan.safe_count, "repair")} · {plan.preview_required_count} to preview · {plan.human_only_count} need your judgment
+            {plan.safe_count + plan.preview_required_count} can fix or preview · {humanReview.pending} waiting for review · {humanReview.needsChange} need change
           </p>
         </div>
-        {approvedOperations.length > 0 && (
+        {hasUnappliedApprovals && (
           <button className="primary-button" type="button" disabled={applying || !sourceFile} onClick={() => void applyApproved()}>
             <Scissors aria-hidden="true" /> {applying ? "Rendering repaired video…" : `Apply ${approvedOperations.length} approved ${plural(approvedOperations.length, "repair")}`}
           </button>
@@ -220,25 +231,41 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, pa
           <p className="human-review-counts" aria-label="Human review counts">
             <strong>{humanReview.accepted}</strong> accepted · <strong>{humanReview.needsChange}</strong> {humanReview.needsChange === 1 ? "needs" : "need"} change · <strong>{humanReview.pending}</strong> pending
           </p>
+          {humanReview.pending > 0 && (
+            <button className="secondary-button review-next" type="button" onClick={reviewNext}>
+              Review next · {humanReview.total - humanReview.pending} of {humanReview.total} reviewed
+            </button>
+          )}
           {humanReview.pending === 0 && (
             <p className="human-review-complete">
               <Check aria-hidden="true" /> Human review is complete.{humanReview.needsChange > 0 ? ` ${humanReview.needsChange} ${plural(humanReview.needsChange, "issue")} still ${humanReview.needsChange === 1 ? "needs" : "need"} editing.` : " No items are marked as needing a change."}
             </p>
           )}
+          {humanReview.accepted > 0 && (
+            <button className="text-button" type="button" aria-expanded={showAccepted} onClick={() => setShowAccepted((current) => !current)}>
+              {showAccepted ? "Hide accepted items" : `Show ${humanReview.accepted} accepted ${plural(humanReview.accepted, "item")}`}
+            </button>
+          )}
         </section>
       )}
 
       <div className="repair-list">
-        {plan.proposals.map((proposal) => {
+        {orderedProposals.map((proposal) => {
           const approved = approvedIds.has(proposal.proposal_id);
           const humanDisposition = humanDispositions[proposal.proposal_id] ?? "PENDING";
           const setHumanDisposition = (disposition: HumanDisposition) => {
             setHumanDispositions((current) => ({ ...current, [proposal.proposal_id]: disposition }));
+            const next = humanProposals.find((candidate) => (
+              candidate.proposal_id !== proposal.proposal_id
+              && (humanDispositions[candidate.proposal_id] ?? "PENDING") === "PENDING"
+            ));
+            setActiveReviewId(next?.proposal_id ?? null);
+            if (next?.start_seconds !== null && next?.start_seconds !== undefined) onSeek(next.start_seconds);
           };
           return (
-            <article className={`repair-item${proposal.repairability === "HUMAN_ONLY" ? ` human-${humanDisposition.toLowerCase()}` : ""}`} key={proposal.proposal_id}>
+            <article className={`repair-item${proposal.repairability === "HUMAN_ONLY" ? ` human-${humanDisposition.toLowerCase()}` : ""}${activeReviewId === proposal.proposal_id ? " is-reviewing" : ""}`} key={proposal.proposal_id}>
               <div className={`repair-class repair-${proposal.repairability.toLowerCase()}`}>
-                {proposal.repairability === "SAFE" ? "Safe repair" : proposal.repairability === "PREVIEW_REQUIRED" ? "Preview required" : humanDisposition === "ACCEPTED_INTENTIONAL" ? "Reviewed — accepted" : humanDisposition === "NEEDS_CHANGE" ? "Needs change" : "Your judgment"}
+                {proposal.repairability === "SAFE" ? "Can fix" : proposal.repairability === "PREVIEW_REQUIRED" ? "Preview" : humanDisposition === "ACCEPTED_INTENTIONAL" ? "Accepted" : humanDisposition === "NEEDS_CHANGE" ? "Needs change" : "Review"}
               </div>
               <div className="repair-copy">
                 <h3>{proposal.finding_title}</h3>
@@ -253,12 +280,6 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, pa
                 )}
                 {proposal.original_start_seconds !== null && proposal.original_end_seconds !== null && (
                   <small>Original/reference interval: {formatTimecode(proposal.original_start_seconds)}–{formatTimecode(proposal.original_end_seconds)}</small>
-                )}
-                {proposal.repairability === "HUMAN_ONLY" && humanDisposition === "ACCEPTED_INTENTIONAL" && (
-                  <small className="human-decision-copy">Marked intentional by you.</small>
-                )}
-                {proposal.repairability === "HUMAN_ONLY" && humanDisposition === "NEEDS_CHANGE" && (
-                  <small className="human-decision-copy">You marked this as something that still needs editing.</small>
                 )}
               </div>
               <div className="repair-actions">
@@ -282,17 +303,17 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, pa
                 ) : proposal.repairability === "HUMAN_ONLY" ? (
                   <>
                     {proposal.start_seconds !== null && humanDisposition !== "ACCEPTED_INTENTIONAL" && (
-                      <button className="secondary-button" type="button" onClick={() => onSeek(proposal.start_seconds as number)}>
-                        <Film aria-hidden="true" /> {humanDisposition === "NEEDS_CHANGE" ? "Review again" : "Review moment"}
+                      <button className="secondary-button" type="button" onClick={() => openHumanReview(proposal)}>
+                        <Film aria-hidden="true" /> Review
                       </button>
                     )}
                     {humanDisposition === "PENDING" ? (
                       <>
-                        <button className="secondary-button" type="button" onClick={() => setHumanDisposition("ACCEPTED_INTENTIONAL")}>Looks intentional</button>
+                        <button className="secondary-button" type="button" onClick={() => setHumanDisposition("ACCEPTED_INTENTIONAL")}>Accept</button>
                         <button className="secondary-button" type="button" onClick={() => setHumanDisposition("NEEDS_CHANGE")}>Needs a change</button>
                       </>
                     ) : (
-                      <button className="secondary-button" type="button" onClick={() => setHumanDisposition("PENDING")}>
+                      <button className="secondary-button" type="button" onClick={() => { setHumanDispositions((current) => ({ ...current, [proposal.proposal_id]: "PENDING" })); openHumanReview(proposal); }}>
                         <RotateCcw aria-hidden="true" /> Change decision
                       </button>
                     )}
@@ -346,39 +367,40 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, pa
       {applyError && <p className="repair-error apply-error" role="alert">{applyError}</p>}
       {verifying && <p className="verification-progress" role="status">Verifying repair… Re-scanning the repaired export and checking for unexpected visual changes.</p>}
       {verificationError && <p className="repair-error apply-error" role="alert">Verification could not finish: {verificationError} The repaired video remains available.</p>}
-      {repairedFile && repairedUrl && (
+      {repairedFile && (
         <section className="repaired-output" aria-labelledby="repaired-output-title">
           <div>
-            <h3 id="repaired-output-title">{verification?.status === "VERIFIED" ? "Repair verified" : verification?.status === "NEEDS_REVIEW" ? "Repair needs review" : verification?.status === "INCOMPLETE" ? "Verification incomplete" : "Repaired video"}</h3>
-            <p>{verification ? `${appliedCount} ${plural(appliedCount, "repair")} applied · ${verification.resolved.length} resolved · ${verification.remaining.length} remaining · ${verification.new.length} new · ${verification.unexpected_changes.length} unexpected` : `Repaired export created with ${appliedCount} ${plural(appliedCount, "repair")} applied.`}</p>
+            <h3 id="repaired-output-title">Repair result</h3>
+            <p>{verification ? `${verification.resolved.length} fixed · ${verification.remaining.length} still need attention · ${verification.new.length} new · ${verification.unexpected_changes.length} unexpected` : `Repaired export created with ${appliedCount} ${plural(appliedCount, "repair")} applied.`}</p>
             <small>
               Original: {formatDuration(report.media.duration_seconds)} · Repaired: {formatDuration(repairedDuration)}
             </small>
           </div>
-          {verification && <VerificationItems report={verification} onSeek={(seconds) => { if (repairedVideoRef.current) { repairedVideoRef.current.currentTime = seconds; repairedVideoRef.current.focus(); } }} />}
-          <video ref={repairedVideoRef} data-testid="repaired-video" src={repairedUrl} controls preload="metadata" />
-          <a className="primary-button download-repair" href={repairedUrl} download={repairedFile.name}>
-            <Download aria-hidden="true" /> Download repaired video
-          </a>
-          {reviewReel && reviewReelUrl && verification && (
-            <section className="review-reel" aria-labelledby="review-reel-title">
-              <h4 id="review-reel-title">Review Reel</h4>
-              <p>{formatDuration(verification.review_reel_manifest.total_duration_seconds)} of repair and review moments.</p>
-              <video data-testid="review-reel-video" src={reviewReelUrl} controls preload="metadata" />
-              <ol>{verification.review_reel_manifest.entries.map((entry, index) => <li key={`${entry.reel_start_seconds}-${index}`}><strong>{formatTimecode(entry.reel_start_seconds)}–{formatTimecode(entry.reel_end_seconds)}</strong> {entry.reason}</li>)}</ol>
-              <a className="secondary-button" href={reviewReelUrl} download={reviewReel.name}><Download aria-hidden="true" /> Download Review Reel</a>
-            </section>
-          )}
+          <div className="repair-result-actions">
+            <button className="secondary-button" type="button" onClick={() => onSelectMedia("repaired")}>Play repaired</button>
+            {reviewReel && <button className="secondary-button" type="button" onClick={() => onSelectMedia("reel")}>Play Review Reel</button>}
+          </div>
+          {verification && <>
+            <div className="post-repair-brief">
+              <strong>{verification.repaired_preflight_report.release_brief.headline}</strong>
+              <p>{verification.repaired_preflight_report.release_brief.summary}</p>
+            </div>
+            <VerificationItems report={verification} onSeek={(seconds) => onSelectMedia("repaired", seconds)} />
+          </>}
         </section>
       )}
+      <div className="report-export" aria-label="Export report">
+        <span>Export report</span>
+        {(["csv", "markdown", "json"] as const).map((format) => <button key={format} className="text-button" type="button" onClick={() => exportReport(format, report, humanDispositions, verification)}>{format === "markdown" ? "Markdown" : format.toUpperCase()}</button>)}
+      </div>
     </section>
   );
 }
 
 function VerificationItems({ report, onSeek }: { report: VerificationReport; onSeek: (seconds: number) => void }) {
   return <div className="verification-items">
-    {!report.unexpected_changes.length && <p><Check aria-hidden="true" /> No unexpected visual changes detected.</p>}
-    {[...report.resolved, ...report.remaining, ...report.new].map((item, index) => {
+    {!report.unexpected_changes.length && <p><Check aria-hidden="true" /> No unexpected changes found.</p>}
+    {[...report.remaining, ...report.new].map((item, index) => {
       const finding = item.repaired_finding ?? item.original_finding;
       const time = item.repaired_finding?.timestamp_start_seconds ?? item.expected_repaired_start_seconds;
       return <article key={`${item.status}-${finding?.code ?? index}-${index}`}>
@@ -388,7 +410,60 @@ function VerificationItems({ report, onSeek }: { report: VerificationReport; onS
       </article>;
     })}
     {report.unexpected_changes.map((change) => <article key={`${change.start_seconds}-${change.end_seconds}`}><strong>Unexpected change</strong><p>This region changed materially outside the approved edit.</p><button className="repair-timecode" type="button" onClick={() => onSeek(change.start_seconds)}>{formatTimecode(change.start_seconds)}–{formatTimecode(change.end_seconds)}</button></article>)}
+    {report.resolved.length > 0 && <details><summary>Show {report.resolved.length} fixed {plural(report.resolved.length, "item")}</summary>{report.resolved.map((item, index) => <p key={`${item.original_finding?.code ?? index}-fixed`}>{item.original_finding?.details?.title ? String(item.original_finding.details.title) : item.original_finding?.code}</p>)}</details>}
   </div>;
+}
+
+function proposalRank(proposal: RepairProposal, dispositions: Record<string, HumanDisposition>): number {
+  const disposition = dispositions[proposal.proposal_id] ?? "PENDING";
+  if (disposition === "NEEDS_CHANGE") return 0;
+  if (proposal.repairability === "HUMAN_ONLY" && disposition === "PENDING") return 1;
+  if (proposal.operation) return 2;
+  return 3;
+}
+
+function exportReport(format: "csv" | "markdown" | "json", report: PreflightReport, dispositions: Record<string, HumanDisposition>, verification: VerificationReport | null) {
+  const rows = report.findings.map((finding) => {
+    const proposal = report.repair_plan.proposals.find((candidate) => (
+      candidate.finding_code === finding.code
+      && candidate.start_seconds === finding.timestamp_start_seconds
+      && candidate.end_seconds === finding.timestamp_end_seconds
+    ));
+    return {
+      status: finding.status,
+      severity: finding.severity,
+      category: String(finding.details?.category ?? "other"),
+      start: finding.timestamp_start_seconds,
+      end: finding.timestamp_end_seconds,
+      title: String(finding.details?.title ?? finding.code),
+      evidence: finding.message,
+      suggested_action: finding.suggestion,
+      repair_state: proposal?.operation ? "available" : "review",
+      human_decision: proposal ? dispositions[proposal.proposal_id] ?? "PENDING" : null,
+      verification_state: verification?.resolved.some((item) => item.original_finding?.code === finding.code) ? "FIXED" : verification?.remaining.some((item) => item.original_finding?.code === finding.code) ? "REMAINING" : null,
+    };
+  });
+  const content = format === "json" ? JSON.stringify({ verdict: report.verdict, completeness: report.scan_completeness, findings: rows }, null, 2)
+    : format === "markdown" ? ["# Review report", "", `Status: ${report.verdict}`, "", "| Status | Start | Finding | Decision |", "| --- | --- | --- | --- |", ...rows.map((row) => `| ${row.status} | ${row.start ?? "Global"} | ${escapeCell(row.title)} | ${row.human_decision ?? ""} |`)].join("\n")
+    : ["status,severity,category,start,end,title,evidence,suggested_action,repair_state,human_decision,verification_state", ...rows.map((row) => [row.status, row.severity, row.category, row.start ?? "", row.end ?? "", row.title, row.evidence, row.suggested_action ?? "", row.repair_state, row.human_decision ?? "", row.verification_state ?? ""].map(csvCell).join(","))].join("\n");
+  downloadText(`creator-preflight-report.${format === "markdown" ? "md" : format}`, content, format === "json" ? "application/json" : "text/plain");
+}
+
+function downloadText(filename: string, content: string, type: string) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function csvCell(value: unknown): string {
+  return `"${String(value).replaceAll('"', '""')}"`;
+}
+
+function escapeCell(value: string): string {
+  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
 
 function rangesOverlap(left: RepairOperation, right: RepairOperation): boolean {

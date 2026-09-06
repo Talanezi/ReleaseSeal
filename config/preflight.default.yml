@@ -9,6 +9,14 @@ detectors:
     min_duration_seconds: 2.0
     pixel_black_threshold: 0.10
     picture_black_ratio: 0.98
+  # Conservative near-black flashes from roughly two frames to 350ms. Longer
+  # transitions remain neither flash candidates nor sustained-black findings.
+  short_black:
+    enabled: true
+    min_duration_seconds: 0.08
+    max_duration_seconds: 0.35
+    pixel_black_threshold: 0.10
+    picture_black_ratio: 0.98
   silence:
     min_duration_seconds: 2.0
     noise_threshold_db: -50.0
@@ -80,12 +88,11 @@ ai_review:
   timeout_seconds: 180.0
   maximum_observations: 5
   timestamp_tolerance_seconds: 1.0
-  # Promise Check uses the model only to identify evidence and timing. Creator
-  # Preflight emits a delay warning only when substantive delivery begins after
-  # this transparent application threshold, and suppresses speculative issues.
+  # Opening review distinguishes relevant hooks/setups from unrelated delay.
+  # Direct-delivery time remains evidence, not an automatic timer-based warning.
   promise_check:
     enabled: true
-    delay_warning_seconds: 20.0
+    opening_review_horizon_seconds: 30.0
     minimum_issue_confidence: 0.70
     maximum_thumbnail_file_size_bytes: 5000000
     maximum_thumbnail_width: 8192
@@ -99,12 +106,25 @@ ai_review:
     minimum_issue_confidence: 0.75
     maximum_issues: 5
   # Claim Review is separately opt-in. It extracts at most three important
-  # public factual claims, then verifies them together with Google Search.
+  # public factual claims, then verifies each separately with Google Search so
+  # citation evidence cannot be mixed across claims.
   claim_review:
     enabled: false
     maximum_claims: 3
     minimum_extraction_confidence: 0.75
     minimum_conflict_confidence: 0.75
+  # Concise presentation-only summary. Failure falls back to deterministic copy
+  # and never changes scan truth or completeness.
+  release_brief:
+    enabled: false
+  # Explicit input-page assistance. No upload occurs until the creator asks.
+  metadata_assist:
+    enabled: true
+    visual_sample_count: 8
+    visual_sample_seconds: 4.0
+    proxy_width: 320
+    proxy_height: 180
+    proxy_timeout_seconds: 120.0
 
 # Local web/API safety limits. Browser origins are exact allowlist entries;
 # non-browser clients that send no Origin header remain supported.

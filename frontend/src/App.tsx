@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { HardDrive } from "lucide-react";
-import { errorPresentation, fetchCapabilities, isAbortError, scanPreflight } from "./api/preflight";
+import { discardScanProgress, errorPresentation, fetchCapabilities, fetchScanProgress, isAbortError, scanPreflight } from "./api/preflight";
 import { ErrorState } from "./components/ErrorState";
 import { ProcessingState } from "./components/ProcessingState";
 import { ResultsView } from "./components/ResultsView";
 import { ScanForm, type ScanInputs } from "./components/ScanForm";
-import type { PreflightCapabilities, PreflightReport, ReviewMode } from "./types/preflight";
+import type { PreflightCapabilities, PreflightReport, ScanProgress } from "./types/preflight";
+import { PRODUCT_NAME } from "./brand";
 
 type ViewState = "input" | "processing" | "result" | "error";
 
@@ -26,7 +28,9 @@ export function App() {
   const [error, setError] = useState<ReturnType<typeof errorPresentation> | null>(null);
   const [capabilities, setCapabilities] = useState<PreflightCapabilities | null>(null);
   const [capabilityError, setCapabilityError] = useState(false);
+  const [progress, setProgress] = useState<ScanProgress | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
+  const activeProgressId = useRef<string | null>(null);
   const requestSequence = useRef(0);
   const modeChosen = useRef(false);
 
@@ -63,6 +67,8 @@ export function App() {
     requestSequence.current += 1;
     activeRequest.current?.abort();
     activeRequest.current = null;
+    if (activeProgressId.current) void discardScanProgress(activeProgressId.current);
+    activeProgressId.current = null;
     modeChosen.current = false;
     setInputs({
       ...emptyInputs,
@@ -70,12 +76,14 @@ export function App() {
     });
     setReport(null);
     setError(null);
+    setProgress(null);
     setView("input");
   }, [capabilities]);
 
   const returnToForm = useCallback(() => {
     setReport(null);
     setError(null);
+    setProgress(null);
     setView("input");
   }, []);
 
@@ -92,6 +100,10 @@ export function App() {
     setView("processing");
 
     try {
+      const progressId = newProgressId();
+      activeProgressId.current = progressId;
+      setProgress(initialProgress(progressId, inputs.reviewMode));
+      void pollScanProgress(progressId, controller.signal, sequence, requestSequence, setProgress);
       const nextReport = await scanPreflight(
         {
           video: inputs.video,
@@ -101,7 +113,7 @@ export function App() {
           thumbnail: inputs.thumbnail,
           reviewMode: inputs.reviewMode,
         },
-        { signal: controller.signal },
+        { signal: controller.signal, progressId },
       );
       if (controller.signal.aborted || requestSequence.current !== sequence) return;
       setReport(nextReport);
@@ -111,6 +123,9 @@ export function App() {
       setError(errorPresentation(scanError));
       setView("error");
     } finally {
+      const finishedProgressId = activeProgressId.current;
+      if (finishedProgressId) void discardScanProgress(finishedProgressId);
+      activeProgressId.current = null;
       if (activeRequest.current === controller) activeRequest.current = null;
     }
   }, [inputs]);
@@ -123,7 +138,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <strong className="brand-name">Creator Preflight</strong>
+        <strong className="brand-name">{PRODUCT_NAME}</strong>
         <div className="header-actions">
           <span className="local-indicator"><HardDrive aria-hidden="true" /> Local workspace</span>
           {view !== "input" && (
@@ -142,7 +157,7 @@ export function App() {
         />
       )}
       {view === "processing" && (
-        <ProcessingState filename={inputs.video?.name ?? "selected video"} reviewMode={inputs.reviewMode} />
+        <ProcessingState filename={inputs.video?.name ?? "selected video"} reviewMode={inputs.reviewMode} progress={progress} />
       )}
       {view === "result" && report && (
         <ResultsView
@@ -157,4 +172,52 @@ export function App() {
       {view === "error" && error && <ErrorState {...error} onRetry={returnToForm} />}
     </div>
   );
+}
+
+function newProgressId(): string {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : "00000000-0000-4000-8000-000000000000";
+}
+
+function initialProgress(progressId: string, reviewMode: "full" | "local"): ScanProgress {
+  const now = Date.now() / 1000;
+  return {
+    progress_id: progressId,
+    review_mode: reviewMode,
+    state: "RUNNING",
+    stage: "receiving_media",
+    percent: 1,
+    message: "Getting the video ready",
+    created_at_epoch_seconds: now,
+    updated_at_epoch_seconds: now,
+    tasks: [],
+  };
+}
+
+async function pollScanProgress(
+  progressId: string,
+  signal: AbortSignal,
+  sequence: number,
+  requestSequence: MutableRefObject<number>,
+  update: Dispatch<SetStateAction<ScanProgress | null>>,
+) {
+  while (!signal.aborted && requestSequence.current === sequence) {
+    await new Promise((resolve) => window.setTimeout(resolve, 750));
+    if (signal.aborted || requestSequence.current !== sequence) return;
+    try {
+      const next = await fetchScanProgress(progressId, { signal });
+      update((current) => {
+        if (!current) return next;
+        if (next.percent < current.percent) return current;
+        return {
+          ...next,
+          created_at_epoch_seconds: Math.min(current.created_at_epoch_seconds, next.created_at_epoch_seconds),
+        };
+      });
+      if (next.state !== "RUNNING") return;
+    } catch (error) {
+      if (isAbortError(error)) return;
+    }
+  }
 }

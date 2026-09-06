@@ -25,6 +25,18 @@ class BlackDetectorConfig(BaseModel):
     picture_black_ratio: float = Field(default=0.98, gt=0, le=1)
 
 
+class ShortBlackDetectorConfig(BaseModel):
+    """Conservative near-black flash candidates below the sustained threshold."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    min_duration_seconds: float = Field(default=0.08, gt=0, le=1)
+    max_duration_seconds: float = Field(default=0.35, gt=0, le=2)
+    pixel_black_threshold: float = Field(default=0.10, gt=0, le=1)
+    picture_black_ratio: float = Field(default=0.98, gt=0, le=1)
+
+
 class SilenceDetectorConfig(BaseModel):
     """Silencedetect thresholds in seconds and decibels relative to full scale."""
 
@@ -69,6 +81,7 @@ class DetectorConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     black: BlackDetectorConfig = Field(default_factory=BlackDetectorConfig)
+    short_black: ShortBlackDetectorConfig = Field(default_factory=ShortBlackDetectorConfig)
     silence: SilenceDetectorConfig = Field(default_factory=SilenceDetectorConfig)
     freeze: FreezeDetectorConfig = Field(default_factory=FreezeDetectorConfig)
     audio_peak: AudioPeakDetectorConfig = Field(default_factory=AudioPeakDetectorConfig)
@@ -183,6 +196,8 @@ class AIReviewConfig(BaseModel):
     promise_check: "PromiseCheckConfig" = Field(default_factory=lambda: PromiseCheckConfig())
     viewer_pass: "ViewerPassConfig" = Field(default_factory=lambda: ViewerPassConfig())
     claim_review: "ClaimReviewConfig" = Field(default_factory=lambda: ClaimReviewConfig())
+    release_brief: "ReleaseBriefConfig" = Field(default_factory=lambda: ReleaseBriefConfig())
+    metadata_assist: "MetadataAssistConfig" = Field(default_factory=lambda: MetadataAssistConfig())
 
 
 class PromiseCheckConfig(BaseModel):
@@ -191,7 +206,9 @@ class PromiseCheckConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True
-    delay_warning_seconds: float = Field(default=20.0, gt=0, le=600)
+    opening_review_horizon_seconds: float = Field(default=30.0, gt=0, le=120)
+    # Accepted only for compatibility with older profiles; no timer-based warning uses it.
+    delay_warning_seconds: float | None = Field(default=None, gt=0, le=600)
     minimum_issue_confidence: float = Field(default=0.70, ge=0, le=1)
     maximum_thumbnail_file_size_bytes: int = Field(
         default=5_000_000, gt=0, le=20_000_000
@@ -225,6 +242,23 @@ class ClaimReviewConfig(BaseModel):
     maximum_claims: int = Field(default=3, ge=1, le=3)
     minimum_extraction_confidence: float = Field(default=0.75, ge=0, le=1)
     minimum_conflict_confidence: float = Field(default=0.75, ge=0, le=1)
+
+
+class ReleaseBriefConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+
+
+class MetadataAssistConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    visual_sample_count: int = Field(default=8, ge=2, le=16)
+    visual_sample_seconds: float = Field(default=4.0, gt=0, le=10)
+    proxy_width: int = Field(default=320, ge=160, le=640)
+    proxy_height: int = Field(default=180, ge=90, le=360)
+    proxy_timeout_seconds: float = Field(default=120.0, gt=0, le=600)
 
 
 class APIConfig(BaseModel):

@@ -103,7 +103,7 @@ def test_citations_only_come_from_grounding_metadata_and_absence_downgrades() ->
     assert finding.details["sources"] == [{"title": "NASA", "url": "https://www.nasa.gov/history/apollo-11"}]
 
 
-def test_batched_grounding_preserves_real_request_level_citations_without_support_spans() -> None:
+def test_grounding_normalization_rejects_batched_claim_citations() -> None:
     claims = [_claim(), _claim("claim_2", claim_text="The Eiffel Tower opened in 1889.")]
     batch = GroundedClaimBatch(assessments=[
         _assessment(),
@@ -113,8 +113,8 @@ def test_batched_grounding_preserves_real_request_level_citations_without_suppor
         ),
     ])
     citation = ProviderCitation(title="Authoritative source", uri="https://example.org/facts")
-    result = combine_grounded_results(claims, batch, (citation,))
-    assert all(item.sources[0].url == "https://example.org/facts" for item in result.claims)
+    with pytest.raises(AIReviewError):
+        combine_grounded_results(claims, batch, (citation,))
 
 
 def test_assessments_must_match_all_selected_claims() -> None:
@@ -175,18 +175,31 @@ class Models:
             payload = {"claims": [
                 {"claim_id": "claim_1", "claim_text": "Apollo 11 landed in 1968.",
                  "start_seconds": 0.4, "category": "historical_event",
-                 "why_verify": "Concrete date.", "confidence": 0.95}
+                 "why_verify": "Concrete date.", "confidence": 0.95},
+                {"claim_id": "claim_2", "claim_text": "The Eiffel Tower opened in 1889.",
+                 "start_seconds": 0.7, "category": "historical_event",
+                 "why_verify": "Concrete date.", "confidence": 0.95},
             ]}
-        else:
+        elif self.calls == 4:
             self.grounded_calls += 1
             payload = {"assessments": [{
                 "claim_id": "claim_1", "status": "possible_conflict",
                 "explanation": "NASA records say 1969.",
                 "grounded_evidence": "The landing occurred in 1969.", "confidence": 0.98,
             }]}
+        else:
+            self.grounded_calls += 1
+            payload = {"assessments": [{
+                "claim_id": "claim_2", "status": "supported",
+                "explanation": "The opening date is supported.",
+                "grounded_evidence": "The tower opened in 1889.", "confidence": 0.98,
+            }]}
         metadata = SimpleNamespace(grounding_chunks=[
-            SimpleNamespace(web=SimpleNamespace(title="NASA", uri="https://www.nasa.gov/apollo11"))
-        ]) if self.calls == 4 else None
+            SimpleNamespace(web=SimpleNamespace(
+                title="NASA" if self.calls == 4 else "Eiffel Tower",
+                uri="https://www.nasa.gov/apollo11" if self.calls == 4 else "https://www.toureiffel.paris/en/history",
+            ))
+        ]) if self.calls in {4, 5} else None
         return SimpleNamespace(
             text=json.dumps(payload),
             candidates=[SimpleNamespace(grounding_metadata=metadata)] if metadata else [],
@@ -203,7 +216,7 @@ def _enabled_config() -> PreflightConfig:
     return config
 
 
-def test_full_ai_scan_shares_one_upload_and_one_grounded_request(video_with_audio: Path) -> None:
+def test_full_ai_scan_shares_one_upload_and_grounds_each_claim_separately(video_with_audio: Path) -> None:
     files = Files()
     models = Models()
     client = SimpleNamespace(files=files, models=models, close=lambda: None)
@@ -214,14 +227,33 @@ def test_full_ai_scan_shares_one_upload_and_one_grounded_request(video_with_audi
         video_with_audio, PublishingPackage(title="Apollo 11", description="A history video.")
     )
     assert (files.upload_count, files.delete_count) == (1, 1)
-    assert (models.calls, models.grounded_calls) == (4, 1)
+    assert (models.calls, models.grounded_calls) == (5, 2)
     assert report.promise_check.status.value == "aligned"
     assert report.viewer_pass.status.value == "clean"
     assert report.claim_review.status.value == "needs_review"
-    assert report.claim_review.claims_checked == 1
+    assert report.claim_review.claims_checked == 2
     assert any(finding.code == "AI_CLAIM_POSSIBLE_CONFLICT" for finding in report.findings)
     assert report.critical_count == 0
     assert report.ai_review.cleanup_succeeded is True
+
+
+def test_out_of_duration_extraction_gets_one_bounded_correction() -> None:
+    from creator_preflight.claim_review import GeminiClaimReviewer
+
+    class Session:
+        def __init__(self):
+            self.calls = 0
+        def generate_structured(self, **kwargs):
+            self.calls += 1
+            claim = _claim(start_seconds=50 if self.calls == 1 else 12)
+            return SimpleNamespace(provider="gemini", model="test", output=ClaimExtractionResult(claims=[claim]), generation_seconds=0.1, total_seconds=0.2)
+        def generate_grounded_structured(self, **kwargs):
+            return SimpleNamespace(output=GroundedClaimBatch(assessments=[_assessment()]), citations=(ProviderCitation(title="NASA", uri="https://nasa.gov"),), generation_seconds=0.1)
+
+    session = Session()
+    result = GeminiClaimReviewer().review_in_session(session, 36, title="Apollo", description="", config=AIReviewConfig(claim_review={"enabled": True}))
+    assert session.calls == 2
+    assert result.review.claims[0].claim.start_seconds == 12
 
 
 def test_claim_review_disabled_does_not_add_provider_request(video_with_audio: Path) -> None:

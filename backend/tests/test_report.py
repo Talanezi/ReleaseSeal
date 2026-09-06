@@ -90,7 +90,7 @@ def test_reconciliation_ordering_and_json_serialization(anomaly_video: Path) -> 
     ]
     payload = json.loads(report.model_dump_json())
     assert payload["verdict"] == "NEEDS_REVIEW"
-    assert payload["schema_version"] == "1.6"
+    assert payload["schema_version"] == "1.8"
     assert payload["scan_completeness"] == "COMPLETE"
     assert payload["ai_review"]["status"] == "disabled"
     assert payload["repair_plan"]["preview_required_count"] == 1

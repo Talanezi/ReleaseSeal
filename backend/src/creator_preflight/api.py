@@ -18,9 +18,13 @@ from pydantic import ValidationError
 from starlette.background import BackgroundTask
 
 from creator_preflight.config import ConfigurationError, PreflightConfig, load_config
+from creator_preflight.content_sketch import build_content_sketch
+from creator_preflight.captions import inspect_caption_file
+from creator_preflight.ai_review import AIReviewError, provider_video_mime_type
 from creator_preflight.detectors import DetectorExecutionError
 from creator_preflight.engine import PreflightScanner
 from creator_preflight.media import MediaInspectionError, MediaInspector, check_media_tools
+from creator_preflight.metadata_assist import GeminiMetadataAssistant, MetadataAssistResult
 from creator_preflight.models import (
     CapabilityReason,
     ErrorResponse,
@@ -30,6 +34,7 @@ from creator_preflight.models import (
     PublishingPackage,
     ReviewMode,
 )
+from creator_preflight.progress import ScanProgress, ScanProgressStage, ScanProgressStore
 from creator_preflight.repair_models import RepairOperation, RepairOperationBatch
 from creator_preflight.repairs import FFmpegRepairEngine, RepairError
 from creator_preflight.thumbnails import ThumbnailValidationError, inspect_thumbnail
@@ -76,6 +81,7 @@ class _ProcessScanCapacity:
 
 
 _scan_capacity = _ProcessScanCapacity()
+_scan_progress = ScanProgressStore()
 
 
 def _error_response(status_code: int, code: str, message: str, details=None) -> JSONResponse:
@@ -149,6 +155,13 @@ async def repair_error_handler(request: Request, exc: RepairError) -> JSONRespon
     return _error_response(status_code, exc.code, exc.message, exc.details)
 
 
+@app.exception_handler(AIReviewError)
+async def ai_review_error_handler(request: Request, exc: AIReviewError) -> JSONResponse:
+    del request
+    status_code = 429 if exc.code == "ai_provider_quota_exhausted" else 504 if "timeout" in exc.code else 503
+    return _error_response(status_code, exc.code, exc.message)
+
+
 @app.get("/api/v1/capabilities", response_model=PreflightCapabilities)
 async def capabilities() -> PreflightCapabilities:
     config, _ = _api_config()
@@ -169,6 +182,7 @@ async def capabilities() -> PreflightCapabilities:
         gemini_dependency_available=gemini_dependency,
         gemini_api_key_configured=gemini_key,
         full_review_available=local_available and gemini_dependency and gemini_key,
+        metadata_assist_available=local_available and gemini_dependency and gemini_key and config.ai_review.metadata_assist.enabled,
         local_checks_available=local_available,
         transcription_dependency_available=_module_available("faster_whisper"),
         transcription_enabled=config.transcription.enabled,
@@ -176,6 +190,93 @@ async def capabilities() -> PreflightCapabilities:
         maximum_video_upload_size_bytes=config.api.maximum_video_upload_size_bytes,
         full_review_unavailable_reasons=reasons,
     )
+
+
+@app.post("/api/v1/preflight/progress", response_model=ScanProgress)
+async def create_scan_progress(request: Request, review_mode: str = Form(default="local")) -> ScanProgress:
+    """Create a short-lived process-local progress record before media upload begins."""
+
+    config, _ = _api_config()
+    _require_allowed_origin(request, config)
+    mode = _parse_review_mode(review_mode)
+    return _scan_progress.create(mode.value)
+
+
+@app.get("/api/v1/preflight/progress/{progress_id}", response_model=ScanProgress)
+async def get_scan_progress(progress_id: str):
+    record = _scan_progress.get(progress_id)
+    if record is None:
+        return _error_response(404, "scan_progress_not_found", "This scan progress record is no longer available.")
+    return record
+
+
+@app.delete("/api/v1/preflight/progress/{progress_id}", status_code=204)
+async def delete_scan_progress(request: Request, progress_id: str) -> None:
+    config, _ = _api_config()
+    _require_allowed_origin(request, config)
+    _scan_progress.delete(progress_id)
+
+
+@app.post("/api/v1/metadata/assist", response_model=MetadataAssistResult)
+async def assist_metadata(
+    request: Request,
+    file: UploadFile = File(...),
+    captions: UploadFile | None = File(default=None),
+) -> MetadataAssistResult:
+    """Explicitly analyze one temporary video for title and description suggestions."""
+
+    base_config, _ = _api_config()
+    try:
+        _require_allowed_origin(request, base_config)
+    except RequestOriginError:
+        await file.close()
+        if captions is not None:
+            await captions.close()
+        raise
+    config = _effective_web_config(base_config, ReviewMode.FULL)
+    if not config.ai_review.metadata_assist.enabled:
+        await file.close()
+        if captions is not None:
+            await captions.close()
+        raise AIReviewError("ai_metadata_assist_disabled", "AI suggestions are not available.", unavailable=True)
+    if not _scan_capacity.acquire(config.api.maximum_concurrent_scans):
+        await file.close()
+        if captions is not None:
+            await captions.close()
+        raise ScanBusyError()
+    try:
+        with TemporaryDirectory(prefix="creator-preflight-assist-") as temporary_directory:
+            media_path = _media_temp_path(temporary_directory, file.filename)
+            await _copy_upload(file, media_path, config.api.maximum_video_upload_size_bytes)
+            media = await anyio.to_thread.run_sync(MediaInspector().inspect, media_path)
+            transcript_text = None
+            if captions is not None:
+                suffix = Path(captions.filename or "").suffix.lower()
+                caption_path = Path(temporary_directory) / f"captions{suffix if suffix in {'.srt', '.vtt'} else '.txt'}"
+                await _copy_upload(captions, caption_path, config.rules.captions.maximum_file_size_bytes)
+                caption_result = inspect_caption_file(
+                    caption_path,
+                    media_duration_seconds=media.duration_seconds,
+                    config=config.rules.captions,
+                )
+                if caption_result.cues:
+                    transcript_text = "\n".join(cue.text for cue in caption_result.cues)
+            sketch_path = Path(temporary_directory) / "content-sketch.mp4"
+            await anyio.to_thread.run_sync(
+                partial(build_content_sketch, media_path, sketch_path, media, config.ai_review.metadata_assist)
+            )
+            assistant = GeminiMetadataAssistant()
+            return await anyio.to_thread.run_sync(
+                partial(
+                    assistant.assist, sketch_path, config=config.ai_review,
+                    media_mime_type="video/mp4", transcript_text=transcript_text,
+                )
+            )
+    finally:
+        _scan_capacity.release()
+        await file.close()
+        if captions is not None:
+            await captions.close()
 
 
 @app.post("/api/v1/media/inspect", response_model=MediaInspection)
@@ -200,6 +301,7 @@ async def scan_uploaded_package(
     captions: UploadFile | None = File(default=None),
     thumbnail: UploadFile | None = File(default=None),
     review_mode: str = Form(default="local"),
+    progress_id: str | None = Form(default=None),
 ) -> PreflightReport:
     """Temporarily store a package and run the shared scanner off the event loop."""
 
@@ -222,6 +324,9 @@ async def scan_uploaded_package(
         raise ScanBusyError()
     try:
         with TemporaryDirectory(prefix="creator-preflight-") as temporary_directory:
+            if progress_id:
+                _scan_progress.ensure(progress_id, mode.value)
+                _scan_progress.update(progress_id, ScanProgressStage.RECEIVING_MEDIA, 3, "Getting the video ready")
             temporary_path = _media_temp_path(temporary_directory, file.filename)
             await _copy_upload(file, temporary_path, config.api.maximum_video_upload_size_bytes)
             caption_path = await _copy_optional_bounded(captions, Path(temporary_directory) / "captions.upload", config.rules.captions.maximum_file_size_bytes + 1)
@@ -235,9 +340,23 @@ async def scan_uploaded_package(
                     maximum_pixels=config.ai_review.promise_check.maximum_thumbnail_pixels,
                     maximum_decompressed_bytes=config.ai_review.promise_check.maximum_thumbnail_decompressed_bytes,
                 )
+            if progress_id:
+                _scan_progress.update(progress_id, ScanProgressStage.PREPARING_MEDIA, 8, "Getting the video ready")
             package = PublishingPackage(title=title, description=description, captions_path=caption_path, thumbnail_path=thumbnail_path)
             scanner = PreflightScanner(config=config, configuration_source=configuration_source)
-            return await anyio.to_thread.run_sync(partial(scanner.scan, temporary_path, package, review_mode=mode))
+            def progress(stage: str, percent: int, message: str) -> None:
+                if progress_id:
+                    _scan_progress.update(progress_id, ScanProgressStage(stage), percent, message)
+            report = await anyio.to_thread.run_sync(
+                partial(scanner.scan, temporary_path, package, review_mode=mode, progress=progress)
+            )
+            if progress_id:
+                _scan_progress.finish(progress_id, partial=report.scan_completeness.value == "PARTIAL")
+            return report
+    except Exception:
+        if progress_id:
+            _scan_progress.fail(progress_id)
+        raise
     finally:
         _scan_capacity.release()
         await file.close()
@@ -537,6 +656,7 @@ def _effective_web_config(config: PreflightConfig, mode: ReviewMode) -> Prefligh
         effective.ai_review.promise_check.enabled = True
         effective.ai_review.viewer_pass.enabled = True
         effective.ai_review.claim_review.enabled = True
+        effective.ai_review.release_brief.enabled = True
     else:
         effective.ai_review.enabled = False
     return effective

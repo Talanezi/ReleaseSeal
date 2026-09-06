@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { ErrorState } from "./components/ErrorState";
 import { ResultsView } from "./components/ResultsView";
+import { ProcessingState } from "./components/ProcessingState";
 import { blockedReport, needsReviewReport, readyReport } from "./mocks/reports";
-import type { PreflightReport } from "./types/preflight";
+import type { PreflightReport, ScanProgress } from "./types/preflight";
 import { formatTimecode } from "./utils/format";
 
 const createObjectURL = vi.fn(() => "blob:creator-preflight-local-preview");
@@ -41,8 +42,43 @@ describe("Creator Preflight frontend", () => {
     const local = screen.getByRole("radio", { name: /Local Checks Only/i });
     expect(full).toBeChecked();
     expect(local).not.toBeChecked();
-    expect(screen.getByText(/Temporarily sends the video and thumbnail to Gemini/i)).toBeInTheDocument();
-    expect(screen.getByText(/No Gemini media upload/i)).toBeInTheDocument();
+    expect(screen.getByText(/Temporarily sends the video and thumbnail for AI review/i)).toBeInTheDocument();
+    expect(screen.getByText(/No AI media upload/i)).toBeInTheDocument();
+  });
+
+  it("loads the official demo package into the real scan form", async () => {
+    vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL) => {
+      const path = String(url);
+      if (path.endsWith("/capabilities")) return Promise.resolve(jsonResponse(capabilitiesFixture()));
+      if (path.endsWith("-title.txt")) return Promise.resolve(new Response("Why Night Trains Are Returning to Europe\n"));
+      if (path.endsWith("-description.txt")) return Promise.resolve(new Response("A concise sample description."));
+      if (path.endsWith("-captions.srt")) return Promise.resolve(new Response("1\n00:00:00,000 --> 00:00:02,000\nNight trains\n"));
+      if (path.endsWith("-thumbnail.png")) return Promise.resolve(new Response(new Blob(["png"], { type: "image/png" })));
+      if (path.endsWith("-demo.mp4")) return Promise.resolve(new Response(new Blob(["video"], { type: "video/mp4" })));
+      return Promise.reject(new Error(`Unexpected URL: ${path}`));
+    }));
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Load demo" }));
+    expect(await screen.findByTestId("selected-video")).toHaveTextContent("creator-preflight-official-demo.mp4");
+    expect(screen.getByLabelText("Title")).toHaveValue("Why Night Trains Are Returning to Europe");
+    expect(screen.getByLabelText("Description")).toHaveValue("A concise sample description.");
+    expect(screen.getByText("creator-preflight-official-captions.srt")).toBeInTheDocument();
+    expect(screen.getByText("creator-preflight-official-thumbnail.png")).toBeInTheDocument();
+  });
+
+  it("renders real elapsed progress, stale reassurance, and task disclosure", async () => {
+    const now = Date.now() / 1000;
+    render(<ProcessingState filename="long-video.mp4" reviewMode="full" progress={{
+      ...progressFixture(), percent: 48, stage: "opening_review", message: "Reviewing the opening",
+      created_at_epoch_seconds: now - 67,
+      updated_at_epoch_seconds: now - 24,
+    }} />);
+    expect(screen.getByRole("progressbar", { name: "Scan in progress" })).toHaveAttribute("aria-valuenow", "48");
+    expect(screen.getByText(/48%/).parentElement).toHaveTextContent("48%·1:07 elapsed");
+    expect(screen.getByText(/Still working… Last update 0:24 ago/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText("What’s happening?"));
+    expect(screen.getByText("Picture and sound").parentElement).toHaveTextContent("Working");
   });
 
   it("disables Full Review when backend capabilities say it is unavailable", async () => {
@@ -74,6 +110,34 @@ describe("Creator Preflight frontend", () => {
     expect(screen.getByRole("button", { name: /run preflight/i })).toBeDisabled();
   });
 
+  it("generates metadata only on request and reuses one result for title and description", async () => {
+    const metadata = {
+      title_suggestions: ["First title", "Second title", "Third title", "Fourth title", "Fifth title"],
+      description_draft: "A concise description grounded in the selected video.",
+      cleanup_succeeded: true,
+    };
+    const fetchMock = vi.fn((url: RequestInfo | URL) => Promise.resolve(
+      String(url).endsWith("/capabilities") ? jsonResponse(capabilitiesFixture()) : jsonResponse(metadata),
+    ));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("radio", { name: /Full Review/i });
+    await user.upload(screen.getByLabelText("Select video file"), new File(["video"], "assist.mp4", { type: "video/mp4" }));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "Suggest titles" }));
+    expect(await screen.findByText("First title")).toBeInTheDocument();
+    await user.click(within(screen.getByText("First title").closest("li") as HTMLElement).getByRole("button", { name: "Use" }));
+    expect(screen.getByLabelText("Title")).toHaveValue("First title");
+
+    await user.click(screen.getByRole("button", { name: "Draft description" }));
+    expect(await screen.findByText(metadata.description_draft)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Use description" }));
+    expect(screen.getByLabelText("Description")).toHaveValue(metadata.description_draft);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/metadata/assist"))).toHaveLength(1);
+  });
+
   it("renders the report verdict, counts, and typed findings", () => {
     render(<ResultsView report={needsReviewReport} />);
     const findings = within(screen.getByRole("region", { name: "Findings" }));
@@ -82,6 +146,8 @@ describe("Creator Preflight frontend", () => {
     expect(findings.getByText("Sustained near-black section")).toBeInTheDocument();
     expect(findings.getByText("Long silent section")).toBeInTheDocument();
     expect(screen.getByLabelText("Scan counts")).toHaveTextContent("9 passed·5 warnings·0 critical");
+    expect(screen.getByText("AI review")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "5 items need attention" })).toBeInTheDocument();
   });
 
   it("separates a partial scan from the content verdict", () => {
@@ -103,13 +169,31 @@ describe("Creator Preflight frontend", () => {
     expect(screen.getByRole("heading", { name: "Ready" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Scan incomplete" })).toBeInTheDocument();
     expect(screen.getByText(/Completed content checks found no release issue/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Gemini quota was reached/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/AI review could not finish/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Gemini quota was reached/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps Ready while disclosing an inconclusive factual check", () => {
+    render(<ResultsView report={{
+      ...readyReport,
+      review_mode: "full",
+      claim_review: { ...readyReport.claim_review, status: "inconclusive", claims_checked: 1, insufficient_evidence_count: 1 },
+      release_brief: {
+        ...readyReport.release_brief,
+        headline: "No release issues found",
+        summary: "No issues were found. One factual claim could not be verified with enough evidence.",
+        positive_note: "No release issue was detected in the completed checks.",
+      },
+    }} />);
+    expect(screen.getByRole("heading", { name: "Ready" })).toBeInTheDocument();
+    expect(screen.getByText(/One factual claim could not be verified with enough evidence/)).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/everything verified|all claims supported/i);
   });
 
   it("does not present remote review cards for Local Checks Only", () => {
     render(<ResultsView report={readyReport} />);
     expect(screen.queryByRole("heading", { name: "Promise Check" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Final Viewer Pass" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Continuity review" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Claim Review" })).not.toBeInTheDocument();
   });
 
@@ -235,6 +319,7 @@ describe("Creator Preflight frontend", () => {
         inferred_promise: "Explain why blue light can disrupt sleep.",
         first_substantive_address_seconds: 8,
         first_substantive_address_evidence: "The explanation begins.",
+        opening_alignment: "relevant_hook",
         overall_delivery: "aligned",
         explanation: "The video delivers the title.",
         confidence: 0.95,
@@ -242,7 +327,7 @@ describe("Creator Preflight frontend", () => {
       },
     };
     render(<ResultsView report={report} />);
-    expect(screen.getByRole("heading", { name: "Promise Check" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Opening review" })).toBeInTheDocument();
     expect(screen.getByText("Explain why blue light can disrupt sleep.")).toBeInTheDocument();
     expect(screen.getByText("00:08.00")).toBeInTheDocument();
     expect(screen.getByText("Aligned", { selector: ".promise-summary strong" })).toBeInTheDocument();
@@ -271,6 +356,7 @@ describe("Creator Preflight frontend", () => {
         inferred_promise: "Explain the promised subject.",
         first_substantive_address_seconds: 24,
         first_substantive_address_evidence: "The explanation begins.",
+        opening_alignment: "unrelated_delay",
         overall_delivery: "aligned",
         explanation: "The promise is ultimately delivered.",
         confidence: 0.94,
@@ -295,7 +381,7 @@ describe("Creator Preflight frontend", () => {
       },
     };
     render(<ResultsView report={report} />);
-    expect(screen.getByRole("heading", { name: "Final Viewer Pass" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Continuity review" })).toBeInTheDocument();
     expect(screen.getByText("No high-confidence inconsistencies found")).toBeInTheDocument();
     expect(screen.getByText("No high-confidence internal inconsistencies were found.")).toBeInTheDocument();
   });
@@ -346,10 +432,10 @@ describe("Creator Preflight frontend", () => {
     const source = new File(["original-video"], "original cut.mp4", { type: "video/mp4" });
     render(<ResultsView report={report} previewUrl="blob:original" sourceFile={source} />);
 
-    expect(screen.getByText("1 safe repair · 1 to preview · 1 need your judgment")).toBeInTheDocument();
-    expect(screen.getByText("Safe repair")).toBeInTheDocument();
-    expect(screen.getByText("Preview required")).toBeInTheDocument();
-    expect(screen.getByText("Your judgment")).toBeInTheDocument();
+    expect(screen.getByText("2 can fix or preview · 1 waiting for review · 0 need change")).toBeInTheDocument();
+    expect(screen.getByText("Can fix")).toBeInTheDocument();
+    expect(screen.getAllByText("Preview").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Review").length).toBeGreaterThan(0);
 
     await user.click(screen.getAllByRole("button", { name: "Preview repair" })[0]);
     expect(await screen.findByTestId("repair-preview-video")).toBeInTheDocument();
@@ -368,11 +454,12 @@ describe("Creator Preflight frontend", () => {
     await user.click(screen.getByRole("button", { name: "Approve repair" }));
 
     await user.click(screen.getByRole("button", { name: /Apply 2 approved repairs/ }));
-    expect(await screen.findByRole("heading", { name: "Repair verified" })).toBeInTheDocument();
-    expect(screen.getByTestId("repaired-video")).toBeInTheDocument();
-    expect(screen.getByTestId("review-reel-video")).toBeInTheDocument();
-    expect(screen.getByText(/2 resolved/)).toBeInTheDocument();
-    expect(screen.getByText(/No unexpected visual changes detected/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Repair result" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Repaired" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Review Reel" })).toBeInTheDocument();
+    expect(screen.getAllByText(/2 fixed/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/No unexpected changes found/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Apply 2 approved repairs/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Download repaired video" })).toHaveAttribute(
       "download", "original cut.repaired.mp4",
     );
@@ -388,26 +475,24 @@ describe("Creator Preflight frontend", () => {
     expect(screen.getByLabelText("Human review counts")).toHaveTextContent("0 accepted · 0 need change · 4 pending");
 
     const silence = repairItem("Long silent section");
-    await user.click(within(silence).getByRole("button", { name: "Review moment" }));
+    await user.click(within(silence).getByRole("button", { name: "Review" }));
     expect(video.currentTime).toBe(3);
-    await user.click(within(silence).getByRole("button", { name: "Looks intentional" }));
-    expect(within(silence).getByText("Reviewed — accepted")).toBeInTheDocument();
-    expect(within(silence).getByText("Marked intentional by you.")).toBeInTheDocument();
-    expect(within(silence).queryByText(/resolved/i)).not.toBeInTheDocument();
+    await user.click(within(silence).getByRole("button", { name: "Accept" }));
+    expect(within(screen.getByRole("region", { name: "Action queue" })).queryByRole("heading", { name: "Long silent section" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show 1 accepted item" })).toBeInTheDocument();
 
     const peak = repairItem("Audio peak near full scale");
-    expect(within(peak).queryByRole("button", { name: "Review moment" })).not.toBeInTheDocument();
+    expect(within(peak).queryByRole("button", { name: "Review" })).not.toBeInTheDocument();
     await user.click(within(peak).getByRole("button", { name: "Needs a change" }));
     expect(within(peak).getByText("Needs change")).toBeInTheDocument();
-    expect(within(peak).getByText("You marked this as something that still needs editing.")).toBeInTheDocument();
 
     await user.click(within(peak).getByRole("button", { name: "Change decision" }));
-    expect(within(peak).getByText("Your judgment")).toBeInTheDocument();
+    expect(within(peak).getByText("Review")).toBeInTheDocument();
     expect(screen.getByLabelText("Human review counts")).toHaveTextContent("1 accepted · 0 need change · 3 pending");
 
-    await user.click(within(repairItem("Sustained static-frame section")).getByRole("button", { name: "Looks intentional" }));
+    await user.click(within(repairItem("Sustained static-frame section")).getByRole("button", { name: "Accept" }));
     await user.click(within(repairItem("Audio peak near full scale")).getByRole("button", { name: "Needs a change" }));
-    await user.click(within(repairItem("Title exceeds recommended length")).getByRole("button", { name: "Looks intentional" }));
+    await user.click(within(repairItem("Title exceeds recommended length")).getByRole("button", { name: "Accept" }));
     expect(screen.getByLabelText("Human review counts")).toHaveTextContent("3 accepted · 1 needs change · 0 pending");
     expect(screen.getByText("Human review is complete. 1 issue still needs editing.")).toBeInTheDocument();
 
@@ -425,14 +510,13 @@ describe("Creator Preflight frontend", () => {
     render(<App />);
 
     await selectVideoAndRun(user, "first.mp4");
-    await user.click(within(repairItem("Audio peak near full scale")).getByRole("button", { name: "Looks intentional" }));
+    await user.click(within(repairItem("Audio peak near full scale")).getByRole("button", { name: "Accept" }));
     expect(screen.getByLabelText("Human review counts")).toHaveTextContent("1 accepted");
 
     await user.click(screen.getByRole("button", { name: "New scan" }));
     await selectVideoAndRun(user, "second.mp4");
     expect(await screen.findByLabelText("Human review counts")).toHaveTextContent("0 accepted · 0 need change · 4 pending");
-    expect(within(repairItem("Audio peak near full scale")).getByText("Your judgment")).toBeInTheDocument();
-    expect(screen.queryByText("Marked intentional by you.")).not.toBeInTheDocument();
+    expect(within(repairItem("Audio peak near full scale")).getByText("Review")).toBeInTheDocument();
   });
 
   it("keeps the original report usable when repair preview rendering fails", async () => {
@@ -453,10 +537,7 @@ describe("Creator Preflight frontend", () => {
     expect(screen.getByRole("button", { name: "Approve repair" })).toBeDisabled();
   });
 
-  it.each([
-    ["NEEDS_REVIEW", "Repair needs review"],
-    ["INCOMPLETE", "Verification incomplete"],
-  ] as const)("renders %s repaired verification without losing the repaired export", async (status, heading) => {
+  it.each(["NEEDS_REVIEW", "INCOMPLETE"] as const)("renders %s repaired verification without losing the repaired export", async (status) => {
     let repairCall = 0;
     vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL) => {
       if (String(url).endsWith("/repairs/verify")) return Promise.resolve(jsonResponse(verificationFixture(status)));
@@ -469,11 +550,12 @@ describe("Creator Preflight frontend", () => {
     await screen.findByTestId("repair-preview-video");
     await user.click(screen.getByRole("button", { name: "Approve repair" }));
     await user.click(screen.getByRole("button", { name: /Apply 1 approved repair/ }));
-    expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
-    expect(screen.getByTestId("repaired-video")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Repair result" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Repaired" })).toBeInTheDocument();
     if (status === "NEEDS_REVIEW") {
       expect(screen.getByText("Unexpected change")).toBeInTheDocument();
-      const repairedVideo = screen.getByTestId("repaired-video") as HTMLVideoElement;
+      await user.click(screen.getByRole("tab", { name: "Repaired" }));
+      const repairedVideo = screen.getByTestId("preview-video") as HTMLVideoElement;
       await user.click(screen.getByRole("button", { name: "00:01.00–00:02.00" }));
       expect(repairedVideo.currentTime).toBe(1);
     }
@@ -492,7 +574,7 @@ describe("Creator Preflight frontend", () => {
     await user.click(screen.getByRole("button", { name: "Approve repair" }));
     await user.click(screen.getByRole("button", { name: /Apply 1 approved repair/ }));
     expect(await screen.findByText(/Verification could not finish/)).toBeInTheDocument();
-    expect(screen.getByTestId("repaired-video")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Repaired" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Needs review" })).toBeInTheDocument();
   });
 
@@ -508,7 +590,7 @@ describe("Creator Preflight frontend", () => {
     await user.click(screen.getByRole("button", { name: "Approve repair" }));
     await user.click(screen.getByRole("button", { name: /Apply 1 approved repair/ }));
     expect(await screen.findByText(/Verifying repair/)).toBeInTheDocument();
-    expect(screen.getByTestId("repaired-video")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Repaired" })).toBeInTheDocument();
   });
 
   it("New scan clears approvals, repaired media, and repair object URLs", async () => {
@@ -528,11 +610,11 @@ describe("Creator Preflight frontend", () => {
     await screen.findByTestId("repair-preview-video");
     await user.click(screen.getByRole("button", { name: "Approve repair" }));
     await user.click(screen.getByRole("button", { name: /Apply 1 approved repair/ }));
-    expect(await screen.findByRole("heading", { name: "Repair verified" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Repair result" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "New scan" }));
     expect(screen.getByTestId("input-state")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Repair queue" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Action queue" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Repaired video" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Review Reel" })).not.toBeInTheDocument();
     expect(revokeObjectURL).toHaveBeenCalled();
@@ -571,7 +653,7 @@ describe("Creator Preflight frontend", () => {
     };
     render(<ResultsView report={report} previewUrl="blob:claims-preview" />);
     const video = screen.getByTestId("preview-video") as HTMLVideoElement;
-    expect(screen.getByRole("heading", { name: "Claim Review" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Factual review" })).toBeInTheDocument();
     expect(screen.getByText("2 checked · 1 to review")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Claims 1" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "NASA" })).toHaveAttribute(
@@ -579,6 +661,21 @@ describe("Creator Preflight frontend", () => {
     );
     await user.click(screen.getByRole("button", { name: "00:14.00" }));
     expect(video.currentTime).toBe(14);
+  });
+
+  it("exports trusted review state as CSV, Markdown, and JSON", async () => {
+    const user = userEvent.setup();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    render(<ResultsView report={needsReviewReport} />);
+
+    await user.click(screen.getByRole("button", { name: "CSV" }));
+    await user.click(screen.getByRole("button", { name: "Markdown" }));
+    await user.click(screen.getByRole("button", { name: "JSON" }));
+
+    expect(click).toHaveBeenCalledTimes(3);
+    const objectUrlCalls = createObjectURL.mock.calls as unknown[][];
+    expect(objectUrlCalls.filter(([value]) => value instanceof Blob)).toHaveLength(3);
+    click.mockRestore();
   });
 
   it.each([
@@ -594,6 +691,11 @@ describe("Creator Preflight frontend", () => {
 
     expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
     expect(screen.queryByTestId("error-state")).not.toBeInTheDocument();
+  });
+
+  it("keeps primary consumer result copy free of em dashes", () => {
+    render(<ResultsView report={needsReviewReport} previewUrl="blob:copy-audit" />);
+    expect(document.body.textContent).not.toContain("—");
   });
 
   it("renders a backend/network failure through the application error state", async () => {
@@ -677,10 +779,23 @@ describe("Creator Preflight frontend", () => {
 
     await selectVideoAndRun(user, "pending.mp4");
 
-    expect(await screen.findByRole("heading", { name: "Running preflight checks" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Checking your video" })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Scan in progress" })).toBeInTheDocument();
+    expect(screen.getByText(/Picture and sound/)).toBeInTheDocument();
+    expect(screen.queryByText("Full Review")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Preview application state")).not.toBeInTheDocument();
     expect(screen.queryByText("Inspecting media")).not.toBeInTheDocument();
     expect(screen.queryByTestId("result-state")).not.toBeInTheDocument();
+  });
+
+  it("guides a long human-review queue to the next pending item", async () => {
+    const user = userEvent.setup();
+    render(<ResultsView report={needsReviewReport} previewUrl="blob:original" />);
+    const video = screen.getByTestId("preview-video") as HTMLVideoElement;
+    await user.click(screen.getByRole("button", { name: "Review next · 0 of 4 reviewed" }));
+    expect(video.currentTime).toBe(3);
+    await user.click(within(repairItem("Long silent section")).getByRole("button", { name: "Accept" }));
+    expect(screen.getByRole("button", { name: "Review next · 1 of 4 reviewed" })).toBeInTheDocument();
   });
 
   it("renders a separate reusable application error state", () => {
@@ -735,6 +850,7 @@ function capabilitiesFixture(fullReviewAvailable = true) {
     gemini_dependency_available: fullReviewAvailable,
     gemini_api_key_configured: fullReviewAvailable,
     full_review_available: fullReviewAvailable,
+    metadata_assist_available: fullReviewAvailable,
     local_checks_available: true,
     transcription_dependency_available: true,
     transcription_enabled: false,
@@ -751,13 +867,44 @@ function appFetch(
   scanResponses: Array<() => Promise<Response>>,
 ): ReturnType<typeof vi.fn> {
   let scanIndex = 0;
-  return vi.fn((url: RequestInfo | URL) => {
-    if (String(url).endsWith("/capabilities")) {
+  return vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
+    const path = String(url);
+    if (path.endsWith("/capabilities")) {
       return Promise.resolve(jsonResponse(capabilitiesFixture()));
+    }
+    if (path.endsWith("/preflight/progress") && init?.method === "POST") {
+      return Promise.resolve(jsonResponse(progressFixture()));
+    }
+    if (path.includes("/preflight/progress/") && init?.method === "DELETE") {
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
+    if (path.includes("/preflight/progress/")) {
+      return Promise.resolve(jsonResponse(progressFixture()));
     }
     const response = scanResponses[scanIndex++];
     return response ? response() : Promise.reject(new Error("Unexpected scan request"));
   });
+}
+
+function progressFixture(): ScanProgress {
+  const now = Date.now() / 1000;
+  return {
+    progress_id: "67e55044-10b1-426f-9247-bb680e5fe0c8",
+    review_mode: "full",
+    state: "RUNNING",
+    stage: "technical_checks",
+    percent: 12,
+    message: "Checking picture and sound",
+    created_at_epoch_seconds: now,
+    updated_at_epoch_seconds: now,
+    tasks: [
+      { task_id: "technical", label: "Picture and sound", status: "Working" },
+      { task_id: "opening", label: "Opening review", status: "Waiting" },
+      { task_id: "continuity", label: "Edit continuity", status: "Waiting" },
+      { task_id: "factual", label: "Content and claims", status: "Waiting" },
+      { task_id: "summary", label: "Preparing your review", status: "Waiting" },
+    ],
+  };
 }
 
 function captionFindingReport(): PreflightReport {
@@ -885,7 +1032,7 @@ function repairWorkflowReport(): PreflightReport {
 }
 
 function repairItem(title: string): HTMLElement {
-  const queue = screen.getByRole("region", { name: "Repair queue" });
+  const queue = screen.getByRole("region", { name: "Action queue" });
   const item = within(queue).getByRole("heading", { name: title }).closest("article");
   if (!item) throw new Error(`Repair item not found for ${title}`);
   return item;

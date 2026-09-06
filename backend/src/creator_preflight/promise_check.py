@@ -33,6 +33,15 @@ class ThumbnailAlignment(str, Enum):
     NOT_EVALUABLE = "not_evaluable"
 
 
+class OpeningAlignment(str, Enum):
+    DIRECT_DELIVERY = "direct_delivery"
+    RELEVANT_HOOK = "relevant_hook"
+    RELEVANT_SETUP = "relevant_setup"
+    UNRELATED_DELAY = "unrelated_delay"
+    CONTRADICTION = "contradiction"
+    NOT_EVALUABLE = "not_evaluable"
+
+
 class PromiseIssueType(str, Enum):
     TITLE_CONTENT_MISMATCH = "title_content_mismatch"
     THUMBNAIL_CONTENT_MISMATCH = "thumbnail_content_mismatch"
@@ -75,6 +84,7 @@ class PromiseReviewResult(BaseModel):
         default=None, ge=0, allow_inf_nan=False
     )
     first_substantive_address_evidence: str = Field(min_length=1, max_length=1000)
+    opening_alignment: OpeningAlignment = OpeningAlignment.NOT_EVALUABLE
     overall_delivery: PromiseDelivery
     overall_delivery_explanation: str = Field(min_length=1, max_length=1500)
     confidence: float = Field(ge=0, le=1, allow_inf_nan=False)
@@ -195,10 +205,14 @@ def build_promise_prompt(
         ensure_ascii=False,
     )
     return (
-        "Perform only Creator Preflight's Promise Check. Inspect the actual finished video, "
+        "Perform only Creator Preflight's Opening Alignment review. Inspect the actual finished video, "
         "including its visuals and audio, against the creator package below. Infer the viewer "
         "promise, identify the approximate first moment that SUBSTANTIVELY begins delivering it, "
-        "and assess overall title delivery. A title card, repeated title, generic welcome, sponsor, "
+        "and assess overall title delivery. Classify the opening as direct_delivery, relevant_hook, "
+        "relevant_setup, unrelated_delay, contradiction, or not_evaluable. Review roughly the first "
+        "30 seconds as an opening horizon, but never treat elapsed time alone as a problem. A relevant "
+        "hook or setup that clearly reassures the viewer the promised value is coming is aligned and must "
+        "not be called a delay merely because direct exposition begins later. A title card, repeated title, generic welcome, sponsor, "
         "or superficial keyword mention is not substantive delivery. If an image is supplied, assess "
         "only whether its central implication is materially represented in the video. Prefer no issue "
         "and not_evaluable over speculation. Use issue types only for specific, high-confidence evidence.\n\n"
@@ -256,8 +270,8 @@ def promise_findings(
     policy = config.promise_check
     findings: list[Finding] = []
     if (
-        review.first_substantive_address_seconds is not None
-        and review.first_substantive_address_seconds > policy.delay_warning_seconds
+        review.opening_alignment is OpeningAlignment.UNRELATED_DELAY
+        and review.first_substantive_address_seconds is not None
         and review.confidence >= policy.minimum_issue_confidence
     ):
         findings.append(
@@ -266,21 +280,22 @@ def promise_findings(
                 severity=FindingSeverity.WARNING,
                 status=FindingStatus.NEEDS_REVIEW,
                 message=(
-                    f"The video begins substantively addressing its promise around "
-                    f"{review.first_substantive_address_seconds:.1f} seconds, after the configured "
-                    f"{policy.delay_warning_seconds:.1f}-second review window."
+                    "The opening appears unrelated to the advertised subject before the video begins "
+                    f"directly addressing it around {review.first_substantive_address_seconds:.1f} seconds."
                 ),
                 source=f"ai.{provider}.promise",
-                timestamp_start_seconds=0,
-                timestamp_end_seconds=review.first_substantive_address_seconds,
+                timestamp_start_seconds=review.first_substantive_address_seconds,
+                timestamp_end_seconds=None,
                 details=_details(
                     review,
                     provider,
                     model,
                     evidence=[review.first_substantive_address_evidence],
-                    delay_warning_seconds=policy.delay_warning_seconds,
+                    opening_review_horizon_seconds=policy.opening_review_horizon_seconds,
+                    opening_interval_start_seconds=0.0,
+                    direct_delivery_seconds=review.first_substantive_address_seconds,
                 ),
-                suggestion="Review whether the opening should reach the advertised subject sooner.",
+                suggestion="Review whether the unrelated opening material should be shortened or connected more clearly to the advertised subject.",
             )
         )
 
@@ -370,7 +385,7 @@ def _details(
 ) -> dict:
     return {
         "category": "editorial",
-        "title": "Promise delivery begins late",
+        "title": "Opening may delay the promised subject",
         "inferred_promise": review.inferred_promise,
         "confidence": review.confidence,
         "evidence": evidence,

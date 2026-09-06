@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Captions, FileImage, FileVideo2, Play, RefreshCw, Upload, X } from "lucide-react";
+import { Captions, FileImage, FileVideo2, Lightbulb, Play, RefreshCw, Upload, X } from "lucide-react";
+import { assistMetadata, errorPresentation, isAbortError } from "../api/preflight";
 import { formatBytes } from "../utils/format";
-import type { PreflightCapabilities, ReviewMode } from "../types/preflight";
+import type { MetadataAssistResult, PreflightCapabilities, ReviewMode } from "../types/preflight";
 
 export interface ScanInputs {
   video: File | null;
@@ -28,6 +29,13 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
   const thumbnailInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [assistResult, setAssistResult] = useState<MetadataAssistResult | null>(null);
+  const [assistView, setAssistView] = useState<"titles" | "description" | null>(null);
+  const [assistLoading, setAssistLoading] = useState(false);
+  const [assistError, setAssistError] = useState<string | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
+  const assistRequest = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!inputs.thumbnail || typeof URL.createObjectURL !== "function") {
@@ -39,8 +47,68 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
     return () => URL.revokeObjectURL(url);
   }, [inputs.thumbnail]);
 
+  useEffect(() => {
+    assistRequest.current?.abort();
+    assistRequest.current = null;
+    setAssistResult(null);
+    setAssistView(null);
+    setAssistLoading(false);
+    setAssistError(null);
+  }, [inputs.video, inputs.captions]);
+
+  useEffect(() => () => assistRequest.current?.abort(), []);
+
+  const showAssist = async (view: "titles" | "description") => {
+    if (!inputs.video) return;
+    setAssistView(view);
+    setAssistError(null);
+    if (assistResult) return;
+    const controller = new AbortController();
+    assistRequest.current?.abort();
+    assistRequest.current = controller;
+    setAssistLoading(true);
+    try {
+      const result = await assistMetadata(inputs.video, { signal: controller.signal, captions: inputs.captions });
+      if (!controller.signal.aborted) setAssistResult(result);
+    } catch (error) {
+      if (!controller.signal.aborted && !isAbortError(error)) setAssistError(errorPresentation(error).message);
+    } finally {
+      if (!controller.signal.aborted) setAssistLoading(false);
+      if (assistRequest.current === controller) assistRequest.current = null;
+    }
+  };
+
   const selectVideo = (file?: File) => {
     if (file) onChange({ ...inputs, video: file });
+  };
+  const loadDemo = async () => {
+    setDemoLoading(true);
+    setDemoError(null);
+    try {
+      const root = "/demo/creator-preflight-official";
+      const [videoResponse, thumbnailResponse, captionsResponse, titleResponse, descriptionResponse] = await Promise.all([
+        fetch(`${root}-demo.mp4`), fetch(`${root}-thumbnail.png`), fetch(`${root}-captions.srt`),
+        fetch(`${root}-title.txt`), fetch(`${root}-description.txt`),
+      ]);
+      if (![videoResponse, thumbnailResponse, captionsResponse, titleResponse, descriptionResponse].every((response) => response.ok)) {
+        throw new Error("Demo package unavailable");
+      }
+      const [videoBlob, thumbnailBlob, captionsBlob, title, description] = await Promise.all([
+        videoResponse.blob(), thumbnailResponse.blob(), captionsResponse.blob(), titleResponse.text(), descriptionResponse.text(),
+      ]);
+      onChange({
+        video: new File([videoBlob], "creator-preflight-official-demo.mp4", { type: "video/mp4" }),
+        thumbnail: new File([thumbnailBlob], "creator-preflight-official-thumbnail.png", { type: "image/png" }),
+        captions: new File([captionsBlob], "creator-preflight-official-captions.srt", { type: "application/x-subrip" }),
+        title: title.trim(),
+        description: description.trim(),
+        reviewMode: capabilities?.full_review_available ? "full" : "local",
+      });
+    } catch {
+      setDemoError("The sample package could not be loaded. You can still choose your own files.");
+    } finally {
+      setDemoLoading(false);
+    }
   };
   const uploadTooLarge = Boolean(
     inputs.video && capabilities
@@ -57,9 +125,15 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
   return (
     <main className="new-scan page-frame" data-testid="input-state">
       <header className="page-intro">
-        <h1>Check a finished video</h1>
-        <p>Add the package you plan to publish. Creator Preflight reviews the media and its publishing details together.</p>
+        <div>
+          <h1>Check a finished video</h1>
+          <p>Add the package you plan to publish. Creator Preflight reviews the media and its publishing details together.</p>
+        </div>
+        <button className="secondary-button demo-button" type="button" onClick={() => void loadDemo()} disabled={demoLoading}>
+          <Play aria-hidden="true" /> {demoLoading ? "Loading demo…" : "Load demo"}
+        </button>
       </header>
+      {demoError && <p className="demo-error" role="alert">{demoError}</p>}
 
       <form className="scan-surface" onSubmit={(event) => { event.preventDefault(); if (inputs.video) onRun(); }}>
         <section className="video-input-section" aria-labelledby="video-heading">
@@ -138,7 +212,7 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
               selected={inputs.reviewMode === "full"}
               disabled={!capabilities?.full_review_available}
               title="Full Review"
-              description="Technical checks plus Promise, Viewer, and grounded Claim Review. Temporarily sends the video and thumbnail to Gemini."
+              description="Technical checks plus content, promise, and factual review. Temporarily sends the video and thumbnail for AI review."
               onSelect={() => onChange({ ...inputs, reviewMode: "full" })}
             />
             <ReviewModeOption
@@ -146,12 +220,12 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
               selected={inputs.reviewMode === "local"}
               disabled={capabilities !== null && !capabilities.local_checks_available}
               title="Local Checks Only"
-              description="Technical, publishing-package, and caption checks. No Gemini media upload."
+              description="Technical, publishing, and caption checks. No AI media upload."
               onSelect={() => onChange({ ...inputs, reviewMode: "local" })}
             />
             {capabilityError && <p className="mode-note">Backend capabilities are unavailable. Local checks can still be attempted.</p>}
             {capabilities && !capabilities.full_review_available && (
-              <p className="mode-note">Full Review unavailable: {capabilities.full_review_unavailable_reasons.map((reason) => reason.message).join(" ")}</p>
+              <p className="mode-note">Full Review unavailable: {capabilities.full_review_unavailable_reasons.map((reason) => capabilityReasonCopy(reason.code)).join(" ")}</p>
             )}
           </fieldset>
 
@@ -169,6 +243,18 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
               onChange={(event) => onChange({ ...inputs, title: event.target.value })}
             />
             <p className="field-hint">The configured scan profile determines the final limit.</p>
+            {inputs.video && capabilities?.metadata_assist_available && (
+              <button className="text-button assist-trigger" type="button" onClick={() => void showAssist("titles")}>
+                <Lightbulb aria-hidden="true" /> Suggest titles
+              </button>
+            )}
+            {assistView === "titles" && (
+              <div className="metadata-assist" aria-live="polite">
+                {assistLoading && <p>Generating suggestions…</p>}
+                {assistError && <p role="alert">{assistError}</p>}
+                {assistResult && <ul>{assistResult.title_suggestions.map((title) => <li key={title}><span>{title}</span><button type="button" className="text-button" onClick={() => onChange({ ...inputs, title })}>Use</button></li>)}</ul>}
+              </div>
+            )}
           </div>
 
           <div className="field-group">
@@ -185,6 +271,18 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
                 onChange({ ...inputs, description: event.target.value })
               }
             />
+            {inputs.video && capabilities?.metadata_assist_available && (
+              <button className="text-button assist-trigger" type="button" onClick={() => void showAssist("description")}>
+                <Lightbulb aria-hidden="true" /> Draft description
+              </button>
+            )}
+            {assistView === "description" && (
+              <div className="metadata-assist" aria-live="polite">
+                {assistLoading && <p>Generating suggestions…</p>}
+                {assistError && <p role="alert">{assistError}</p>}
+                {assistResult && <><p>{assistResult.description_draft}</p><button type="button" className="text-button" onClick={() => onChange({ ...inputs, description: assistResult.description_draft })}>Use description</button></>}
+              </div>
+            )}
           </div>
 
           <div className="field-group captions-field">
@@ -231,7 +329,7 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
           <div className="field-group captions-field">
             <div>
               <span className="field-label"><FileImage aria-hidden="true" /> Thumbnail <em>Optional</em></span>
-              <p>Add a PNG or JPEG for Promise Check alignment review when AI is enabled.</p>
+              <p>Add a PNG or JPEG for opening alignment review when Full Review is selected.</p>
             </div>
             <input
               ref={thumbnailInput}
@@ -302,4 +400,11 @@ function ReviewModeOption({ value, selected, disabled, title, description, onSel
       <span><strong>{title}</strong><small>{description}</small></span>
     </label>
   );
+}
+
+function capabilityReasonCopy(code: string): string {
+  if (code === "media_tools_unavailable") return "Required local media tools are unavailable.";
+  if (code === "gemini_dependency_unavailable") return "The optional AI review package is not installed on the backend.";
+  if (code === "gemini_api_key_missing") return "The backend is not configured for AI review.";
+  return "AI review is not currently available.";
 }

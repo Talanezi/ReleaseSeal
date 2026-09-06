@@ -14,6 +14,7 @@ from creator_preflight.models import FindingStatus, PublishingPackage
 from creator_preflight.media import MediaInspector
 from creator_preflight.promise_check import (
     GeminiPromiseReviewer,
+    OpeningAlignment,
     PromiseDelivery,
     PromiseIssue,
     PromiseIssueType,
@@ -33,6 +34,7 @@ def _review(**changes) -> PromiseReviewResult:
         "inferred_promise": "Explain why blue light can disrupt sleep.",
         "first_substantive_address_seconds": 8.0,
         "first_substantive_address_evidence": "The video explains blue light's effect on sleep.",
+        "opening_alignment": OpeningAlignment.DIRECT_DELIVERY,
         "overall_delivery": PromiseDelivery.ALIGNED,
         "overall_delivery_explanation": "The video explains the promised subject.",
         "confidence": 0.95,
@@ -112,24 +114,25 @@ def test_promise_schema_rejects_unknown_issue_and_invalid_ranges() -> None:
         )
 
 
-def test_aligned_review_has_no_finding_and_delay_boundary_is_conservative() -> None:
+def test_relevant_hook_is_not_a_timer_warning_and_unrelated_delay_uses_semantic_time() -> None:
     config = AIReviewConfig()
     assert promise_findings(
-        _review(first_substantive_address_seconds=20),
+        _review(first_substantive_address_seconds=22, opening_alignment=OpeningAlignment.RELEVANT_HOOK),
         provider="gemini",
         model=config.model,
         config=config,
     ) == []
 
     delayed = promise_findings(
-        _review(first_substantive_address_seconds=20.1),
+        _review(first_substantive_address_seconds=22, opening_alignment=OpeningAlignment.UNRELATED_DELAY),
         provider="gemini",
         model=config.model,
         config=config,
     )
     assert [finding.code for finding in delayed] == ["AI_PROMISE_DELAY"]
-    assert delayed[0].timestamp_start_seconds == 0
-    assert delayed[0].timestamp_end_seconds == 20.1
+    assert delayed[0].timestamp_start_seconds == 22
+    assert delayed[0].timestamp_end_seconds is None
+    assert delayed[0].details["direct_delivery_seconds"] == 22
     assert delayed[0].status is FindingStatus.NEEDS_REVIEW
 
 
@@ -249,7 +252,7 @@ def test_scanner_promise_warning_counts_are_internally_consistent(
     config = _config()
     config.ai_review.enabled = True
     reviewer = RecordingPromiseReviewer(
-        _review(first_substantive_address_seconds=25, confidence=0.96)
+        _review(first_substantive_address_seconds=25, opening_alignment=OpeningAlignment.UNRELATED_DELAY, confidence=0.96)
     )
     report = PreflightScanner(config=config, promise_reviewer=reviewer).scan(
         video_with_audio, PublishingPackage(title="Title", description="Description")

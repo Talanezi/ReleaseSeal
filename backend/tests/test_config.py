@@ -30,7 +30,8 @@ def test_default_detector_configuration_loads() -> None:
     assert config.ai_review.enabled is False
     assert config.ai_review.provider == "gemini"
     assert config.ai_review.model == "gemini-3.7-flash"
-    assert config.ai_review.promise_check.delay_warning_seconds == 20.0
+    assert config.ai_review.promise_check.opening_review_horizon_seconds == 30.0
+    assert config.ai_review.metadata_assist.visual_sample_count == 8
     assert config.ai_review.promise_check.minimum_issue_confidence == 0.70
     assert config.ai_review.viewer_pass.enabled is True
     assert config.ai_review.viewer_pass.minimum_issue_confidence == 0.75

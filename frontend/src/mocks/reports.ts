@@ -168,6 +168,7 @@ export const needsReviewReport: PreflightReport = {
     inferred_promise: null,
     first_substantive_address_seconds: null,
     first_substantive_address_evidence: null,
+    opening_alignment: null,
     overall_delivery: null,
     explanation: null,
     confidence: null,
@@ -215,6 +216,13 @@ export const needsReviewReport: PreflightReport = {
     preview_required_count: 1,
     human_only_count: 4,
   },
+  release_brief: {
+    source: "deterministic",
+    headline: "5 items need attention",
+    summary: "Review the most important items below before publishing.",
+    top_actions: ["Sustained near-black section at 00:02.00", "Long silent section at 00:03.00", "Sustained static-frame section at 00:07.00"],
+    positive_note: null,
+  },
   scan_duration_seconds: 0.159,
 };
 
@@ -231,6 +239,13 @@ export const readyReport: PreflightReport = {
     safe_count: 0,
     preview_required_count: 0,
     human_only_count: 0,
+  },
+  release_brief: {
+    source: "deterministic",
+    headline: "No release issues found",
+    summary: "The completed checks found no issue that needs action.",
+    top_actions: [],
+    positive_note: "No unexpected release issue was found.",
   },
   scan_duration_seconds: 0.126,
 };

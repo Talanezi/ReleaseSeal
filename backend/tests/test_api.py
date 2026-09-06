@@ -86,7 +86,7 @@ def test_unified_api_scan_returns_preflight_report(video_with_audio: Path) -> No
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["schema_version"] == "1.6"
+    assert payload["schema_version"] == "1.8"
     assert payload["review_mode"] == "local"
     assert payload["scan_completeness"] == "COMPLETE"
     assert payload["ai_review"]["status"] == "disabled"
@@ -111,7 +111,7 @@ def test_unified_api_anomaly_report_matches_real_frontend_contract(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["schema_version"] == "1.6"
+    assert payload["schema_version"] == "1.8"
     assert payload["ai_review"]["status"] == "disabled"
     assert payload["verdict"] == "NEEDS_REVIEW"
     assert payload["media"]["width"] == 1280
@@ -376,6 +376,12 @@ def test_browser_mp4_full_review_preserves_provider_media_identity(
                     "overall_status": "clean", "summary": "No issues.", "issues": [],
                 },
                 "ClaimExtractionResult": {"claims": []},
+                "ReleaseBriefDraft": {
+                    "headline": "Ready for release",
+                    "summary": "The completed checks found no release issue.",
+                    "top_action_codes": [],
+                    "positive_note": "Technical and editorial checks completed.",
+                },
             }
             return SimpleNamespace(text=json.dumps(payloads[schema]), candidates=[])
 
@@ -401,7 +407,7 @@ def test_browser_mp4_full_review_preserves_provider_media_identity(
     assert payload["viewer_pass"]["status"] == "clean"
     assert payload["claim_review"]["status"] == "no_claims"
     assert fake_client.files.upload_count == 1
-    assert fake_client.models.calls == 3
+    assert fake_client.models.calls == 4
     assert fake_client.files.delete_count == 1
 
 
@@ -705,6 +711,7 @@ def test_full_review_repaired_scan_uses_existing_fake_provider_session(video_wit
                 "PromiseReviewResult": {"inferred_promise": "Explain a test.", "first_substantive_address_seconds": 0, "first_substantive_address_evidence": "It starts.", "overall_delivery": "aligned", "overall_delivery_explanation": "Aligned.", "confidence": 0.9, "thumbnail_alignment": None, "thumbnail_alignment_explanation": None, "issues": []},
                 "ViewerPassResult": {"overall_status": "clean", "summary": "Clean.", "issues": []},
                 "ClaimExtractionResult": {"claims": []},
+                "ReleaseBriefDraft": {"headline": "Ready", "summary": "No release issue was found.", "top_action_codes": [], "positive_note": "Checks completed."},
             }[title]
             return SimpleNamespace(text=json.dumps(payload), candidates=[])
 
@@ -718,5 +725,5 @@ def test_full_review_repaired_scan_uses_existing_fake_provider_session(video_wit
     assert payload["repaired_preflight_report"]["promise_check"]["status"] == "aligned"
     assert payload["repaired_preflight_report"]["viewer_pass"]["status"] == "clean"
     assert fake_client.files.upload_count == 1
-    assert fake_client.models.calls == 3
+    assert fake_client.models.calls == 4
     assert fake_client.files.delete_count == 1

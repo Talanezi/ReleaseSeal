@@ -1,6 +1,29 @@
 export type FindingSeverity = "info" | "warning" | "error";
 export type FindingStatus = "READY" | "NEEDS_REVIEW" | "BLOCKED";
 export type ReviewMode = "full" | "local";
+
+export type ScanProgressState = "RUNNING" | "COMPLETE" | "PARTIAL" | "FAILED";
+export type ScanProgressStage = "receiving_media" | "preparing_media" | "technical_checks"
+  | "preparing_ai_media" | "opening_review" | "continuity_review" | "factual_review"
+  | "preparing_review" | "final_report" | "complete" | "failed";
+
+export interface ScanProgressTask {
+  task_id: string;
+  label: string;
+  status: "Done" | "Working" | "Waiting" | "Unavailable";
+}
+
+export interface ScanProgress {
+  progress_id: string;
+  review_mode: ReviewMode;
+  state: ScanProgressState;
+  stage: ScanProgressStage;
+  percent: number;
+  message: string;
+  created_at_epoch_seconds: number;
+  updated_at_epoch_seconds: number;
+  tasks: ScanProgressTask[];
+}
 export type ScanCompleteness = "COMPLETE" | "PARTIAL" | "FAILED";
 
 export type JsonValue =
@@ -88,6 +111,7 @@ export interface PreflightCapabilities {
   gemini_dependency_available: boolean;
   gemini_api_key_configured: boolean;
   full_review_available: boolean;
+  metadata_assist_available: boolean;
   local_checks_available: boolean;
   transcription_dependency_available: boolean;
   transcription_enabled: boolean;
@@ -103,6 +127,7 @@ export interface PromiseCheckSummary {
   inferred_promise: string | null;
   first_substantive_address_seconds: number | null;
   first_substantive_address_evidence: string | null;
+  opening_alignment: "direct_delivery" | "relevant_hook" | "relevant_setup" | "unrelated_delay" | "contradiction" | "not_evaluable" | null;
   overall_delivery: "aligned" | "partial" | "mismatched" | "not_evaluable" | null;
   explanation: string | null;
   confidence: number | null;
@@ -117,7 +142,7 @@ export interface ViewerPassSummary {
   issue_count: number;
 }
 
-export type ClaimReviewStatus = "disabled" | "no_claims" | "clean" | "needs_review" | "unavailable";
+export type ClaimReviewStatus = "disabled" | "no_claims" | "clean" | "inconclusive" | "needs_review" | "unavailable";
 
 export interface ClaimReviewSummary {
   status: ClaimReviewStatus;
@@ -160,6 +185,20 @@ export interface RepairPlan {
   human_only_count: number;
 }
 
+export interface ReleaseBrief {
+  source: "ai" | "deterministic" | "fallback";
+  headline: string;
+  summary: string;
+  top_actions: string[];
+  positive_note: string | null;
+}
+
+export interface MetadataAssistResult {
+  title_suggestions: string[];
+  description_draft: string;
+  cleanup_succeeded: boolean;
+}
+
 export interface PreflightReport {
   schema_version: string;
   verdict: FindingStatus;
@@ -181,6 +220,7 @@ export interface PreflightReport {
   viewer_pass: ViewerPassSummary;
   claim_review: ClaimReviewSummary;
   repair_plan: RepairPlan;
+  release_brief: ReleaseBrief;
   scan_duration_seconds: number;
 }
 

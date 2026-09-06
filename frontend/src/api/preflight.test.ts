@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { needsReviewReport } from "../mocks/reports";
-import { applyRepairs, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, scanPreflight, verifyRepair } from "./preflight";
+import { applyRepairs, assistMetadata, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, scanPreflight, verifyRepair } from "./preflight";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -34,7 +34,7 @@ describe("preflight API client", () => {
       captions,
       thumbnail,
       reviewMode: "full",
-    });
+    }, { progressId: "67e55044-10b1-426f-9247-bb680e5fe0c8" });
 
     expect(requestUrl).toBe("/api/v1/preflight/scan");
     expect(requestInit?.method).toBe("POST");
@@ -50,6 +50,7 @@ describe("preflight API client", () => {
     expect(form.get("title")).toBe("Exact title");
     expect(form.get("description")).toBe("First line\nSecond line");
     expect(form.get("review_mode")).toBe("full");
+    expect(form.get("progress_id")).toBe("67e55044-10b1-426f-9247-bb680e5fe0c8");
     expect(uploadedCaptions).toBeInstanceOf(File);
     expect((uploadedCaptions as File).name).toBe("captions.vtt");
     expect((uploadedCaptions as File).size).toBe(captions.size);
@@ -74,6 +75,30 @@ describe("preflight API client", () => {
 
     expect(body?.has("captions")).toBe(false);
     expect(body?.has("thumbnail")).toBe(false);
+  });
+
+  it("submits one explicit metadata-assist upload and validates both suggestions", async () => {
+    let requestUrl: RequestInfo | URL | undefined;
+    let body: FormData | undefined;
+    vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
+      requestUrl = url;
+      body = init?.body as FormData;
+      return Promise.resolve(jsonResponse({
+        title_suggestions: ["One", "Two", "Three", "Four", "Five"],
+        description_draft: "A concise description based on the selected video.",
+        cleanup_succeeded: true,
+      }));
+    }));
+    const video = new File(["video"], "metadata source.mp4", { type: "video/mp4" });
+    const captions = new File(["1\n00:00:00,000 --> 00:00:01,000\nOpening\n"], "captions.srt", { type: "text/plain" });
+
+    const result = await assistMetadata(video, { captions });
+
+    expect(requestUrl).toBe("/api/v1/metadata/assist");
+    expect((body?.get("file") as File).name).toBe("metadata source.mp4");
+    expect((body?.get("captions") as File).name).toBe("captions.srt");
+    expect(result.title_suggestions).toHaveLength(5);
+    expect(result.description_draft).toMatch(/selected video/);
   });
 
   it("surfaces a safe structured invalid-media error", async () => {
@@ -212,7 +237,8 @@ function capabilitiesFixture() {
     ffmpeg_available: true,
     gemini_dependency_available: true,
     gemini_api_key_configured: true,
-    full_review_available: true,
+      full_review_available: true,
+      metadata_assist_available: true,
     local_checks_available: true,
     transcription_dependency_available: true,
     transcription_enabled: false,
