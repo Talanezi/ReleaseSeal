@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -163,6 +164,8 @@ export function ResultsView({
         )}
       </section>
 
+      <ReleasePackageResults report={report} thumbnail={packageInput?.thumbnail ?? null} />
+
       {report.release_contract.contract && (
         <ReleaseRequirementsResults report={report} onSeek={seekToSeconds} />
       )}
@@ -274,6 +277,60 @@ export function ResultsView({
         </section>
       </details>
     </main>
+  );
+}
+
+function ReleasePackageResults({ report, thumbnail }: { report: PreflightReport; thumbnail: File | null }) {
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [showSafeArea, setShowSafeArea] = useState(false);
+  const summary = report.release_package;
+  useEffect(() => {
+    if (!thumbnail || typeof URL.createObjectURL !== "function") {
+      setThumbnailUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(thumbnail);
+    setThumbnailUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [thumbnail]);
+  const components = [
+    ["Video", summary.video], ["Thumbnail", summary.thumbnail], ["Captions", summary.captions],
+    ["Title", summary.title], ["Description", summary.description], ["Chapters", summary.chapters],
+    ["Release requirements", summary.release_contract],
+  ] as const;
+  return (
+    <section className="release-package" aria-labelledby="release-package-title">
+      <div className="release-package-heading">
+        <div><span>Delivery checklist</span><h2 id="release-package-title">Release package</h2></div>
+        {summary.delivery_preview && <button className="text-button" type="button" aria-pressed={showSafeArea} onClick={() => setShowSafeArea((value) => !value)}>{showSafeArea ? "Hide safe area" : "Show safe area"}</button>}
+      </div>
+      <ul className="package-components">
+        {components.map(([label, component]) => (
+          <li key={label} className={`package-${component.state.toLowerCase()}`}>
+            {component.state === "PRESENT_VALID" ? <Check aria-hidden="true" /> : component.state === "PRESENT_INVALID" ? <AlertTriangle aria-hidden="true" /> : <Circle aria-hidden="true" />}
+            <span><strong>{label}</strong><small>{component.detail}</small></span>
+          </li>
+        ))}
+      </ul>
+      {summary.thumbnail_checks.length > 0 && <div className="thumbnail-checks" aria-label="Thumbnail delivery checks">{summary.thumbnail_checks.map((check) => <p key={check.check_id} className={check.status === "PASS" ? "is-pass" : "is-review"}><strong>{check.label}</strong><span>{check.measured}</span></p>)}</div>}
+      {thumbnailUrl && summary.delivery_preview && (
+        <div className="delivery-preview" aria-label="Thumbnail delivery preview">
+          <h3>Delivery preview</h3>
+          <p>Approximate platform presentations using the supplied artwork and inspected video duration.</p>
+          <div className="delivery-surfaces">
+            {summary.delivery_preview.surfaces.map((surface) => (
+              <figure key={surface.surface_id}>
+                <div className={`delivery-artwork${showSafeArea ? " show-safe-area" : ""}`} style={{ aspectRatio: `${surface.display_width} / ${surface.display_height}`, "--safe-margin": `${surface.safe_margin_fraction * 100}%` } as CSSProperties}>
+                  <img src={thumbnailUrl} alt="" />
+                  {summary.delivery_preview?.duration_badge_text && <span className="duration-badge" style={{ left: `${surface.badge_x * 100}%`, top: `${surface.badge_y * 100}%`, width: `${surface.badge_width * 100}%`, height: `${surface.badge_height * 100}%` }}>{summary.delivery_preview.duration_badge_text}</span>}
+                </div>
+                <figcaption><strong>{surface.label}</strong><span>{surface.display_width}×{surface.display_height} px delivered box</span></figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

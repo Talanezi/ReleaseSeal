@@ -131,6 +131,11 @@ class CaptionsRequired(_Requirement):
     evaluation_class: Literal[EvaluationClass.DETERMINISTIC] = EvaluationClass.DETERMINISTIC
 
 
+class ThumbnailRequired(_Requirement):
+    type: Literal["THUMBNAIL_REQUIRED"]
+    evaluation_class: Literal[EvaluationClass.DETERMINISTIC] = EvaluationClass.DETERMINISTIC
+
+
 class RequiredTalkingPoint(_ValueRequirement):
     type: Literal["REQUIRED_TALKING_POINT"]
     evaluation_class: Literal[EvaluationClass.SEMANTIC] = EvaluationClass.SEMANTIC
@@ -144,7 +149,7 @@ class ForbiddenClaim(_ValueRequirement):
 ReleaseRequirement = Annotated[
     RequiredText | RequiredExactToken | RequiredUrl | RequiredBeforeTime | ForbiddenText
     | TitleContains | DescriptionContains | DescriptionUrl | MaxDuration | MinResolution
-    | AspectRatio | CaptionsRequired | RequiredTalkingPoint | ForbiddenClaim,
+    | AspectRatio | CaptionsRequired | ThumbnailRequired | RequiredTalkingPoint | ForbiddenClaim,
     Field(discriminator="type"),
 ]
 RequirementAdapter = TypeAdapter(ReleaseRequirement)
@@ -389,6 +394,9 @@ def _evaluate(item, package, media, cues, caption_summary, caption_findings):
         invalid = any(finding.code in invalid_codes for finding in caption_findings)
         ok = caption_summary is not None and caption_summary.cue_count > 0 and not invalid
         return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected="Valid supported captions", evidence="Valid caption cues were supplied." if ok else "Valid supported captions were not supplied.", evidence_source=EvidenceSource.CAPTION_TEXT if ok else EvidenceSource.NONE)
+    if item.type == "THUMBNAIL_REQUIRED":
+        ok = package.thumbnail_path is not None
+        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected="Thumbnail supplied", evidence="A thumbnail was supplied." if ok else "A thumbnail was not supplied.", evidence_source=EvidenceSource.PUBLISHING_METADATA if ok else EvidenceSource.NONE)
     raise AssertionError(item.type)
 
 

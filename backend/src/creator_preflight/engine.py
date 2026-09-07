@@ -61,13 +61,14 @@ from creator_preflight.release_contract import (
     evaluate_release_contract,
     evaluate_semantic_requirements,
 )
+from creator_preflight.release_package import evaluate_release_package
 from creator_preflight.rules import evaluate_package_rules
 from creator_preflight.transcription import (
     SpeechTranscriber,
     TranscriptionUnavailableError,
     WhisperTranscriber,
 )
-from creator_preflight.thumbnails import inspect_thumbnail
+from creator_preflight.thumbnails import ThumbnailValidationError, inspect_thumbnail
 from creator_preflight.viewer_pass import (
     GeminiViewerPassReviewer,
     ViewerPassOverallStatus,
@@ -270,15 +271,34 @@ class PreflightScanner:
                     )
                 )
         thumbnail_info = None
+        thumbnail_error = None
         if package.thumbnail_path is not None:
-            thumbnail_info = inspect_thumbnail(
-                package.thumbnail_path,
-                maximum_bytes=self.config.ai_review.promise_check.maximum_thumbnail_file_size_bytes,
-                maximum_width=self.config.ai_review.promise_check.maximum_thumbnail_width,
-                maximum_height=self.config.ai_review.promise_check.maximum_thumbnail_height,
-                maximum_pixels=self.config.ai_review.promise_check.maximum_thumbnail_pixels,
-                maximum_decompressed_bytes=self.config.ai_review.promise_check.maximum_thumbnail_decompressed_bytes,
-            )
+            try:
+                thumbnail_info = inspect_thumbnail(
+                    package.thumbnail_path,
+                    maximum_bytes=self.config.ai_review.promise_check.maximum_thumbnail_file_size_bytes,
+                    maximum_width=self.config.ai_review.promise_check.maximum_thumbnail_width,
+                    maximum_height=self.config.ai_review.promise_check.maximum_thumbnail_height,
+                    maximum_pixels=self.config.ai_review.promise_check.maximum_thumbnail_pixels,
+                    maximum_decompressed_bytes=self.config.ai_review.promise_check.maximum_thumbnail_decompressed_bytes,
+                )
+            except ThumbnailValidationError as exc:
+                thumbnail_error = exc.message
+        release_package_result = evaluate_release_package(
+            package=package,
+            media=anomaly_result.media,
+            thumbnail_info=thumbnail_info,
+            thumbnail_error=thumbnail_error,
+            caption_summary=caption_summary,
+            caption_findings=caption_findings,
+            package_findings=package_result.findings,
+            minimum_thumbnail_width=self.config.release_package.minimum_thumbnail_width,
+            minimum_thumbnail_height=self.config.release_package.minimum_thumbnail_height,
+            target_aspect_ratio=self.config.release_package.target_thumbnail_aspect_ratio,
+            aspect_ratio_tolerance=self.config.release_package.thumbnail_aspect_ratio_tolerance,
+            maximum_thumbnail_file_size_bytes=self.config.ai_review.promise_check.maximum_thumbnail_file_size_bytes,
+        )
+        review_thumbnail_path = package.thumbnail_path if thumbnail_info is not None else None
         report_progress(
             "technical_checks",
             34 if effective_review_mode is ReviewMode.FULL else 78,
@@ -377,7 +397,7 @@ class PreflightScanner:
                         anomaly_result.media.duration_seconds,
                         title=package.title,
                         description=package.description,
-                        thumbnail_path=package.thumbnail_path,
+                        thumbnail_path=review_thumbnail_path,
                         thumbnail_info=thumbnail_info,
                         config=self.config.ai_review,
                     )
@@ -387,7 +407,7 @@ class PreflightScanner:
                         anomaly_result.media.duration_seconds,
                         title=package.title,
                         description=package.description,
-                        thumbnail_path=package.thumbnail_path,
+                        thumbnail_path=review_thumbnail_path,
                         thumbnail_info=thumbnail_info,
                         config=self.config.ai_review,
                     )
@@ -458,7 +478,7 @@ class PreflightScanner:
                 provider=promise_result.provider,
                 model=promise_result.model,
                 config=self.config.ai_review,
-                thumbnail_supplied=package.thumbnail_path is not None,
+                thumbnail_supplied=review_thumbnail_path is not None,
             )
             ai_findings.extend(promise_task_findings)
             ai_checks.append(CheckResult(
@@ -612,6 +632,7 @@ class PreflightScanner:
             [
                 *anomaly_result.findings,
                 *package_result.findings,
+                *release_package_result.findings,
                 *caption_findings,
                 *ai_findings,
                 *contract_task_findings,
@@ -624,6 +645,7 @@ class PreflightScanner:
                 anomaly_result.media, findings, detector_config
             ),
             *package_result.checks,
+            *release_package_result.checks,
             *caption_checks,
             *ai_checks,
             *[
@@ -709,6 +731,7 @@ class PreflightScanner:
             promise_check=promise_summary,
             viewer_pass=viewer_summary,
             claim_review=claim_summary,
+            release_package=release_package_result.summary,
             release_contract=contract_evaluation,
             repair_plan=repair_plan,
             release_brief=release_brief,

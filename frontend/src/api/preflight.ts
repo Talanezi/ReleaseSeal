@@ -544,10 +544,38 @@ function isPreflightReport(value: unknown): value is PreflightReport {
     && isPromiseCheckSummary(value.promise_check)
     && isViewerPassSummary(value.viewer_pass)
     && isClaimReviewSummary(value.claim_review)
+    && isReleasePackageSummary(value.release_package)
     && isReleaseContractEvaluation(value.release_contract)
     && isRepairPlan(value.repair_plan)
     && isReleaseBrief(value.release_brief)
     && isNonnegativeNumber(value.scan_duration_seconds);
+}
+
+function isReleasePackageSummary(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const component = (item: unknown) => isRecord(item)
+    && (item.state === "PRESENT_VALID" || item.state === "PRESENT_INVALID" || item.state === "ABSENT" || item.state === "NOT_REQUIRED")
+    && typeof item.detail === "string";
+  const components = ["video", "thumbnail", "captions", "title", "description", "chapters", "release_contract"];
+  return components.every((key) => component(value[key]))
+    && (value.thumbnail_mime_type === null || typeof value.thumbnail_mime_type === "string")
+    && (value.thumbnail_file_size_bytes === null || isNonnegativeNumber(value.thumbnail_file_size_bytes))
+    && (value.thumbnail_width === null || isNonnegativeNumber(value.thumbnail_width))
+    && (value.thumbnail_height === null || isNonnegativeNumber(value.thumbnail_height))
+    && Array.isArray(value.thumbnail_checks)
+    && value.thumbnail_checks.every((item) => isRecord(item) && typeof item.check_id === "string" && typeof item.label === "string"
+      && (item.status === "PASS" || item.status === "NEEDS_REVIEW") && typeof item.measured === "string" && typeof item.expected === "string")
+    && (value.delivery_preview === null || (isRecord(value.delivery_preview)
+      && (value.delivery_preview.duration_badge_text === null || typeof value.delivery_preview.duration_badge_text === "string")
+      && Array.isArray(value.delivery_preview.surfaces)
+      && value.delivery_preview.surfaces.every((item) => isRecord(item) && typeof item.surface_id === "string" && typeof item.label === "string"
+        && isNonnegativeNumber(item.display_width) && isNonnegativeNumber(item.display_height)
+        && isNonnegativeNumber(item.safe_margin_fraction) && isNonnegativeNumber(item.badge_x) && isNonnegativeNumber(item.badge_y)
+        && isNonnegativeNumber(item.badge_width) && isNonnegativeNumber(item.badge_height))
+      && Array.isArray(value.delivery_preview.critical_region_intersections)))
+    && isNonnegativeNumber(value.construction_seconds)
+    && isNonnegativeNumber(value.thumbnail_evaluation_seconds)
+    && isNonnegativeNumber(value.preview_metadata_seconds);
 }
 
 function isReleaseContract(value: unknown): value is ReleaseContract {
@@ -556,7 +584,7 @@ function isReleaseContract(value: unknown): value is ReleaseContract {
     && value.requirements.every(isReleaseRequirement);
 }
 
-const releaseRequirementTypes = ["REQUIRED_TEXT", "REQUIRED_EXACT_TOKEN", "REQUIRED_URL", "REQUIRED_BEFORE_TIME", "FORBIDDEN_TEXT", "TITLE_CONTAINS", "DESCRIPTION_CONTAINS", "DESCRIPTION_URL", "MAX_DURATION", "MIN_RESOLUTION", "ASPECT_RATIO", "CAPTIONS_REQUIRED", "REQUIRED_TALKING_POINT", "FORBIDDEN_CLAIM"] as const;
+const releaseRequirementTypes = ["REQUIRED_TEXT", "REQUIRED_EXACT_TOKEN", "REQUIRED_URL", "REQUIRED_BEFORE_TIME", "FORBIDDEN_TEXT", "TITLE_CONTAINS", "DESCRIPTION_CONTAINS", "DESCRIPTION_URL", "MAX_DURATION", "MIN_RESOLUTION", "ASPECT_RATIO", "CAPTIONS_REQUIRED", "THUMBNAIL_REQUIRED", "REQUIRED_TALKING_POINT", "FORBIDDEN_CLAIM"] as const;
 
 function isReleaseRequirement(item: unknown): boolean {
   if (!isRecord(item) || typeof item.id !== "string" || !releaseRequirementTypes.includes(item.type as typeof releaseRequirementTypes[number])
@@ -564,7 +592,7 @@ function isReleaseRequirement(item: unknown): boolean {
     || (item.source_excerpt !== null && typeof item.source_excerpt !== "string")) return false;
   const semantic = item.type === "REQUIRED_TALKING_POINT" || item.type === "FORBIDDEN_CLAIM";
   if (item.evaluation_class !== (semantic ? "SEMANTIC" : "DETERMINISTIC")) return false;
-  if (item.type === "CAPTIONS_REQUIRED") return true;
+  if (item.type === "CAPTIONS_REQUIRED" || item.type === "THUMBNAIL_REQUIRED") return true;
   if (item.type === "MAX_DURATION") return typeof item.maximum_seconds === "number" && item.maximum_seconds > 0;
   if (item.type === "MIN_RESOLUTION") return typeof item.minimum_width === "number" && item.minimum_width > 0 && typeof item.minimum_height === "number" && item.minimum_height > 0;
   if (item.type === "ASPECT_RATIO") return typeof item.width_ratio === "number" && item.width_ratio > 0 && typeof item.height_ratio === "number" && item.height_ratio > 0 && typeof item.tolerance === "number";

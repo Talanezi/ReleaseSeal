@@ -37,6 +37,8 @@ Outputs under `frontend/public/demo/owner/`:
 
 Supply optional captions and thumbnail with `--captions` and `--thumbnail`. Captions must already describe the owner source; the builder does not invent text. Generated media stays ignored and is not a repository dependency.
 
+When the supplied thumbnail is present, Final Export's Release Package section uses that authentic browser `File` for bounded delivery previews. The duration badge comes from the inspected video, and the surface boxes are labeled approximate platform representations rather than creative-quality analysis.
+
 ### Tracked fallback
 
 When no owner manifest exists, **Load demo** in Final Export uses the tracked copyright-free package. Revision deliberately shows no broken demo button. The fallback contains:

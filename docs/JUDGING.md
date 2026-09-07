@@ -12,6 +12,7 @@ Creator Preflight is creative release assurance for two related decisions: wheth
 | Optional bounded semantic revision review | Fake-provider matrix plus one accepted controlled live case | `revision_evidence.py`, `revision_semantic.py` | Eligible timestamped requests only |
 | Contract-driven release gate | Deterministic matrix, hostile extraction tests, API and result UI tests | `release_contract.py`, `release_contract_extraction.py`, Final Export form/results | AI structures explicit brief text; backend evaluates deterministic obligations |
 | Artifact-bound release evidence | Exact-video/package mutation matrix plus CLI verification | `release_receipt.py`, receipt API routes, Final Export/Revision receipt downloads | Receipt digest detects stale modification; it is not a signature or legal attestation |
+| Whole delivery package | One compact result for video, authentic thumbnail, captions, publishing text, chapters, and requirements | `release_package.py`, Final Export package summary and delivery preview | Thumbnail review is bounded file/geometry analysis, not a creative-quality score |
 
 ## Creativity
 

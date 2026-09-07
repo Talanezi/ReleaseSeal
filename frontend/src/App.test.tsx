@@ -60,6 +60,8 @@ describe("Creator Preflight frontend", () => {
     await user.clear(screen.getByLabelText("Maximum seconds"));
     await user.type(screen.getByLabelText("Maximum seconds"), "480");
     expect(screen.getByLabelText("Maximum seconds")).toHaveValue(480);
+    await user.selectOptions(screen.getByLabelText("Requirement 1 type"), "THUMBNAIL_REQUIRED");
+    expect(screen.queryByLabelText("Expected value")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Remove" }));
     expect(screen.queryByLabelText("Requirement 1 type")).not.toBeInTheDocument();
   });
@@ -90,6 +92,34 @@ describe("Creator Preflight frontend", () => {
     expect(screen.getByText(/Deterministic · Caption text/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /00:12.00/ }));
     expect(screen.getByTestId("preview-video")).toHaveAttribute("src", "blob:video");
+  });
+  it("renders one truthful release package and actual-thumbnail delivery preview", async () => {
+    const user = userEvent.setup();
+    const report: PreflightReport = { ...readyReport, release_package: {
+      ...readyReport.release_package,
+      thumbnail: { state: "PRESENT_VALID", detail: "1280×720 image/jpeg" },
+      captions: { state: "NOT_REQUIRED", detail: "Not supplied" },
+      chapters: { state: "PRESENT_VALID", detail: "3 chapters" },
+      thumbnail_mime_type: "image/jpeg", thumbnail_file_size_bytes: 394000,
+      thumbnail_width: 1280, thumbnail_height: 720,
+      thumbnail_checks: [
+        { check_id: "resolution", label: "Resolution", status: "PASS", measured: "1280×720", expected: "At least 1280×720" },
+        { check_id: "aspect_ratio", label: "Aspect ratio", status: "PASS", measured: "1280:720", expected: "16:9 delivery artwork" },
+      ],
+      delivery_preview: {
+        duration_badge_text: "3:32",
+        surfaces: [{ surface_id: "mobile_feed", label: "Mobile feed / search", display_width: 168, display_height: 94, safe_margin_fraction: .035, badge_x: .73, badge_y: .72, badge_width: .23, badge_height: .22 }],
+        critical_region_intersections: [],
+      },
+    } };
+    render(<ResultsView report={report} packageInput={{ title: "Title", description: "Description", thumbnail: new File(["jpeg"], "yellowstone.jpg", { type: "image/jpeg" }), reviewMode: "local" }} />);
+    expect(screen.getByRole("heading", { name: "Release package" })).toBeInTheDocument();
+    expect(screen.getByText("Mobile feed / search")).toBeInTheDocument();
+    expect(screen.getByText("168×94 px delivered box")).toBeInTheDocument();
+    expect(screen.getByText("3:32")).toBeInTheDocument();
+    expect(screen.getAllByText("Not supplied")).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "Show safe area" }));
+    expect(screen.getByRole("button", { name: "Hide safe area" })).toHaveAttribute("aria-pressed", "true");
   });
   it("labels trusted report synthesis as a Review summary", () => {
     render(<ResultsView report={readyReport} filename="ready.mp4" previewUrl="blob:ready" />);

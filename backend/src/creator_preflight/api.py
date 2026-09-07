@@ -56,7 +56,7 @@ from creator_preflight.revision_semantic import (
     RevisionSemanticReviewService,
 )
 from creator_preflight.revision_semantic_models import RevisionSemanticReviewReport
-from creator_preflight.thumbnails import ThumbnailValidationError, inspect_thumbnail
+from creator_preflight.thumbnails import ThumbnailValidationError
 from creator_preflight.verification import transform_caption_file, verify_repair
 from creator_preflight.verification_models import ReviewReelManifest, VerificationReport
 
@@ -655,15 +655,6 @@ async def scan_uploaded_package(
             await _copy_upload(file, temporary_path, config.api.maximum_video_upload_size_bytes)
             caption_path = await _copy_optional_bounded(captions, Path(temporary_directory) / "captions.upload", config.rules.captions.maximum_file_size_bytes + 1)
             thumbnail_path = await _copy_optional_bounded(thumbnail, Path(temporary_directory) / "thumbnail.upload", config.ai_review.promise_check.maximum_thumbnail_file_size_bytes + 1)
-            if thumbnail_path is not None:
-                inspect_thumbnail(
-                    thumbnail_path,
-                    maximum_bytes=config.ai_review.promise_check.maximum_thumbnail_file_size_bytes,
-                    maximum_width=config.ai_review.promise_check.maximum_thumbnail_width,
-                    maximum_height=config.ai_review.promise_check.maximum_thumbnail_height,
-                    maximum_pixels=config.ai_review.promise_check.maximum_thumbnail_pixels,
-                    maximum_decompressed_bytes=config.ai_review.promise_check.maximum_thumbnail_decompressed_bytes,
-                )
             if progress_id:
                 _scan_progress.update(progress_id, ScanProgressStage.PREPARING_MEDIA, 8, "Getting the video ready")
             package = PublishingPackage(
@@ -791,15 +782,6 @@ async def verify_repaired_video(
             await _copy_upload(repaired_file, repaired_path, config.api.maximum_video_upload_size_bytes)
             caption_path = await _copy_optional_bounded(captions, directory / "captions.upload", config.rules.captions.maximum_file_size_bytes + 1)
             thumbnail_path = await _copy_optional_bounded(thumbnail, directory / "thumbnail.upload", config.ai_review.promise_check.maximum_thumbnail_file_size_bytes + 1)
-            if thumbnail_path is not None:
-                inspect_thumbnail(
-                    thumbnail_path,
-                    maximum_bytes=config.ai_review.promise_check.maximum_thumbnail_file_size_bytes,
-                    maximum_width=config.ai_review.promise_check.maximum_thumbnail_width,
-                    maximum_height=config.ai_review.promise_check.maximum_thumbnail_height,
-                    maximum_pixels=config.ai_review.promise_check.maximum_thumbnail_pixels,
-                    maximum_decompressed_bytes=config.ai_review.promise_check.maximum_thumbnail_decompressed_bytes,
-                )
             if caption_path is not None:
                 original_media = await anyio.to_thread.run_sync(
                     partial(MediaInspector().inspect, original_path)

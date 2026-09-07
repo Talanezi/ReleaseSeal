@@ -126,7 +126,7 @@ export interface PreflightCapabilities {
 export type ReleaseRequirementType = "REQUIRED_TEXT" | "REQUIRED_EXACT_TOKEN" | "REQUIRED_URL"
   | "REQUIRED_BEFORE_TIME" | "FORBIDDEN_TEXT" | "TITLE_CONTAINS" | "DESCRIPTION_CONTAINS"
   | "DESCRIPTION_URL" | "MAX_DURATION" | "MIN_RESOLUTION" | "ASPECT_RATIO"
-  | "CAPTIONS_REQUIRED" | "REQUIRED_TALKING_POINT" | "FORBIDDEN_CLAIM";
+  | "CAPTIONS_REQUIRED" | "THUMBNAIL_REQUIRED" | "REQUIRED_TALKING_POINT" | "FORBIDDEN_CLAIM";
 export type ContractEvaluationClass = "DETERMINISTIC" | "SEMANTIC";
 export type ContractStatus = "PASS" | "FAIL" | "NEEDS_REVIEW" | "NOT_EVALUATED";
 
@@ -175,6 +175,63 @@ export interface ReleaseContractEvaluation {
   needs_review_count: number;
   not_evaluated_count: number;
   runtime_seconds: number;
+}
+
+export type PackageComponentState = "PRESENT_VALID" | "PRESENT_INVALID" | "ABSENT" | "NOT_REQUIRED";
+
+export interface PackageComponent {
+  state: PackageComponentState;
+  detail: string;
+}
+
+export interface ThumbnailDeliveryCheck {
+  check_id: string;
+  label: string;
+  status: "PASS" | "NEEDS_REVIEW";
+  measured: string;
+  expected: string;
+}
+
+export interface DeliveryPreviewSurface {
+  surface_id: string;
+  label: string;
+  display_width: number;
+  display_height: number;
+  safe_margin_fraction: number;
+  badge_x: number;
+  badge_y: number;
+  badge_width: number;
+  badge_height: number;
+}
+
+export interface DeliveryPreviewMetadata {
+  duration_badge_text: string | null;
+  surfaces: DeliveryPreviewSurface[];
+  critical_region_intersections: Array<{
+    region_label: string;
+    surface_id: string;
+    intersects_duration_badge: boolean;
+    intersects_unsafe_edge: boolean;
+  }>;
+}
+
+export interface ReleasePackageSummary {
+  video: PackageComponent;
+  thumbnail: PackageComponent;
+  captions: PackageComponent;
+  title: PackageComponent;
+  description: PackageComponent;
+  chapters: PackageComponent;
+  release_contract: PackageComponent;
+  thumbnail_mime_type: string | null;
+  thumbnail_file_size_bytes: number | null;
+  thumbnail_width: number | null;
+  thumbnail_height: number | null;
+  thumbnail_checks: ThumbnailDeliveryCheck[];
+  delivery_preview: DeliveryPreviewMetadata | null;
+  construction_seconds: number;
+  thumbnail_evaluation_seconds: number;
+  preview_metadata_seconds: number;
 }
 
 export type RevisionSegmentKind = "UNCHANGED" | "REMOVED" | "INSERTED" | "CHANGED";
@@ -402,6 +459,7 @@ export interface PreflightReport {
   promise_check: PromiseCheckSummary;
   viewer_pass: ViewerPassSummary;
   claim_review: ClaimReviewSummary;
+  release_package: ReleasePackageSummary;
   release_contract: ReleaseContractEvaluation;
   repair_plan: RepairPlan;
   release_brief: ReleaseBrief;

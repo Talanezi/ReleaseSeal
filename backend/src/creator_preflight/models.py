@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 from creator_preflight.repair_models import RepairPlan
 from creator_preflight.release_models import ReleaseBrief, ReleaseBriefSource
 from creator_preflight.release_contract import ReleaseContract, ReleaseContractEvaluation
+from creator_preflight.release_package import ReleasePackageSummary, empty_release_package_summary
 
 
 class FindingSeverity(str, Enum):
@@ -248,7 +249,7 @@ class PreflightReport(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = "1.9"
+    schema_version: str = "1.10"
     verdict: FindingStatus
     scan_completeness: ScanCompleteness = ScanCompleteness.COMPLETE
     review_mode: ReviewMode = ReviewMode.LOCAL
@@ -267,6 +268,7 @@ class PreflightReport(BaseModel):
     promise_check: PromiseCheckSummary
     viewer_pass: ViewerPassSummary
     claim_review: ClaimReviewSummary
+    release_package: ReleasePackageSummary = Field(default_factory=empty_release_package_summary)
     release_contract: ReleaseContractEvaluation = Field(default_factory=ReleaseContractEvaluation)
     repair_plan: RepairPlan = Field(default_factory=RepairPlan)
     release_brief: ReleaseBrief = Field(default_factory=lambda: ReleaseBrief(

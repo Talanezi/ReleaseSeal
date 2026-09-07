@@ -135,6 +135,14 @@ api:
     - http://localhost:5173
     - http://127.0.0.1:5173
 
+# Basic thumbnail delivery checks. These are file/geometry measurements, not
+# text-legibility, saliency, or creative-quality scoring.
+release_package:
+  minimum_thumbnail_width: 1280
+  minimum_thumbnail_height: 720
+  target_thumbnail_aspect_ratio: 1.7777777777777777
+  thumbnail_aspect_ratio_tolerance: 0.02
+
 # Bounded deterministic visual comparison and short Review Reel generation
 # for Creator Preflight-produced repaired exports.
 verification:

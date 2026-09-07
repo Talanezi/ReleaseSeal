@@ -87,7 +87,7 @@ def test_unified_api_scan_returns_preflight_report(video_with_audio: Path) -> No
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["schema_version"] == "1.9"
+    assert payload["schema_version"] == "1.10"
     assert payload["review_mode"] == "local"
     assert payload["scan_completeness"] == "COMPLETE"
     assert payload["ai_review"]["status"] == "disabled"
@@ -172,7 +172,7 @@ def test_unified_api_anomaly_report_matches_real_frontend_contract(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["schema_version"] == "1.9"
+    assert payload["schema_version"] == "1.10"
     assert payload["ai_review"]["status"] == "disabled"
     assert payload["verdict"] == "NEEDS_REVIEW"
     assert payload["media"]["width"] == 1280
@@ -629,7 +629,7 @@ def test_api_accepts_png_thumbnail_and_cleans_temporary_file(
     assert created_paths and all(not path.exists() for path in created_paths)
 
 
-def test_api_rejects_corrupt_thumbnail_cleanly(video_with_audio: Path) -> None:
+def test_api_reports_corrupt_thumbnail_as_invalid_package_content(video_with_audio: Path) -> None:
     with video_with_audio.open("rb") as media_file:
         response = client.post(
             "/api/v1/preflight/scan",
@@ -639,11 +639,14 @@ def test_api_rejects_corrupt_thumbnail_cleanly(video_with_audio: Path) -> None:
             },
             data={"title": "Title", "description": "Description"},
         )
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "thumbnail_invalid"
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["verdict"] == "BLOCKED"
+    assert payload["release_package"]["thumbnail"]["state"] == "PRESENT_INVALID"
+    assert "THUMBNAIL_INVALID" in [item["code"] for item in payload["findings"]]
 
 
-def test_api_rejects_thumbnail_above_configured_limit(
+def test_api_reports_thumbnail_above_configured_limit(
     video_with_audio: Path, monkeypatch
 ) -> None:
     from creator_preflight.config import PreflightConfig
@@ -660,8 +663,9 @@ def test_api_rejects_thumbnail_above_configured_limit(
             },
             data={"title": "Title", "description": "Description"},
         )
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "thumbnail_too_large"
+    assert response.status_code == 200
+    assert response.json()["release_package"]["thumbnail"]["state"] == "PRESENT_INVALID"
+    assert response.json()["verdict"] == "BLOCKED"
 
 
 def test_detector_timeout_uses_gateway_timeout_response(

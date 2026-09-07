@@ -11,7 +11,7 @@ from creator_preflight.config import AIReviewConfig, PreflightConfig
 from creator_preflight.engine import PreflightScanner
 from creator_preflight.models import CaptionSummary, FindingStatus, MediaInspection, PublishingPackage, ReviewMode, ScanCompleteness
 from creator_preflight.release_contract import (
-    AspectRatio, CaptionsRequired, ContractStatus, DescriptionContains, DescriptionUrl,
+    AspectRatio, CaptionsRequired, ThumbnailRequired, ContractStatus, DescriptionContains, DescriptionUrl,
     ForbiddenClaim, ForbiddenText, MaxDuration, MinResolution, ReleaseContract,
     RequiredBeforeTime, RequiredExactToken, RequiredTalkingPoint, RequiredText,
     RequiredUrl, TitleContains, evaluate_release_contract,
@@ -74,6 +74,14 @@ def test_missing_text_source_is_not_evaluated_and_late_mention_fails():
         CaptionsRequired(id="captions", type="CAPTIONS_REQUIRED", instruction="Captions required"),
     ])
     assert [row.status for row in media_failures.results] == [ContractStatus.FAIL] * 3
+
+
+def test_thumbnail_required_is_presence_only_and_remains_contract_owned():
+    missing = evaluate([ThumbnailRequired(id="thumbnail", type="THUMBNAIL_REQUIRED", instruction="Thumbnail required")])
+    assert missing.results[0].status is ContractStatus.FAIL
+    package = PublishingPackage(title="Title", thumbnail_path="thumbnail.jpg")
+    present = evaluate_release_contract(ReleaseContract(requirements=[ThumbnailRequired(id="thumbnail", type="THUMBNAIL_REQUIRED", instruction="Thumbnail required")]), package=package, media=media(), caption_cues=[], caption_summary=None, caption_findings=[])
+    assert present.results[0].status is ContractStatus.PASS
 
 
 def test_exact_token_near_match_is_diagnostic_only():

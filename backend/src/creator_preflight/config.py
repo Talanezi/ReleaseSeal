@@ -287,6 +287,17 @@ class APIConfig(BaseModel):
         return list(dict.fromkeys(cleaned))
 
 
+class ReleasePackageConfig(BaseModel):
+    """Cheap, deterministic thumbnail delivery policy."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    minimum_thumbnail_width: int = Field(default=1280, gt=0, le=16384)
+    minimum_thumbnail_height: int = Field(default=720, gt=0, le=16384)
+    target_thumbnail_aspect_ratio: float = Field(default=16 / 9, gt=0, le=10)
+    thumbnail_aspect_ratio_tolerance: float = Field(default=.02, ge=0, le=.1)
+
+
 class VerificationConfig(BaseModel):
     """Bounded deterministic repaired-output comparison and reel settings."""
 
@@ -387,6 +398,7 @@ class PreflightConfig(BaseModel):
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     ai_review: AIReviewConfig = Field(default_factory=AIReviewConfig)
     api: APIConfig = Field(default_factory=APIConfig)
+    release_package: ReleasePackageConfig = Field(default_factory=ReleasePackageConfig)
     verification: VerificationConfig = Field(default_factory=VerificationConfig)
     revision_map: RevisionMapConfig = Field(default_factory=RevisionMapConfig)
     revision_check: RevisionCheckConfig = Field(default_factory=RevisionCheckConfig)

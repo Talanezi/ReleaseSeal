@@ -229,8 +229,8 @@ def test_cli_accepts_valid_thumbnail_without_enabling_ai(
     thumbnail = tmp_path / "thumbnail.png"
     thumbnail.write_bytes(
         b"\x89PNG\r\n\x1a\n"
-        + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
-        + chunk(b"IDAT", zlib.compress(b"\x00\x00\x00\x00"))
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", 1280, 720, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress((b"\x00" + b"\x00" * (1280 * 3)) * 720))
         + chunk(b"IEND", b"")
     )
     exit_code = main([

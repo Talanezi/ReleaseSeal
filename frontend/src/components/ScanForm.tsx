@@ -388,7 +388,7 @@ const requirementLabels: Record<ReleaseRequirementType, string> = {
   REQUIRED_BEFORE_TIME: "Required before a time", FORBIDDEN_TEXT: "Forbidden text", TITLE_CONTAINS: "Title must contain",
   DESCRIPTION_CONTAINS: "Description must contain", DESCRIPTION_URL: "Description must contain URL",
   MAX_DURATION: "Maximum duration", MIN_RESOLUTION: "Minimum resolution", ASPECT_RATIO: "Aspect ratio",
-  CAPTIONS_REQUIRED: "Captions required", REQUIRED_TALKING_POINT: "Required talking point", FORBIDDEN_CLAIM: "Forbidden claim",
+  CAPTIONS_REQUIRED: "Captions required", THUMBNAIL_REQUIRED: "Thumbnail required", REQUIRED_TALKING_POINT: "Required talking point", FORBIDDEN_CLAIM: "Forbidden claim",
 };
 
 function ReleaseRequirementsEditor({ contract, extractionAvailable, onChange }: {
@@ -435,7 +435,7 @@ function ReleaseRequirementsEditor({ contract, extractionAvailable, onChange }: 
 }
 
 function RequirementParameters({ requirement, onChange }: { requirement: ReleaseRequirement; onChange: (change: Partial<ReleaseRequirement>) => void }) {
-  if (requirement.type === "CAPTIONS_REQUIRED") return null;
+  if (requirement.type === "CAPTIONS_REQUIRED" || requirement.type === "THUMBNAIL_REQUIRED") return null;
   if (requirement.type === "MAX_DURATION") return <input type="number" min="0.01" aria-label="Maximum seconds" value={requirement.maximum_seconds ?? 60} onChange={(event) => onChange({ maximum_seconds: Number(event.target.value) })} />;
   if (requirement.type === "MIN_RESOLUTION") return <div className="requirement-parameters"><input type="number" min="1" aria-label="Minimum width" value={requirement.minimum_width ?? 1920} onChange={(event) => onChange({ minimum_width: Number(event.target.value) })} /><span>×</span><input type="number" min="1" aria-label="Minimum height" value={requirement.minimum_height ?? 1080} onChange={(event) => onChange({ minimum_height: Number(event.target.value) })} /></div>;
   if (requirement.type === "ASPECT_RATIO") return <div className="requirement-parameters"><input type="number" min="1" aria-label="Aspect width" value={requirement.width_ratio ?? 16} onChange={(event) => onChange({ width_ratio: Number(event.target.value) })} /><span>:</span><input type="number" min="1" aria-label="Aspect height" value={requirement.height_ratio ?? 9} onChange={(event) => onChange({ height_ratio: Number(event.target.value) })} /></div>;
@@ -449,7 +449,7 @@ function updateRequirement(items: ReleaseRequirement[], index: number, change: P
 function newRequirement(type: ReleaseRequirementType, id = `requirement-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`): ReleaseRequirement {
   const semantic = type === "REQUIRED_TALKING_POINT" || type === "FORBIDDEN_CLAIM";
   const base: ReleaseRequirement = { id, type, instruction: requirementLabels[type], provenance: "manual", source_excerpt: null, evaluation_class: semantic ? "SEMANTIC" : "DETERMINISTIC" };
-  if (type === "CAPTIONS_REQUIRED") return base;
+  if (type === "CAPTIONS_REQUIRED" || type === "THUMBNAIL_REQUIRED") return base;
   if (type === "MAX_DURATION") return { ...base, maximum_seconds: 480 };
   if (type === "MIN_RESOLUTION") return { ...base, minimum_width: 1920, minimum_height: 1080 };
   if (type === "ASPECT_RATIO") return { ...base, width_ratio: 16, height_ratio: 9, tolerance: 0.02 };
@@ -459,7 +459,7 @@ function newRequirement(type: ReleaseRequirementType, id = `requirement-${Date.n
 function contractIsComplete(contract: ReleaseContract | null): boolean {
   return !contract || contract.requirements.every((item) => {
     if (!item.instruction.trim()) return false;
-    if (item.type === "CAPTIONS_REQUIRED") return true;
+    if (item.type === "CAPTIONS_REQUIRED" || item.type === "THUMBNAIL_REQUIRED") return true;
     if (item.type === "MAX_DURATION") return Boolean(item.maximum_seconds && item.maximum_seconds > 0);
     if (item.type === "MIN_RESOLUTION") return Boolean(item.minimum_width && item.minimum_height);
     if (item.type === "ASPECT_RATIO") return Boolean(item.width_ratio && item.height_ratio);
