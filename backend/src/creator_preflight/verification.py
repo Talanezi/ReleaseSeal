@@ -250,7 +250,16 @@ def compare_findings(original: PreflightReport, repaired: PreflightReport, trans
 def detect_unexpected_visual_changes(original_path: str | Path, repaired_path: str | Path, transform: TimelineTransform, *, settings: VerificationConfig | None = None) -> list[UnexpectedChangeInterval]:
     settings = settings or VerificationConfig()
     fps = min(settings.visual_sample_fps, max(0.1, settings.maximum_visual_samples / max(transform.original_duration, 0.1)))
-    original_frames = _sample_frames(original_path, fps, settings.maximum_visual_samples)
+    # Sample the original through the same virtual ripple edit used to render
+    # the repair. Sampling the uncut original on its own fixed grid introduces
+    # a phase offset whenever a removed duration is not an exact sample period;
+    # one side of an ordinary hard cut can then be compared with the other.
+    original_frames = _sample_frames(
+        original_path,
+        fps,
+        settings.maximum_visual_samples,
+        timeline_segments=transform.segments if transform.operations else None,
+    )
     repaired_frames = _sample_frames(repaired_path, fps, settings.maximum_visual_samples)
     changed: list[tuple[float, float]] = []
     boundaries = transform.repaired_cut_boundaries
@@ -258,10 +267,9 @@ def detect_unexpected_visual_changes(original_path: str | Path, repaired_path: s
         repaired_time = index / fps
         if any(abs(repaired_time - boundary) <= settings.edit_boundary_tolerance_seconds for boundary in boundaries):
             continue
-        original_time = transform.repaired_to_original(repaired_time)
-        if original_time is None:
-            continue
-        original_index = min(round(original_time * fps), len(original_frames) - 1)
+        # original_frames already represents the original media after applying
+        # the approved ripple transform, so both sampled lists share one grid.
+        original_index = min(index, len(original_frames) - 1)
         if original_index < 0 or not original_frames:
             continue
         mean, fraction = _frame_difference(original_frames[original_index], repaired_frame, settings.changed_pixel_difference_threshold)
@@ -327,9 +335,43 @@ def _verify_integrity(original: MediaInspection, repaired: MediaInspection, tran
     return RepairIntegrityResult(passed=passed, duration_matches=duration_matches, streams_match=streams_match, resolution_matches=resolution_matches, operations_verified=len(operations), reference_intervals_survived=references_survive, explanation="Rendered duration, stream presence, resolution, and surviving reference intervals match the approved operation plan." if passed else "The rendered export differs from one or more deterministic repair expectations.")
 
 
-def _sample_frames(path: str | Path, fps: float, maximum_samples: int) -> list[bytes]:
+def _sample_frames(
+    path: str | Path,
+    fps: float,
+    maximum_samples: int,
+    *,
+    timeline_segments: list[TimelineSegment] | None = None,
+) -> list[bytes]:
     executable = require_media_tool("ffmpeg")
-    command = [executable, "-hide_banner", "-loglevel", "error", "-nostdin", "-i", str(Path(path).resolve()), "-vf", f"fps={fps:.6f},scale={REGRESSION_WIDTH}:{REGRESSION_HEIGHT}:flags=area,format=gray", "-frames:v", str(maximum_samples), "-f", "rawvideo", "-pix_fmt", "gray", "pipe:1"]
+    sampling_filter = (
+        f"fps={fps:.6f},scale={REGRESSION_WIDTH}:{REGRESSION_HEIGHT}:flags=area,format=gray"
+    )
+    command = [
+        executable,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-nostdin",
+        "-i",
+        str(Path(path).resolve()),
+    ]
+    if timeline_segments:
+        parts: list[str] = []
+        inputs: list[str] = []
+        for index, segment in enumerate(timeline_segments):
+            parts.append(
+                f"[0:v:0]trim=start={segment.original_start:.6f}:end={segment.original_end:.6f},"
+                f"setpts=PTS-STARTPTS[v{index}]"
+            )
+            inputs.append(f"[v{index}]")
+        parts.append(
+            "".join(inputs)
+            + f"concat=n={len(inputs)}:v=1:a=0,{sampling_filter}[sampled]"
+        )
+        command.extend(["-filter_complex", ";".join(parts), "-map", "[sampled]"])
+    else:
+        command.extend(["-vf", sampling_filter])
+    command.extend(["-frames:v", str(maximum_samples), "-f", "rawvideo", "-pix_fmt", "gray", "pipe:1"])
     try:
         completed = subprocess.run(command, capture_output=True, check=False, timeout=180)
     except (OSError, subprocess.TimeoutExpired) as exc:

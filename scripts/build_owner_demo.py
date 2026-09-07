@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build reproducible judge-demo derivatives from one user-owned creator video."""
+"""Build reproducible judge-demo derivatives from one authorized source video."""
 
 from __future__ import annotations
 
@@ -16,23 +16,36 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend" / "src"))
 
 from creator_preflight.media import MediaInspector, MediaInspectionError, require_media_tool  # noqa: E402
-from creator_preflight.promise_fixture import _canvas, _draw_text, _fill_rect, _write_ppm  # noqa: E402
-
 SCHEMA_VERSION = "1.0"
-GENERATOR_VERSION = "1"
+GENERATOR_VERSION = "2"
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Create deterministic demo derivatives from user-owned footage.")
+    parser = argparse.ArgumentParser(description="Create deterministic demo derivatives from authorized footage.")
     parser.add_argument("source", nargs="?", type=Path, default=ROOT / ".demo" / "owner" / "source.mp4")
     parser.add_argument("--output", type=Path, default=ROOT / "frontend" / "public" / "demo" / "owner")
-    parser.add_argument("--title", default="A creator-owned release review")
-    parser.add_argument("--description", default="A user-owned creator video prepared for the release-assurance demo.")
+    parser.add_argument("--title", default="A creative release review")
+    parser.add_argument("--description", default="A creator video prepared for the release-assurance demo.")
     parser.add_argument("--captions", type=Path)
     parser.add_argument("--thumbnail", type=Path)
+    parser.add_argument("--source-type", choices=("user_owned", "public_domain"), default="user_owned")
+    parser.add_argument("--source-credit")
+    parser.add_argument("--source-title")
+    parser.add_argument("--source-url")
     args = parser.parse_args()
     try:
-        outputs = build_owner_demo(args.source, args.output, args.title, args.description, args.captions, args.thumbnail)
+        outputs = build_owner_demo(
+            args.source,
+            args.output,
+            args.title,
+            args.description,
+            args.captions,
+            args.thumbnail,
+            source_type=args.source_type,
+            source_credit=args.source_credit,
+            source_title=args.source_title,
+            source_url=args.source_url,
+        )
     except (RuntimeError, MediaInspectionError) as exc:
         print(f"build-owner-demo: {exc}", file=sys.stderr)
         return 2
@@ -41,9 +54,21 @@ def main() -> int:
     return 0
 
 
-def build_owner_demo(source: Path, output: Path, title: str, description: str, captions: Path | None, thumbnail: Path | None) -> dict[str, Path]:
+def build_owner_demo(
+    source: Path,
+    output: Path,
+    title: str,
+    description: str,
+    captions: Path | None,
+    thumbnail: Path | None,
+    *,
+    source_type: str = "user_owned",
+    source_credit: str | None = None,
+    source_title: str | None = None,
+    source_url: str | None = None,
+) -> dict[str, Path]:
     if not source.is_file():
-        raise RuntimeError(f"User-owned source not found: {source}")
+        raise RuntimeError(f"Source not found: {source}")
     media = MediaInspector().inspect(source)
     if not media.has_video or not media.has_audio or media.duration_seconds is None or media.width is None or media.height is None:
         raise RuntimeError("Source must contain readable video and audio.")
@@ -57,10 +82,11 @@ def build_owner_demo(source: Path, output: Path, title: str, description: str, c
         raise RuntimeError("Supplied thumbnail file does not exist.")
     if thumbnail is not None and thumbnail.suffix.lower() not in {".png", ".jpg", ".jpeg"}:
         raise RuntimeError("Supplied thumbnail must be PNG or JPEG.")
+    provenance = _source_provenance(source_type, source_credit, source_title, source_url)
 
     ffmpeg = require_media_tool("ffmpeg")
     output.mkdir(parents=True, exist_ok=True)
-    # Keep the accepted 90–240 second source timeline intact so optional owner
+    # Keep the accepted 90–240 second source timeline intact so optional
     # captions remain aligned with every generated derivative.
     duration = media.duration_seconds
     # Normalize judge assets to a broadly playable 720p canvas while preserving
@@ -74,40 +100,38 @@ def build_owner_demo(source: Path, output: Path, title: str, description: str, c
     notes = output / "revision-notes.txt"
     title_path = output / "final-export-title.txt"
     description_path = output / "final-export-description.txt"
-    approved_card = output / ".approved-card.ppm"
-
+    # The Revised cut is the normalized clean master. The Previous cut keeps
+    # that authentic footage throughout and adds only plausible seeded defects.
     _run([
         ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", str(source), "-t", f"{duration:.3f}",
         "-map", "0:v:0", "-map", "0:a:0",
         "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2",
         "-r", "24",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-movflags", "+faststart", str(previous),
+        "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-movflags", "+faststart", str(revised),
     ])
 
     _run([
-        ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", str(previous),
+        ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", str(revised),
+        "-vf", (
+            "drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,24,27)',"
+            "eq=brightness=-0.20:enable='between(t,70,74)'"
+        ),
+        "-af", "volume=0:enable='between(t,54,59)'", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(previous),
+    ])
+    # Final Export uses the same realistic black and audio-dropout defects. It
+    # deliberately omits the unmentioned exposure variance used by Revision.
+    _run([
+        ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", str(revised),
         "-vf", "drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,24,27)'",
         "-af", "volume=0:enable='between(t,54,59)'", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
         "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(final_export),
     ])
 
-    _write_ppm(approved_card, _approved_card(width, height))
-    graph = _revision_graph(duration)
-    _run([
-        ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", str(previous),
-        "-loop", "1", "-framerate", "24", "-t", "5", "-i", str(approved_card),
-        "-f", "lavfi", "-t", "4", "-i", f"color=c=0x26485f:s={width}x{height}:r=24",
-        "-f", "lavfi", "-i", "sine=frequency=660:sample_rate=48000:duration=4",
-        "-filter_complex", graph, "-map", "[video]", "-map", "[audio]", "-c:v", "libx264", "-preset", "veryfast",
-        "-crf", "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(revised),
-    ])
-    approved_card.unlink(missing_ok=True)
-
     notes.write_text(
-        "00:12-00:16 Remove the obsolete aside\n"
-        "00:30-00:35 Replace the old shot with the APPROVED 2025 card\n"
-        "00:45 Insert the approved transition card\n",
+        "00:24-00:27 Restore the missing picture\n"
+        "00:54-00:59 Restore the missing audio\n",
         encoding="utf-8",
     )
     title_path.write_text(title.strip() + "\n", encoding="utf-8")
@@ -119,21 +143,33 @@ def build_owner_demo(source: Path, output: Path, title: str, description: str, c
     if caption_name: generated.append(output / caption_name)
     if thumbnail_name: generated.append(output / thumbnail_name)
     manifest = output / "demo-manifest.json"
+    thumbnail_provenance = (
+        {
+            "asset_role": "supplied_thumbnail",
+            "source_type": provenance["source_type"],
+            "source_credit": provenance["source_credit"],
+            "source_title": provenance["source_title"],
+            "source_url": provenance["source_url"],
+            "modified_for_demo": False,
+        }
+        if thumbnail_name
+        else None
+    )
     manifest.write_text(json.dumps({
         "schema_version": SCHEMA_VERSION,
         "generator_version": GENERATOR_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "source_ownership": "User-supplied demo source",
+        **provenance,
         "source_filename": source.name,
         "source_sha256": _sha256(source),
+        "thumbnail_provenance": thumbnail_provenance,
         "generated_sha256": {path.name: _sha256(path) for path in generated},
         "seed_operations": [
             {"workflow": "final_export", "kind": "black_gap", "start_seconds": 24, "end_seconds": 27},
             {"workflow": "final_export", "kind": "audio_dropout", "start_seconds": 54, "end_seconds": 59},
-            {"workflow": "revision", "kind": "requested_removal", "previous_start_seconds": 12, "previous_end_seconds": 16},
-            {"workflow": "revision", "kind": "requested_visual_replacement", "previous_start_seconds": 30, "previous_end_seconds": 35},
-            {"workflow": "revision", "kind": "requested_insertion", "previous_anchor_seconds": 45, "duration_seconds": 4},
-            {"workflow": "revision", "kind": "unmentioned_visual_change", "previous_start_seconds": 65, "previous_end_seconds": 69},
+            {"workflow": "revision", "kind": "requested_missing_picture", "previous_start_seconds": 24, "previous_end_seconds": 27},
+            {"workflow": "revision", "kind": "requested_missing_audio", "previous_start_seconds": 54, "previous_end_seconds": 59},
+            {"workflow": "revision", "kind": "unmentioned_exposure_change", "previous_start_seconds": 70, "previous_end_seconds": 74},
         ],
         "assets": {
             "final_export": {"video": final_export.name, "title": title_path.name, "description": description_path.name, "captions": caption_name, "thumbnail": thumbnail_name},
@@ -143,29 +179,28 @@ def build_owner_demo(source: Path, output: Path, title: str, description: str, c
     return {"manifest": manifest, "final_export": final_export, "previous": previous, "revised": revised, "notes": notes}
 
 
-def _approved_card(width: int, height: int) -> list[bytearray]:
-    pixels = _canvas((25, 53, 72), width=width, height=height)
-    _fill_rect(pixels, 0, 0, width, max(20, height // 10), (12, 24, 34))
-    scale = max(3, min(width // 115, height // 36))
-    _draw_text(pixels, "APPROVED", max(20, width // 8), max(30, height // 3), scale=scale, color=(244, 247, 249))
-    _draw_text(pixels, "2025", max(20, width // 8), max(60, height // 2), scale=scale, color=(239, 196, 92))
-    return pixels
-
-
-def _revision_graph(duration: float) -> str:
-    ranges = [
-        (0, 12, ""),
-        (16, 30, ""),
-        (35, 45, ""),
-        (45, 65, ""),
-        (65, 69, ",drawbox=x=0:y=ih*0.7:w=iw:h=ih*0.3:color=white:t=fill"),
-        (69, duration, ""),
-    ]
-    video = [f"[0:v]trim=start={start}:end={end},setpts=PTS-STARTPTS{effect}[v{index}]" for index, (start, end, effect) in enumerate(ranges)]
-    audio = [f"[0:a]atrim=start={start}:end={end},asetpts=PTS-STARTPTS[a{index}]" for index, (start, end, _) in enumerate(ranges)]
-    extras = ["[1:v]trim=duration=5,setpts=PTS-STARTPTS[vcard]", "[0:a]atrim=start=30:end=35,asetpts=PTS-STARTPTS[acard]", "[2:v]trim=duration=4,setpts=PTS-STARTPTS[vinsert]", "[3:a]atrim=duration=4,asetpts=PTS-STARTPTS[ainsert]"]
-    order = "[v0][a0][v1][a1][vcard][acard][v2][a2][vinsert][ainsert][v3][a3][v4][a4][v5][a5]"
-    return ";".join([*video, *audio, *extras, f"{order}concat=n=8:v=1:a=1[video][audio]"])
+def _source_provenance(
+    source_type: str,
+    source_credit: str | None,
+    source_title: str | None,
+    source_url: str | None,
+) -> dict[str, str | bool | None]:
+    if source_type not in {"user_owned", "public_domain"}:
+        raise RuntimeError("Source type must be user_owned or public_domain.")
+    credit = source_credit.strip() if source_credit else None
+    title = source_title.strip() if source_title else None
+    url = source_url.strip() if source_url else None
+    if source_type == "public_domain" and (not credit or not title):
+        raise RuntimeError("Public-domain sources require --source-credit and --source-title.")
+    if url is not None and not url.startswith(("https://", "http://")):
+        raise RuntimeError("Source URL must be an HTTP or HTTPS URL.")
+    return {
+        "source_type": source_type,
+        "source_credit": credit,
+        "source_title": title,
+        "source_url": url,
+        "modified_for_demo": True,
+    }
 
 
 def _copy_optional(source: Path | None, output: Path, stem: str) -> str | None:

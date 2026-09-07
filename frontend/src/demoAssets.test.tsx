@@ -36,6 +36,7 @@ describe("demo asset manifest", () => {
       if (path.endsWith("demo-manifest.json")) return Promise.resolve(Response.json(manifest));
       if (path.endsWith(".txt")) return Promise.resolve(new Response(path.endsWith("notes.txt") ? "00:12 Remove aside\n" : "Owner copy\n"));
       if (path.endsWith(".mp4")) return Promise.resolve(new Response("video"));
+      if (path.endsWith(".jpg")) return Promise.resolve(new Response("jpeg"));
       return Promise.reject(new Error(`Unexpected path ${path}`));
     }));
 
@@ -43,6 +44,9 @@ describe("demo asset manifest", () => {
     const revision = await loadRevisionDemo();
     expect(finalExport.video.name).toBe("final-export-demo.mp4");
     expect(finalExport.captions).toBeNull();
+    expect(finalExport.thumbnail).toBeInstanceOf(File);
+    expect(finalExport.thumbnail?.name).toBe("final-export-thumbnail.jpg");
+    expect(finalExport.thumbnail?.type).toBe("image/jpeg");
     expect(revision.previousVideo).toBeInstanceOf(File);
     expect(revision.previousVideo.name).toBe("revision-previous.mp4");
     expect(revision.revisedVideo.name).toBe("revision-revised.mp4");
@@ -74,7 +78,7 @@ function ownerManifest() {
   return {
     schema_version: "1.0",
     assets: {
-      final_export: { video: "final-export-demo.mp4", title: "title.txt", description: "description.txt", captions: null, thumbnail: null },
+      final_export: { video: "final-export-demo.mp4", title: "title.txt", description: "description.txt", captions: null, thumbnail: "final-export-thumbnail.jpg" },
       revision: { previous: "revision-previous.mp4", revised: "revision-revised.mp4", notes: "notes.txt" },
     },
   };

@@ -159,6 +159,43 @@ def test_maximum_requests_marks_overflow_not_reviewed(tmp_path: Path, monkeypatc
     assert result.results[1].reason_code == "revision_semantic_limit_reached"
 
 
+def test_semantic_copy_never_exposes_evidence_clip_relative_timecodes(tmp_path: Path, monkeypatch) -> None:
+    previous, revised = tmp_path / "p.mp4", tmp_path / "r.mp4"
+    previous.write_bytes(b"previous")
+    revised.write_bytes(b"revised")
+    revision_map = _map(hashlib.sha256(b"previous").hexdigest(), hashlib.sha256(b"revised").hexdigest())
+    report = _report(revision_map, "00:08 Restore the missing picture")
+
+    class Evidence:
+        previous_path = tmp_path / "previous-evidence.mp4"
+        revised_path = tmp_path / "revised-evidence.mp4"
+        render_seconds = 0
+
+    Evidence.previous_path.write_bytes(b"bounded previous")
+    Evidence.revised_path.write_bytes(b"bounded revised")
+    monkeypatch.setattr("creator_preflight.revision_semantic.render_revision_evidence", lambda *args, **kwargs: Evidence())
+    output = RevisionSemanticProviderOutput(
+        status="APPEARS_SATISFIED",
+        confidence=.95,
+        rationale="The previous clip was black from approximately 00:02 to 00:04. The revised clip restores picture at 00:03.",
+        observed_previous="Black picture around 00:02.",
+        observed_revised="Scenic footage at 00:03.",
+    )
+    reviewer = FakeReviewer([output])
+
+    result = RevisionSemanticReviewService(
+        config=RevisionSemanticReviewConfig(maximum_parallel_requests=1),
+        reviewer=reviewer,
+    ).review(previous, revised, report).results[0]
+
+    assert "00:02" not in result.rationale
+    assert "00:04" not in result.rationale
+    assert "00:03" not in result.rationale
+    assert "requested region" in result.rationale
+    assert "00:" not in f"{result.observed_previous} {result.observed_revised}"
+    assert "Do not mention clip-relative timecodes" in reviewer.calls[0][2]
+
+
 def test_provider_model_rejects_not_reviewed_and_unknown_or_malformed() -> None:
     with pytest.raises(ValueError):
         _output("NOT_REVIEWED")

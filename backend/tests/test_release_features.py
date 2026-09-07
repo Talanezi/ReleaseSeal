@@ -14,7 +14,18 @@ from creator_preflight.config import PreflightConfig
 from creator_preflight.metadata_assist import GeminiMetadataAssistant, MetadataAssistResult
 from creator_preflight.content_sketch import sketch_windows
 from creator_preflight.content_sketch import build_content_sketch
-from creator_preflight.models import Finding, FindingSeverity, FindingStatus, ScanCompleteness
+from creator_preflight.models import (
+    ClaimReviewStatus,
+    ClaimReviewSummary,
+    Finding,
+    FindingSeverity,
+    FindingStatus,
+    PromiseCheckStatus,
+    PromiseCheckSummary,
+    ScanCompleteness,
+    ViewerPassStatus,
+    ViewerPassSummary,
+)
 from creator_preflight.media import MediaInspector
 from creator_preflight.release_brief import ai_release_brief, deterministic_release_brief
 from creator_preflight.presentation import format_timecode
@@ -37,6 +48,46 @@ def test_deterministic_release_brief_uses_trusted_findings() -> None:
     )
     assert brief.headline == "1 item needs attention"
     assert brief.top_actions == ["Black section at 00:02.00"]
+
+
+def test_release_brief_prioritizes_repair_and_audio_and_groups_static_findings() -> None:
+    findings = [
+        Finding(code="VIDEO_BLACK_SEGMENT", severity="warning", status="NEEDS_REVIEW", message="Black.", source="video.black", timestamp_start_seconds=24, timestamp_end_seconds=27, details={"title": "Sustained near-black section"}),
+        Finding(code="AUDIO_LONG_SILENCE", severity="warning", status="NEEDS_REVIEW", message="Silent.", source="audio.silence", timestamp_start_seconds=54.02, timestamp_end_seconds=59, details={"title": "Long silent section"}),
+        *[
+            Finding(code="VIDEO_FREEZE_SEGMENT", severity="warning", status="NEEDS_REVIEW", message="Static.", source="video.freeze", timestamp_start_seconds=start, timestamp_end_seconds=start + 2.5, details={"title": "Sustained static-frame section"})
+            for start in (96.17, 105.83, 111.54)
+        ],
+    ]
+    brief = deterministic_release_brief(
+        verdict=FindingStatus.NEEDS_REVIEW,
+        completeness=ScanCompleteness.COMPLETE,
+        findings=findings,
+        repair_plan=build_repair_plan(findings),
+        promise_check=PromiseCheckSummary(status=PromiseCheckStatus.ALIGNED),
+        viewer_pass=ViewerPassSummary(status=ViewerPassStatus.CLEAN),
+        claim_review=ClaimReviewSummary(status=ClaimReviewStatus.NO_CLAIMS),
+    )
+
+    assert brief.top_actions[0] == "Preview the repair for sustained near-black section at 00:24.00"
+    assert brief.top_actions[1] == "Confirm whether long silent section at 00:54.02 is intentional"
+    assert brief.top_actions[2] == "Review 3 related sustained static-frame findings together, starting at 01:36.17"
+    assert "3 related sustained static-frame findings" in brief.summary
+    assert "Opening, continuity, and factual review" in brief.summary
+    assert len(brief.summary) <= 500
+
+
+def test_release_brief_does_not_invent_clean_remote_review() -> None:
+    finding = Finding(code="AUDIO_LONG_SILENCE", severity="warning", status="NEEDS_REVIEW", message="Silent.", source="audio.silence", timestamp_start_seconds=4, details={"title": "Long silent section"})
+    brief = deterministic_release_brief(
+        verdict=FindingStatus.NEEDS_REVIEW,
+        completeness=ScanCompleteness.COMPLETE,
+        findings=[finding],
+        repair_plan=build_repair_plan([finding]),
+    )
+    assert "Opening" not in brief.summary
+    assert "continuity" not in brief.summary
+    assert "factual" not in brief.summary
 
 
 def test_canonical_creator_timecodes_round_to_hundredths() -> None:

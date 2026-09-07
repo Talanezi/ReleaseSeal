@@ -30,6 +30,12 @@ afterEach(() => {
 });
 
 describe("Creator Preflight frontend", () => {
+  it("labels trusted report synthesis as a Review summary", () => {
+    render(<ResultsView report={readyReport} filename="ready.mp4" previewUrl="blob:ready" />);
+    expect(screen.getByText("Review summary")).toBeInTheDocument();
+    expect(screen.queryByText(/^AI review$/)).not.toBeInTheDocument();
+  });
+
   it("offers Final export and Revision as first-class workflows without disturbing the scan form", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -269,8 +275,8 @@ describe("Creator Preflight frontend", () => {
     expect(screen.getByRole("heading", { name: "Needs review" })).toBeInTheDocument();
     expect(findings.getByText("Sustained near-black section")).toBeInTheDocument();
     expect(findings.getByText("Long silent section")).toBeInTheDocument();
-    expect(screen.getByLabelText("Scan counts")).toHaveTextContent("9 passed·5 warnings·0 critical");
-    expect(screen.getByText("AI review")).toBeInTheDocument();
+    expect(screen.getByLabelText("Scan counts")).toHaveTextContent("9 checks passed·5 review findings·0 critical findings");
+    expect(screen.getByText("Review summary")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "5 items need attention" })).toBeInTheDocument();
   });
 
@@ -298,9 +304,12 @@ describe("Creator Preflight frontend", () => {
   });
 
   it("keeps Ready while disclosing an inconclusive factual check", () => {
-    render(<ResultsView report={{
+    const report = {
       ...readyReport,
       review_mode: "full",
+      checks: [...readyReport.checks, { check_id: "ai.claim_review", passed: true, finding_codes: [] }],
+      checks_run_count: readyReport.checks_run_count + 1,
+      passed_check_count: readyReport.passed_check_count + 1,
       claim_review: { ...readyReport.claim_review, status: "inconclusive", claims_checked: 1, insufficient_evidence_count: 1 },
       release_brief: {
         ...readyReport.release_brief,
@@ -308,9 +317,19 @@ describe("Creator Preflight frontend", () => {
         summary: "No issues were found. One factual claim could not be verified with enough evidence.",
         positive_note: "No release issue was detected in the completed checks.",
       },
-    }} />);
+    } as PreflightReport;
+    render(<ResultsView report={report} />);
     expect(screen.getByRole("heading", { name: "Ready" })).toBeInTheDocument();
     expect(screen.getByText(/One factual claim could not be verified with enough evidence/)).toBeInTheDocument();
+    const claimSummary = screen.getByRole("heading", { name: "Factual review" }).closest("section");
+    expect(claimSummary).toHaveClass("claims-inconclusive");
+    expect(claimSummary).toHaveTextContent("1 checked · 1 inconclusive");
+    expect(claimSummary?.querySelector("svg")).toBeNull();
+    const claimCheck = screen.getByText(/ai · claim review/i).closest("li");
+    expect(claimCheck).toHaveClass("is-neutral");
+    expect(claimCheck).toHaveTextContent("Completed");
+    expect(claimCheck).not.toHaveTextContent("Passed");
+    expect(screen.getByText("No release issue was detected in the completed checks.").closest("small")).toHaveClass("release-note-neutral");
     expect(document.body).not.toHaveTextContent(/everything verified|all claims supported/i);
   });
 
@@ -601,6 +620,8 @@ describe("Creator Preflight frontend", () => {
     expect(screen.getByRole("tab", { name: "Repaired" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Review Reel" })).toBeInTheDocument();
     expect(screen.getAllByText(/2 fixed/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/0 new findings/)).toBeInTheDocument();
+    expect(screen.queryByText(/0 detected on repaired scan/)).not.toBeInTheDocument();
     expect(screen.getByText(/No deterministic unexpected media changes found/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Apply 2 approved repairs/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Download repaired video" })).toHaveAttribute(

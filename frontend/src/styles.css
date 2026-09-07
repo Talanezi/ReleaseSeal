@@ -343,6 +343,8 @@ svg { flex: 0 0 auto; }
 .release-brief ul { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 10px 0 0; padding-left: 18px; color: var(--text); font-size: 13px; }
 .release-brief small { display: flex; align-items: center; gap: 6px; margin-top: 9px; color: var(--pass); }
 .release-brief small svg { width: 14px; }
+.release-brief small.release-note-neutral { color: var(--quiet); }
+.release-brief small.release-note-neutral svg { fill: var(--surface-muted); }
 .review-details { margin: 0 0 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .review-details > summary { display: flex; justify-content: space-between; gap: 16px; padding: 13px 0; cursor: pointer; color: var(--text); font-size: 14px; font-weight: 650; }
 .review-details > summary span { color: var(--quiet); font-size: 12px; font-weight: 500; }
@@ -511,6 +513,7 @@ svg { flex: 0 0 auto; }
 .check-details li { min-width: 0; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 0; color: var(--muted); font-size: 12px; text-transform: capitalize; }
 .check-details li svg { width: 14px; }
 .check-details li.is-pass svg { color: var(--pass); }
+.check-details li.is-neutral svg { color: var(--quiet); fill: var(--surface-muted); }
 .check-details li.is-flagged svg { color: var(--warning); }
 .check-details li small { color: var(--quiet); font-size: 11px; }
 

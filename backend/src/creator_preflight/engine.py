@@ -604,6 +604,10 @@ class PreflightScanner:
             completeness=completeness,
             findings=findings,
             inconclusive_claim_count=claim_summary.insufficient_evidence_count,
+            repair_plan=repair_plan,
+            promise_check=promise_summary,
+            viewer_pass=viewer_summary,
+            claim_review=claim_summary,
         )
         if (
             effective_review_mode is ReviewMode.FULL
@@ -618,6 +622,9 @@ class PreflightScanner:
                 findings=findings,
                 repair_plan=repair_plan,
                 inconclusive_claim_count=claim_summary.insufficient_evidence_count,
+                promise_check=promise_summary,
+                viewer_pass=viewer_summary,
+                claim_review=claim_summary,
             )
         if session is not None:
             session.close()

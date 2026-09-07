@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
+  Circle,
   Download,
   Film,
   Headphones,
@@ -122,11 +123,11 @@ export function ResultsView({
           </div>
         </div>
         <p className="result-counts" aria-label="Scan counts">
-          <strong>{report.passed_check_count}</strong> passed
+          <strong>{report.passed_check_count}</strong> checks passed
           <span aria-hidden="true">·</span>
-          <strong>{report.warning_count}</strong> warnings
+          <strong>{report.warning_count}</strong> review findings
           <span aria-hidden="true">·</span>
-          <strong>{report.critical_count}</strong> critical
+          <strong>{report.critical_count}</strong> critical findings
         </p>
       </header>
 
@@ -149,11 +150,16 @@ export function ResultsView({
       )}
 
       <section className="release-brief" aria-labelledby="release-brief-title">
-        <span><Sparkles aria-hidden="true" /> AI review</span>
+        <span><Sparkles aria-hidden="true" /> Review summary</span>
         <h2 id="release-brief-title">{report.release_brief.headline}</h2>
         <p>{report.release_brief.summary}</p>
         {report.release_brief.top_actions.length > 0 && <ul>{report.release_brief.top_actions.map((action) => <li key={action}>{action}</li>)}</ul>}
-        {report.release_brief.positive_note && <small><Check aria-hidden="true" /> {report.release_brief.positive_note}</small>}
+        {report.release_brief.positive_note && (
+          <small className={report.claim_review.status === "inconclusive" ? "release-note-neutral" : undefined}>
+            {report.claim_review.status === "inconclusive" ? <Circle aria-hidden="true" /> : <Check aria-hidden="true" />}
+            {report.release_brief.positive_note}
+          </small>
+        )}
       </section>
 
       {report.review_mode === "full" && <ReviewDetails report={report} />}
@@ -414,13 +420,16 @@ function CheckDetails({ report }: { report: PreflightReport }) {
         <span>View details <ChevronDown aria-hidden="true" /></span>
       </summary>
       <ul>
-        {report.checks.map((check) => (
-          <li key={check.check_id} className={check.passed ? "is-pass" : "is-flagged"}>
-            {check.passed ? <Check aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
-            <span>{humanizeCheck(check.check_id)}</span>
-            <small>{check.passed ? "Passed" : check.finding_codes.length ? "Review" : "Incomplete"}</small>
-          </li>
-        ))}
+        {report.checks.map((check) => {
+          const claimInconclusive = check.check_id === "ai.claim_review" && report.claim_review.status === "inconclusive";
+          return (
+            <li key={check.check_id} className={claimInconclusive ? "is-neutral" : check.passed ? "is-pass" : "is-flagged"}>
+              {claimInconclusive ? <Circle aria-hidden="true" /> : check.passed ? <Check aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
+              <span>{humanizeCheck(check.check_id)}</span>
+              <small>{claimInconclusive ? "Completed" : check.passed ? "Passed" : check.finding_codes.length ? "Review" : "Incomplete"}</small>
+            </li>
+          );
+        })}
       </ul>
     </details>
   );

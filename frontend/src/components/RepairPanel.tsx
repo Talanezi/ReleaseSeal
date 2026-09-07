@@ -371,7 +371,7 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
         <section className="repaired-output" aria-labelledby="repaired-output-title">
           <div>
             <h3 id="repaired-output-title">Repair result</h3>
-            <p>{verification ? `${verification.resolved.length} fixed · ${verification.remaining.length} still need attention · ${verification.new.length} detected on repaired scan · ${verification.unexpected_changes.length} unexpected media changes` : `Repaired export created with ${appliedCount} ${plural(appliedCount, "repair")} applied.`}</p>
+            <p>{verification ? `${verification.resolved.length} fixed · ${verification.remaining.length} still need attention · ${verification.new.length} ${plural(verification.new.length, "new finding")} · ${verification.unexpected_changes.length} unexpected media changes` : `Repaired export created with ${appliedCount} ${plural(appliedCount, "repair")} applied.`}</p>
             <small>
               Original: {formatDuration(report.media.duration_seconds)} · Repaired: {formatDuration(repairedDuration)}
             </small>

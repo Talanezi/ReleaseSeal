@@ -149,6 +149,29 @@ def test_visual_regression_detects_deliberate_unaffected_mutation(api_anomaly_vi
     assert "Unexpected visual change" in verification.review_reel_manifest.entries[0].reason
 
 
+def test_visual_regression_aligns_hard_cuts_after_fractional_frame_removal(tmp_path: Path) -> None:
+    source = tmp_path / "hard-cuts.mp4"
+    repaired = tmp_path / "hard-cuts-repaired.mp4"
+    subprocess.run([
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+        "-f", "lavfi", "-i", "color=c=blue:s=320x180:r=24:d=10",
+        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=10",
+        "-vf",
+        "drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,2,3.041667)',"
+        "drawbox=x=0:y=0:w=iw:h=ih:color=red:t=fill:enable='between(t,4.25,5.25)',"
+        "drawbox=x=0:y=0:w=iw:h=ih:color=green:t=fill:enable='between(t,7.25,8.25)'",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(source),
+    ], check=True, timeout=30)
+    operation = _remove(2, 3.041667)
+    FFmpegRepairEngine().render(source, repaired, [operation])
+
+    assert detect_unexpected_visual_changes(
+        source,
+        repaired,
+        TimelineTransform(MediaInspector().inspect(source).duration_seconds or 10, [operation]),
+    ) == []
+
+
 def test_global_finding_matches_and_repaired_only_finding_is_new(api_anomaly_video: Path) -> None:
     base = PreflightScanner().scan(api_anomaly_video, PublishingPackage(title="Title", description="Description"))
     global_finding = next(finding for finding in base.findings if finding.timestamp_start_seconds is None)

@@ -49,7 +49,7 @@ Content verdict (`READY`, `NEEDS_REVIEW`, `BLOCKED`) is separate from scan compl
 
 Click **Load demo** in Final Export for the tracked, network-free fallback package. It enters the normal production scan path and shows a flash near `00:46`, a repairable black gap near `01:18–01:22`, and an audio dropout near `02:06–02:12`.
 
-For the submission recording, build both workflows from one owner-supplied 90–240 second audiovisual source:
+For the submission recording, build both workflows from one authorized 90–240 second audiovisual source (user-owned by default; public-domain provenance can be supplied explicitly):
 
 ```sh
 .venv/bin/python scripts/build_owner_demo.py .demo/owner/source.mp4
