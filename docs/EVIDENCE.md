@@ -16,6 +16,7 @@ All automated commands below are network-free. “Observed” describes the curr
 | Relevant opening hook | No fixed timer warning | Relevant setup accepted; direct delivery remains informational | `test_promise_check.py` | AI |
 | Factual uncertainty | Abstain rather than invent certainty | Missing claim-specific evidence remains inconclusive | `test_claim_review.py` | AI |
 | Release Contract pass | Explicit obligations evaluated from trusted state | Typed matrix covers captions, metadata, duration, resolution, and aspect ratio | `test_release_contract.py::test_deterministic_requirement_matrix_and_evidence_sources` | Deterministic |
+| Artifact-bound receipt | Exact package identity and recorded result state | Canonical/digest mutation matrix, CLI verification, and route/UI transport | `test_release_receipt.py`, `test_cli.py::test_verify_receipt_cli_valid_mismatch_and_invalid` | Deterministic |
 | Missing exact token | Contract blocks delivery without fuzzy passing | `SAVE20` is neutral near-match evidence for required `SAVE25` | `test_release_contract.py::test_deterministic_contract_failure_blocks_real_scan` | Deterministic |
 | Semantic uncertainty | Advisory, never deterministic block | Low confidence becomes `NEEDS_REVIEW`; unavailable evidence remains `NOT_EVALUATED` | `test_release_contract.py` semantic tests | AI trust boundary |
 

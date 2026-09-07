@@ -18,6 +18,8 @@ from creator_preflight.models import (
     PublishingPackage,
     ScanCompleteness,
 )
+from creator_preflight.release_contract import ReleaseContract
+from creator_preflight.release_receipt import ReceiptVerificationStatus, ReceiptVerifier
 from creator_preflight.thumbnails import ThumbnailValidationError
 
 
@@ -34,14 +36,27 @@ def build_parser() -> argparse.ArgumentParser:
     scan_parser.add_argument("--thumbnail", type=Path)
     scan_parser.add_argument("--config", type=Path)
     scan_parser.add_argument("--json", action="store_true", dest="json_output")
+    verify_parser = subparsers.add_parser("verify-receipt", help="verify an artifact-bound release receipt")
+    verify_parser.add_argument("receipt_path", type=Path)
+    verify_parser.add_argument("--video", type=Path, required=True, help="final video, or Previous video for a Revision receipt")
+    verify_parser.add_argument("--revised-video", type=Path)
+    verify_parser.add_argument("--thumbnail", type=Path)
+    verify_parser.add_argument("--captions", type=Path)
+    verify_parser.add_argument("--title")
+    verify_description = verify_parser.add_mutually_exclusive_group()
+    verify_description.add_argument("--description")
+    verify_description.add_argument("--description-file", type=Path)
+    verify_parser.add_argument("--contract", type=Path, help="Release Contract JSON to compare")
+    verify_parser.add_argument("--revision-notes", type=Path)
+    verify_parser.add_argument("--json", action="store_true", dest="json_output")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if args.command != "scan":
-        parser.error("a command is required")
+    if args.command == "verify-receipt":
+        return _verify_receipt(args)
 
     try:
         description = _load_description(args.description, args.description_file)
@@ -81,6 +96,58 @@ def main(argv: Sequence[str] | None = None) -> int:
     if report.scan_completeness is not ScanCompleteness.COMPLETE:
         return 2
     return 0 if report.verdict is FindingStatus.READY else 1
+
+
+def _verify_receipt(args) -> int:
+    try:
+        required_paths = [args.receipt_path, args.video]
+        optional_paths = [args.revised_video, args.thumbnail, args.captions, args.description_file, args.contract, args.revision_notes]
+        for path in required_paths:
+            if not path.is_file():
+                raise CliInputError(f"Path is not a file: {path}")
+        for path in optional_paths:
+            if path is not None and not path.is_file():
+                raise CliInputError(f"Path is not a file: {path}")
+        contract = ReleaseContract.model_validate_json(args.contract.read_text(encoding="utf-8")) if args.contract else None
+        description = _load_description(args.description, args.description_file) if args.description is not None or args.description_file else None
+        notes = args.revision_notes.read_text(encoding="utf-8") if args.revision_notes else None
+        result = ReceiptVerifier().verify(
+            args.receipt_path.read_bytes(),
+            video_path=args.video,
+            revised_path=args.revised_video,
+            thumbnail_path=args.thumbnail,
+            captions_path=args.captions,
+            title=args.title,
+            description=description,
+            contract=contract,
+            revision_notes=notes,
+        )
+    except (CliInputError, OSError, UnicodeError, ValueError) as exc:
+        print(f"creator-preflight: {getattr(exc, 'message', str(exc))}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(result.model_dump_json())
+    else:
+        heading = {
+            ReceiptVerificationStatus.VALID: "RECEIPT VALID",
+            ReceiptVerificationStatus.MISMATCH: "RECEIPT MISMATCH",
+            ReceiptVerificationStatus.INVALID_RECEIPT: "INVALID RECEIPT",
+            ReceiptVerificationStatus.INCOMPLETE_VERIFICATION: "RECEIPT VERIFICATION INCOMPLETE",
+        }[result.status]
+        print(heading)
+        for check in result.checks:
+            print(check)
+        for mismatch in result.mismatches:
+            print(mismatch)
+        if result.recorded_verdict:
+            print(f"Recorded verdict: {result.recorded_verdict}")
+        if result.recorded_completeness:
+            print(f"Recorded completeness: {result.recorded_completeness}")
+    if result.status is ReceiptVerificationStatus.VALID:
+        return 0
+    if result.status in {ReceiptVerificationStatus.MISMATCH, ReceiptVerificationStatus.INCOMPLETE_VERIFICATION}:
+        return 1
+    return 2
 
 
 class CliInputError(Exception):

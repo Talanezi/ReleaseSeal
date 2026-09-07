@@ -134,6 +134,29 @@ def test_extract_contract_route_returns_validated_contract(monkeypatch) -> None:
     assert response.json()["requirements"][0]["value"] == "SAVE25"
 
 
+def test_final_export_receipt_route_hashes_exact_uploaded_package(video_with_audio: Path) -> None:
+    config = PreflightConfig()
+    config.rules.video.minimum_width = 160
+    config.rules.video.minimum_height = 90
+    config.rules.video.allowed_aspect_ratios = ["16:9"]
+    report = PreflightScanner(config=config).scan(
+        video_with_audio,
+        PublishingPackage(title="Exact title", description="Exact description"),
+    )
+    with video_with_audio.open("rb") as media_file:
+        response = client.post(
+            "/api/v1/release-receipts/final-export",
+            files={"file": ("final.mp4", media_file, "video/mp4")},
+            data={"report_json": report.model_dump_json(), "title": "Exact title", "description": "Exact description"},
+        )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["receipt_kind"] == "FINAL_EXPORT"
+    assert payload["package"]["shipping_video"]["size_bytes"] == video_with_audio.stat().st_size
+    assert len(payload["package"]["shipping_video"]["sha256"]) == 64
+    assert payload["verdict"] == report.verdict.value
+
+
 def test_unified_api_anomaly_report_matches_real_frontend_contract(
     api_anomaly_video: Path,
 ) -> None:

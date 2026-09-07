@@ -2,11 +2,20 @@
 
 ## Current milestone
 
-Milestone 25 — Contract-Driven Release Gate.
+Milestone 26 — Artifact-Bound Release Receipt.
 
 Status: Complete on 2026-09-07. No live provider call was required.
 
 ## Completed
+
+- Milestone 26 adds strict versioned Final Export and Revision receipt models. Backend-owned construction binds exact SHA-256 media identities, byte sizes, explicit optional-asset absence, normalized publishing-text digests, configuration, deterministic results, advisory results, human dispositions, and the actual recorded verdict/completeness.
+- Final Export package fingerprints bind video, optional thumbnail/captions, title, description, and the embedded canonical Release Contract plus its deterministic and semantic evaluation rows. Repaired receipts separately bind the original and shipping repaired artifacts, approved original-timeline operations, re-scan state, and deterministic unexpected-change intervals.
+- Revision receipts preserve Previous/Revised roles, canonical revision-note identity, unchanged percentage, requested deterministic outcomes, additional physical changes, and optional semantic results as a separate advisory layer.
+- Canonical UTF-8 sorted-key compact JSON supplies the receipt, package, contract, and Revision digests. Documentation explicitly states that the digest detects stale/corrupt modifications but is not a signature, attestation, or malicious-tampering defense.
+- `creator-preflight verify-receipt` validates schema/content digest, exact video, internal package/Revision fingerprints, and any additionally supplied package artifacts. It distinguishes `VALID`, `MISMATCH`, `INVALID_RECEIPT`, and `INCOMPLETE_VERIFICATION` with documented exit codes 0/1/2.
+- Final Export and Revision result views can request and download authoritative JSON receipts without rerunning media/AI analysis. Receipt generation and verification use existing upload/origin/concurrency limits and no provider request.
+- Milestone 26 affected backend gate: 188 passed with one upstream Starlette TestClient deprecation warning; after adding the final contract-result mutation case, the complete receipt-domain file passed 18 tests. Frontend gate: 3 files and 81 tests passed. TypeScript validation, production build, Python compile, and repository hygiene checks passed.
+- On the local 27,374,602-byte public-domain owner demo, SHA-256 hashing took 0.013909 seconds (warm-cache throughput approximately 1,876.99 MiB/s), receipt construction excluding file hashing averaged 0.000245 seconds, total construction took 0.014668 seconds, and exact-video verification took 0.012770 seconds.
 
 - Milestone 25 adds a strict, discriminated Release Contract with fourteen explicit requirement types; there is no generic rule or provider-authored execution escape hatch.
 - Manual contracts work without Gemini. Optional text-only brief extraction uses native structured output, requires exact excerpts from the supplied brief, preserves literal codes/URLs/times/numbers, rejects duplicates and malformed or invented obligations, and is capped at 20,000 brief characters and 30 requirements.

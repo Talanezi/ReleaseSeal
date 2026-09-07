@@ -16,6 +16,7 @@ import {
   Tag,
 } from "lucide-react";
 import type { Finding, FindingStatus, PreflightReport } from "../types/preflight";
+import { createFinalExportReceipt, errorPresentation } from "../api/preflight";
 import { RepairPanel } from "./RepairPanel";
 import {
   findingCategory,
@@ -215,6 +216,9 @@ export function ResultsView({
         onSelectMedia={selectMedia}
         packageInput={packageInput}
       />
+      {report.repair_plan.proposals.length === 0 && (
+        <OriginalReceiptAction report={report} sourceFile={sourceFile} packageInput={packageInput} />
+      )}
 
       <details className="all-findings">
         <summary>All findings and technical details</summary>
@@ -271,6 +275,32 @@ export function ResultsView({
       </details>
     </main>
   );
+}
+
+function OriginalReceiptAction({ report, sourceFile, packageInput }: {
+  report: PreflightReport;
+  sourceFile: File | null;
+  packageInput?: { title: string; description: string; captions?: File | null; thumbnail?: File | null; reviewMode: "full" | "local" };
+}) {
+  const [digest, setDigest] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const create = async () => {
+    if (!sourceFile || loading) return;
+    setLoading(true); setError(null);
+    try {
+      const receipt = await createFinalExportReceipt({ originalVideo: sourceFile, report, title: packageInput?.title ?? "", description: packageInput?.description ?? "", captions: packageInput?.captions, thumbnail: packageInput?.thumbnail });
+      setDigest(receipt.package.shipping_video.sha256);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" }));
+      const anchor = document.createElement("a"); anchor.href = url; anchor.download = "creator-preflight.release-receipt.json"; anchor.click(); URL.revokeObjectURL(url);
+    } catch (reason) { setError(errorPresentation(reason).message); }
+    finally { setLoading(false); }
+  };
+  return <section className="release-receipt" aria-labelledby="release-receipt-heading">
+    <div><strong id="release-receipt-heading">Release receipt</strong><span>{digest ? `Exact artifact recorded · SHA-256 ${digest.slice(0, 8)}…${digest.slice(-4)} · Verdict ${report.verdict.replace("_", " ")}` : "Bind this result to the exact artifact and release package."}</span><small>The receipt digest detects accidental modification; it is not a digital signature.</small></div>
+    <button className="secondary-button" type="button" disabled={!sourceFile || loading} onClick={() => void create()}><Download aria-hidden="true" />{loading ? "Creating receipt…" : "Download release receipt"}</button>
+    {error && <p role="alert">{error}</p>}
+  </section>;
 }
 
 function ReleaseRequirementsResults({ report, onSeek }: { report: PreflightReport; onSeek: (seconds: number) => void }) {

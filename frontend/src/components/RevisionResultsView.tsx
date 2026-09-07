@@ -1,19 +1,20 @@
 import { CheckCircle2, Download, FileVideo2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { reviewRevisionSemantics } from "../api/preflight";
-import type { AdditionalRevisionChange, RevisionCheckReport, RevisionRequest, RevisionSegment, RevisionSemanticReviewReport, RevisionSemanticResult } from "../types/preflight";
+import { createRevisionReceipt, reviewRevisionSemantics } from "../api/preflight";
+import type { AdditionalRevisionChange, RevisionCheckReport, RevisionReceipt, RevisionRequest, RevisionSegment, RevisionSemanticReviewReport, RevisionSemanticResult } from "../types/preflight";
 import { formatTimecode } from "../utils/format";
 import { PRODUCT_NAME } from "../brand";
 
 type Version = "previous" | "revised";
 
-export function RevisionResultsView({ report, previousUrl, revisedUrl, previousFile = null, revisedFile = null, semanticReviewAvailable = false }: {
+export function RevisionResultsView({ report, previousUrl, revisedUrl, previousFile = null, revisedFile = null, notes = "", semanticReviewAvailable = false }: {
   report: RevisionCheckReport;
   previousUrl: string | null;
   revisedUrl: string | null;
   previousFile?: File | null;
   revisedFile?: File | null;
+  notes?: string;
   semanticReviewAvailable?: boolean;
 }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -23,6 +24,9 @@ export function RevisionResultsView({ report, previousUrl, revisedUrl, previousF
   const [semanticLoading, setSemanticLoading] = useState(false);
   const [semanticError, setSemanticError] = useState<string | null>(null);
   const semanticAbort = useRef<AbortController | null>(null);
+  const [receipt, setReceipt] = useState<RevisionReceipt | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
   const meaningful = report.revision_map.segments.filter((segment) => segment.kind !== "UNCHANGED");
   const unchangedPercent = (report.revision_map.unchanged_ratio * 100).toFixed(1);
   const noChanges = meaningful.length === 0;
@@ -36,6 +40,7 @@ export function RevisionResultsView({ report, previousUrl, revisedUrl, previousF
     if (!previousFile || !revisedFile || semanticLoading) return;
     const controller = new AbortController();
     semanticAbort.current = controller;
+    setReceipt(null);
     setSemanticLoading(true);
     setSemanticError(null);
     try {
@@ -46,6 +51,18 @@ export function RevisionResultsView({ report, previousUrl, revisedUrl, previousF
       if (semanticAbort.current === controller) semanticAbort.current = null;
       setSemanticLoading(false);
     }
+  };
+
+  const downloadReceipt = async () => {
+    if (!previousFile || !revisedFile || receiptLoading) return;
+    setReceiptLoading(true); setReceiptError(null);
+    try {
+      const next = await createRevisionReceipt({ previousVideo: previousFile, revisedVideo: revisedFile, notes, revisionCheck: report, semanticReview: semanticReport });
+      setReceipt(next);
+      downloadValue(next, "creator-preflight.revision-receipt.json", "application/json");
+    } catch (error) {
+      setReceiptError(error instanceof Error ? error.message : "The revision receipt could not be created.");
+    } finally { setReceiptLoading(false); }
   };
 
   useEffect(() => {
@@ -160,7 +177,10 @@ export function RevisionResultsView({ report, previousUrl, revisedUrl, previousF
         <span><CheckCircle2 aria-hidden="true" /> Physical change report ready</span>
         <button className="secondary-button" type="button" onClick={() => downloadReport(report, semanticReport, "json")}><Download aria-hidden="true" /> JSON</button>
         <button className="secondary-button" type="button" onClick={() => downloadReport(report, semanticReport, "md")}><Download aria-hidden="true" /> Markdown</button>
+        <button className="secondary-button" type="button" disabled={!previousFile || !revisedFile || receiptLoading} onClick={() => void downloadReceipt()}><Download aria-hidden="true" />{receiptLoading ? "Creating receipt…" : "Revision receipt"}</button>
       </div>
+      {receipt && <p className="revision-receipt-summary">Exact Previous and Revised artifacts recorded · {receipt.receipt_content_sha256.slice(0, 8)}…{receipt.receipt_content_sha256.slice(-4)}</p>}
+      {receiptError && <p className="revision-ambiguity" role="alert">{receiptError}</p>}
     </main>
   );
 }
@@ -203,6 +223,10 @@ function downloadReport(report: RevisionCheckReport, semantic: RevisionSemanticR
   const content = kind === "json" ? JSON.stringify(semantic ? { revision_check: report, semantic_review: semantic } : report, null, 2) : markdownReport(report, semantic);
   const url = URL.createObjectURL(new Blob([content], { type: kind === "json" ? "application/json" : "text/markdown" }));
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = `creator-preflight-revision-report.${kind}`; anchor.click(); URL.revokeObjectURL(url);
+}
+function downloadValue(value: unknown, filename: string, type: string) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type }));
+  const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; anchor.click(); URL.revokeObjectURL(url);
 }
 function markdownReport(report: RevisionCheckReport, semantic: RevisionSemanticReviewReport | null = null): string {
   const lines = [`# ${PRODUCT_NAME} Revision Check`, "", `- Previous: ${report.previous_filename}`, `- Revised: ${report.revised_filename}`, `- Unchanged: ${(report.revision_map.unchanged_ratio * 100).toFixed(1)}%`, ""];

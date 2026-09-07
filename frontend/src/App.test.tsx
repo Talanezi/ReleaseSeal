@@ -26,10 +26,31 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
 describe("Creator Preflight frontend", () => {
+  it("downloads a backend-owned receipt for a clean Final Export", async () => {
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    const receipt = finalReceiptFixture();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(receipt)));
+    render(<ResultsView report={readyReport} sourceFile={new File(["video"], "final.mp4")} packageInput={{ title: "Title", description: "Description", reviewMode: "local" }} />);
+    await user.click(screen.getByRole("button", { name: "Download release receipt" }));
+    await waitFor(() => expect(screen.getByText(/Exact artifact recorded/)).toBeInTheDocument());
+    expect(fetch).toHaveBeenCalledWith("/api/v1/release-receipts/final-export", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("downloads a backend-owned Revision receipt", async () => {
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(revisionReceiptFixture())));
+    render(<RevisionResultsView report={revisionCheckReport} previousUrl="blob:previous" revisedUrl="blob:revised" previousFile={new File(["p"], "p.mp4")} revisedFile={new File(["r"], "r.mp4")} notes="00:10 Restore picture" />);
+    await user.click(screen.getByRole("button", { name: "Revision receipt" }));
+    await waitFor(() => expect(screen.getByText(/Exact Previous and Revised artifacts recorded/)).toBeInTheDocument());
+  });
+
   it("edits manual release requirements without requiring Gemini", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -1312,4 +1333,12 @@ function verificationFixture(status: "VERIFIED" | "NEEDS_REVIEW" | "INCOMPLETE")
     review_reel_available: true,
     limitations: [],
   };
+}
+
+const receiptSha = "a".repeat(64);
+function finalReceiptFixture() {
+  return { receipt_schema_version: "1.0", receipt_kind: "FINAL_EXPORT", created_at: "2026-09-07T12:00:00Z", scanner_version: "0.0.0", verdict: "READY", scan_completeness: "COMPLETE", configuration_fingerprint_sha256: receiptSha, package: { shipping_video: { sha256: receiptSha, size_bytes: 5 }, shipping_role: "ORIGINAL", package_fingerprint_sha256: receiptSha }, repair: null, receipt_content_sha256: receiptSha };
+}
+function revisionReceiptFixture() {
+  return { receipt_schema_version: "1.0", receipt_kind: "REVISION", created_at: "2026-09-07T12:00:00Z", scanner_version: "0.0.0", verdict: "NOT_APPLICABLE", scan_completeness: "COMPLETE", configuration_fingerprint_sha256: receiptSha, previous_video: { sha256: receiptSha, size_bytes: 1 }, revised_video: { sha256: receiptSha, size_bytes: 1 }, revision_notes_sha256: receiptSha, revision_fingerprint_sha256: receiptSha, receipt_content_sha256: receiptSha };
 }

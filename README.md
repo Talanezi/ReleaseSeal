@@ -8,6 +8,7 @@ Two workflows are first-class:
 
 - **Final Export — Review one finished video before it ships.** Deterministic media, package, and caption checks can be extended with optional content review. Findings are timestamped and seekable; supported removals are previewed, approved, rendered to a new file, and rechecked for regressions.
 - **Revision — Compare a previous cut with the revised cut.** A local deterministic map aligns the two timelines through removals and insertions, correlates timestamped notes, and surfaces additional changes. Optional semantic review sends only bounded evidence clips for eligible requests.
+- **Release receipts — Record exactly what was checked.** Completed Final Export and Revision results can produce backend-owned JSON receipts bound to the exact media and package with SHA-256 identities and a canonical content digest.
 
 The distinctive loop is **actual media → evidence → bounded change → re-verification**. Deterministic measurements establish physical facts; optional AI interprets content conservatively; people retain ambiguous creative judgment and final approval.
 
@@ -108,6 +109,20 @@ export GEMINI_API_KEY="your-server-side-key"
 ```
 
 The key stays server-side. Full Review may upload the selected video and thumbnail; Revision semantic review uploads only bounded evidence clips. Release requirements can always be entered manually without Gemini; **Extract requirements** uses Gemini only to structure explicit text from the pasted brief, and the backend—not the model—evaluates deterministic obligations. Network access and provider availability are required only for explicitly requested AI work.
+
+## Release receipts
+
+After a completed Final Export, choose **Download release receipt** to record the exact shipping video, optional thumbnail/captions, normalized publishing text, Release Contract, verdict, scan completeness, deterministic results, advisory results, and any human dispositions. If the selected artifact is repaired, the receipt also records the original and repaired hashes, approved `REMOVE_RANGE` operations, repaired re-scan state, and deterministic unexpected-change result. Revision receipts bind the Previous and Revised roles, canonical revision-note digest, physical comparison, and separately labeled advisory review.
+
+JSON is authoritative. The receipt's `receipt_content_sha256` is calculated from one UTF-8, sorted-key, compact canonical serialization excluding the digest field. It detects accidental corruption or edits when the stored digest no longer matches. It is **not a digital signature, legal attestation, third-party timestamp, or protection against someone who changes a receipt and recomputes its digest**.
+
+Verify a downloaded Final Export receipt against the exact video:
+
+```bash
+creator-preflight verify-receipt creator-preflight.release-receipt.json --video final.mp4
+```
+
+Optional `--thumbnail`, `--captions`, `--title`, `--description`/`--description-file`, and `--contract` inputs verify additional package components when supplied. For a Revision receipt, `--video` is the Previous cut; add `--revised-video` and `--revision-notes` for complete role verification. Exit code `0` means valid, `1` means mismatch or incomplete verification, and `2` means an invalid receipt, usage error, or runtime failure.
 
 CLI and deterministic demo:
 

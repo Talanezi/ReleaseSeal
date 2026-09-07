@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import re
 import shutil
@@ -38,6 +39,13 @@ from creator_preflight.progress import ScanProgress, ScanProgressStage, ScanProg
 from creator_preflight.repair_models import RepairOperation, RepairOperationBatch
 from creator_preflight.release_contract import MAX_BRIEF_CHARACTERS, ReleaseContract
 from creator_preflight.release_contract_extraction import GeminiReleaseContractExtractor
+from creator_preflight.release_receipt import (
+    FinalExportReceipt,
+    HumanDispositionRecord,
+    RevisionReceipt,
+    build_final_export_receipt,
+    build_revision_receipt,
+)
 from creator_preflight.repairs import FFmpegRepairEngine, RepairError
 from creator_preflight.revision import RevisionMapError, RevisionMapper
 from creator_preflight.revision_check import RevisionCheckError, RevisionCheckService
@@ -77,6 +85,10 @@ class ReviewModeError(Exception):
 
 class ReleaseContractInputError(Exception):
     message = "The release contract could not be validated."
+
+
+class ReleaseReceiptInputError(Exception):
+    message = "The release receipt inputs could not be validated."
 
 
 class _ProcessScanCapacity:
@@ -164,6 +176,12 @@ async def review_mode_error_handler(request: Request, exc: ReviewModeError) -> J
 async def release_contract_input_error_handler(request: Request, exc: ReleaseContractInputError) -> JSONResponse:
     del request
     return _error_response(400, "release_contract_invalid", exc.message)
+
+
+@app.exception_handler(ReleaseReceiptInputError)
+async def release_receipt_input_error_handler(request: Request, exc: ReleaseReceiptInputError) -> JSONResponse:
+    del request
+    return _error_response(400, "release_receipt_invalid", exc.message)
 
 
 @app.exception_handler(RepairError)
@@ -258,6 +276,134 @@ async def extract_release_contract(request: Request, brief: str = Form(...)) -> 
         )
     finally:
         _scan_capacity.release()
+
+
+@app.post("/api/v1/release-receipts/final-export", response_model=FinalExportReceipt)
+async def create_final_export_receipt(
+    request: Request,
+    file: UploadFile = File(...),
+    report_json: str = Form(...),
+    title: str = Form(default=""),
+    description: str = Form(default=""),
+    captions: UploadFile | None = File(default=None),
+    thumbnail: UploadFile | None = File(default=None),
+    repaired_file: UploadFile | None = File(default=None),
+    operations_json: str | None = Form(default=None),
+    verification_json: str | None = Form(default=None),
+    human_dispositions_json: str = Form(default="[]"),
+) -> FinalExportReceipt:
+    """Bind a trusted Final Export result to the exact supplied package bytes."""
+
+    config, _ = _api_config()
+    uploads = (file, captions, thumbnail, repaired_file)
+    try:
+        _require_allowed_origin(request, config)
+        report = PreflightReport.model_validate_json(report_json)
+        receipt_config = _effective_web_config(config, report.review_mode)
+        dispositions = [
+            HumanDispositionRecord.model_validate(item)
+            for item in json.loads(human_dispositions_json)
+        ]
+        repaired_requested = repaired_file is not None
+        if repaired_requested:
+            if not operations_json or not verification_json:
+                raise ValueError("repaired receipt inputs are incomplete")
+            operations = RepairOperationBatch.model_validate_json(operations_json).operations
+            verification = VerificationReport.model_validate_json(verification_json)
+        else:
+            if operations_json or verification_json:
+                raise ValueError("repair state was supplied without a repaired artifact")
+            operations = None
+            verification = None
+    except (ValidationError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        for upload in uploads:
+            if upload is not None:
+                await upload.close()
+        raise ReleaseReceiptInputError() from exc
+    if not _scan_capacity.acquire(config.api.maximum_concurrent_scans):
+        for upload in uploads:
+            if upload is not None:
+                await upload.close()
+        raise ScanBusyError()
+    try:
+        with TemporaryDirectory(prefix="creator-preflight-receipt-") as temporary_directory:
+            directory = Path(temporary_directory)
+            original_path = _media_temp_path(temporary_directory, file.filename, stem="original")
+            await _copy_upload(file, original_path, config.api.maximum_video_upload_size_bytes)
+            repaired_path = None
+            if repaired_file is not None:
+                repaired_path = _media_temp_path(temporary_directory, repaired_file.filename, stem="repaired")
+                await _copy_upload(repaired_file, repaired_path, config.api.maximum_video_upload_size_bytes)
+            caption_path = await _copy_optional_bounded(captions, directory / "captions.receipt", config.rules.captions.maximum_file_size_bytes + 1)
+            thumbnail_path = await _copy_optional_bounded(thumbnail, directory / "thumbnail.receipt", config.ai_review.promise_check.maximum_thumbnail_file_size_bytes + 1)
+            return await anyio.to_thread.run_sync(partial(
+                build_final_export_receipt,
+                shipping_video_path=repaired_path or original_path,
+                original_video_path=original_path if repaired_path else None,
+                report=report,
+                config=receipt_config,
+                title=title,
+                description=description,
+                thumbnail_path=thumbnail_path,
+                captions_path=caption_path,
+                operations=operations,
+                verification=verification,
+                human_dispositions=dispositions,
+            ))
+    except (ValidationError, ValueError, TypeError) as exc:
+        raise ReleaseReceiptInputError() from exc
+    finally:
+        _scan_capacity.release()
+        for upload in uploads:
+            if upload is not None:
+                await upload.close()
+
+
+@app.post("/api/v1/release-receipts/revision", response_model=RevisionReceipt)
+async def create_revision_receipt(
+    request: Request,
+    previous_file: UploadFile = File(...),
+    revised_file: UploadFile = File(...),
+    revision_check_json: str = Form(...),
+    notes: str = Form(default=""),
+    semantic_review_json: str | None = Form(default=None),
+) -> RevisionReceipt:
+    """Bind a deterministic Revision result and optional advisory result to both cuts."""
+
+    config, _ = _api_config()
+    try:
+        _require_allowed_origin(request, config)
+        report = RevisionCheckReport.model_validate_json(revision_check_json)
+        semantic = RevisionSemanticReviewReport.model_validate_json(semantic_review_json) if semantic_review_json else None
+    except (ValidationError, ValueError, TypeError) as exc:
+        await previous_file.close()
+        await revised_file.close()
+        raise ReleaseReceiptInputError() from exc
+    if not _scan_capacity.acquire(config.api.maximum_concurrent_scans):
+        await previous_file.close()
+        await revised_file.close()
+        raise ScanBusyError()
+    try:
+        with TemporaryDirectory(prefix="creator-preflight-revision-receipt-") as temporary_directory:
+            previous_path = _media_temp_path(temporary_directory, previous_file.filename, stem="previous")
+            revised_path = _media_temp_path(temporary_directory, revised_file.filename, stem="revised")
+            await _copy_upload(previous_file, previous_path, config.api.maximum_video_upload_size_bytes)
+            await _copy_upload(revised_file, revised_path, config.api.maximum_video_upload_size_bytes)
+            return await anyio.to_thread.run_sync(partial(
+                build_revision_receipt,
+                previous_path=previous_path,
+                revised_path=revised_path,
+                notes=notes,
+                report=report,
+                config=config,
+                semantic=semantic,
+            ))
+    except (ValidationError, ValueError, TypeError) as exc:
+        raise ReleaseReceiptInputError() from exc
+    finally:
+        _scan_capacity.release()
+        await previous_file.close()
+        await revised_file.close()
 
 
 @app.post("/api/v1/revisions/semantic-review", response_model=RevisionSemanticReviewReport)

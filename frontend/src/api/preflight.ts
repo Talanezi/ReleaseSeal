@@ -18,6 +18,8 @@ import type {
   RevisionCheckReport,
   RevisionSemanticReviewReport,
   ReleaseContract,
+  FinalExportReceipt,
+  RevisionReceipt,
 } from "../types/preflight";
 import { PRODUCT_NAME } from "../brand";
 
@@ -60,6 +62,27 @@ export interface VerifyRepairInput {
   reviewMode: ReviewMode;
   captions?: File | null;
   thumbnail?: File | null;
+}
+
+export interface FinalExportReceiptInput {
+  originalVideo: File;
+  report: PreflightReport;
+  title: string;
+  description: string;
+  captions?: File | null;
+  thumbnail?: File | null;
+  repairedVideo?: File | null;
+  operations?: RepairOperation[];
+  verification?: VerificationReport | null;
+  humanDispositions?: Record<string, "PENDING" | "ACCEPTED_INTENTIONAL" | "NEEDS_CHANGE">;
+}
+
+export interface RevisionReceiptInput {
+  previousVideo: File;
+  revisedVideo: File;
+  notes: string;
+  revisionCheck: RevisionCheckReport;
+  semanticReview?: RevisionSemanticReviewReport | null;
 }
 
 interface StructuredErrorResponse {
@@ -147,6 +170,37 @@ export async function extractReleaseContract(brief: string, options: { signal?: 
     throw new PreflightApiError(structured?.error.message ?? "Requirements could not be extracted.", { code: structured?.error.code ?? "request_failed", status: response.status });
   }
   if (!isReleaseContract(payload)) throw new PreflightApiError("The backend returned an invalid release contract.", { code: "invalid_response", status: response.status });
+  return payload;
+}
+
+export async function createFinalExportReceipt(input: FinalExportReceiptInput, options: { signal?: AbortSignal } = {}): Promise<FinalExportReceipt> {
+  const form = new FormData();
+  form.append("file", input.originalVideo, input.originalVideo.name);
+  form.append("report_json", JSON.stringify(input.report));
+  form.append("title", input.title);
+  form.append("description", input.description);
+  if (input.captions) form.append("captions", input.captions, input.captions.name);
+  if (input.thumbnail) form.append("thumbnail", input.thumbnail, input.thumbnail.name);
+  if (input.repairedVideo) {
+    form.append("repaired_file", input.repairedVideo, input.repairedVideo.name);
+    form.append("operations_json", JSON.stringify({ operations: input.operations ?? [] }));
+    form.append("verification_json", JSON.stringify(input.verification));
+  }
+  form.append("human_dispositions_json", JSON.stringify(Object.entries(input.humanDispositions ?? {}).map(([proposal_id, disposition]) => ({ proposal_id, disposition }))));
+  const payload = await requestJson("/api/v1/release-receipts/final-export", form, options.signal, "The release receipt could not be created.");
+  if (!isFinalExportReceipt(payload)) throw new PreflightApiError("The backend returned an invalid release receipt.", { code: "invalid_response" });
+  return payload;
+}
+
+export async function createRevisionReceipt(input: RevisionReceiptInput, options: { signal?: AbortSignal } = {}): Promise<RevisionReceipt> {
+  const form = new FormData();
+  form.append("previous_file", input.previousVideo, input.previousVideo.name);
+  form.append("revised_file", input.revisedVideo, input.revisedVideo.name);
+  form.append("notes", input.notes);
+  form.append("revision_check_json", JSON.stringify(input.revisionCheck));
+  if (input.semanticReview) form.append("semantic_review_json", JSON.stringify(input.semanticReview));
+  const payload = await requestJson("/api/v1/release-receipts/revision", form, options.signal, "The revision receipt could not be created.");
+  if (!isRevisionReceipt(payload)) throw new PreflightApiError("The backend returned an invalid revision receipt.", { code: "invalid_response" });
   return payload;
 }
 
@@ -422,6 +476,22 @@ export function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
+async function requestJson(path: string, form: FormData, signal: AbortSignal | undefined, fallback: string): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await fetch(path, { method: "POST", body: form, signal });
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new PreflightApiError(fallback, { code: "backend_unreachable", cause: error });
+  }
+  const payload = await parseJsonResponse(response);
+  if (!response.ok) {
+    const structured = parseStructuredError(payload);
+    throw new PreflightApiError(structured?.error.message ?? fallback, { code: structured?.error.code ?? "request_failed", status: response.status });
+  }
+  return payload;
+}
+
 async function parseJsonResponse(response: Response): Promise<unknown> {
   const text = await response.text();
   if (!text) return null;
@@ -684,6 +754,42 @@ export function isRevisionSemanticReviewReport(value: unknown): value is Revisio
       && (item.confidence === null || typeof item.confidence === "number")
       && typeof item.rationale === "string"
       && typeof item.partial_evidence === "boolean");
+}
+
+function isFinalExportReceipt(value: unknown): value is FinalExportReceipt {
+  return isRecord(value)
+    && value.receipt_schema_version === "1.0"
+    && value.receipt_kind === "FINAL_EXPORT"
+    && typeof value.created_at === "string"
+    && typeof value.scanner_version === "string"
+    && (value.verdict === "READY" || value.verdict === "NEEDS_REVIEW" || value.verdict === "BLOCKED")
+    && (value.scan_completeness === "COMPLETE" || value.scan_completeness === "PARTIAL" || value.scan_completeness === "FAILED")
+    && isSha256(value.configuration_fingerprint_sha256)
+    && isRecord(value.package)
+    && isRecord(value.package.shipping_video)
+    && isSha256(value.package.shipping_video.sha256)
+    && isNonnegativeNumber(value.package.shipping_video.size_bytes)
+    && (value.package.shipping_role === "ORIGINAL" || value.package.shipping_role === "REPAIRED")
+    && isSha256(value.package.package_fingerprint_sha256)
+    && isSha256(value.receipt_content_sha256);
+}
+
+function isRevisionReceipt(value: unknown): value is RevisionReceipt {
+  return isRecord(value)
+    && value.receipt_schema_version === "1.0"
+    && value.receipt_kind === "REVISION"
+    && typeof value.created_at === "string"
+    && value.verdict === "NOT_APPLICABLE"
+    && value.scan_completeness === "COMPLETE"
+    && isRecord(value.previous_video) && isSha256(value.previous_video.sha256) && isNonnegativeNumber(value.previous_video.size_bytes)
+    && isRecord(value.revised_video) && isSha256(value.revised_video.sha256) && isNonnegativeNumber(value.revised_video.size_bytes)
+    && isSha256(value.revision_notes_sha256)
+    && isSha256(value.revision_fingerprint_sha256)
+    && isSha256(value.receipt_content_sha256);
+}
+
+function isSha256(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
 }
 
 function isRevisionRequest(value: unknown): boolean {

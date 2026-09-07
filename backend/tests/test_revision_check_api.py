@@ -41,6 +41,22 @@ def test_revision_api_accepts_two_real_uploads_and_never_uses_ai(video_with_audi
     assert payload["additional_change_count"] == 0
 
 
+def test_revision_receipt_route_binds_previous_and_revised_roles(video_with_audio: Path) -> None:
+    report = RevisionCheckService().check(video_with_audio, video_with_audio, "00:00 Check opening")
+    with video_with_audio.open("rb") as previous, video_with_audio.open("rb") as revised:
+        response = client.post(
+            "/api/v1/release-receipts/revision",
+            files={"previous_file": ("previous.mp4", previous), "revised_file": ("revised.mp4", revised)},
+            data={"revision_check_json": report.model_dump_json(), "notes": "00:00 Check opening"},
+        )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["receipt_kind"] == "REVISION"
+    assert payload["previous_video"]["sha256"] == report.revision_map.previous_sha256
+    assert payload["revised_video"]["sha256"] == report.revision_map.revised_sha256
+    assert payload["deterministic_results"]["requested_results"][0]["status"] == "NO_CHANGE_DETECTED"
+
+
 @pytest.mark.parametrize("oversized_field", ["previous_file", "revised_file"])
 def test_revision_api_bounds_each_upload(oversized_field: str, monkeypatch) -> None:
     config = PreflightConfig()

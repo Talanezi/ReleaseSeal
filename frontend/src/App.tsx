@@ -232,6 +232,7 @@ export function App() {
         revisedUrl={revisedUrl}
         previousFile={revisionInputs.previousVideo}
         revisedFile={revisionInputs.revisedVideo}
+        notes={revisionInputs.notes}
         semanticReviewAvailable={capabilities?.revision_semantic_review_available ?? false}
       />}
       {view === "error" && error && <ErrorState {...error} onRetry={returnToForm} />}

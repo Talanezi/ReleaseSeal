@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Film, Play, RotateCcw, Scissors, X } from "lucide-react";
-import { applyRepairs, errorPresentation, isAbortError, previewRepair, renderReviewReel, verifyRepair } from "../api/preflight";
-import type { PreflightReport, RepairOperation, RepairProposal, ReviewMode, VerificationReport } from "../types/preflight";
+import { Check, Download, Film, Play, RotateCcw, Scissors, X } from "lucide-react";
+import { applyRepairs, createFinalExportReceipt, errorPresentation, isAbortError, previewRepair, renderReviewReel, verifyRepair } from "../api/preflight";
+import type { FinalExportReceipt, PreflightReport, RepairOperation, RepairProposal, ReviewMode, VerificationReport } from "../types/preflight";
 import { formatDuration, formatTimecode } from "../utils/format";
 
 interface RepairPanelProps {
@@ -37,6 +37,9 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
   const [showAccepted, setShowAccepted] = useState(false);
   const [appliedSignature, setAppliedSignature] = useState<string | null>(null);
   const [activeReviewId, setActiveReviewId] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<FinalExportReceipt | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
   const originalContextRef = useRef<HTMLVideoElement>(null);
   const requestRef = useRef<AbortController | null>(null);
 
@@ -54,6 +57,7 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
 
   useEffect(() => {
     setHumanDispositions({});
+    setReceipt(null);
   }, [report]);
 
   const approvedOperations = useMemo(
@@ -205,7 +209,34 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
     setVerificationError(null);
     setReviewReel(null);
     onReviewReelMedia(null);
+    setReceipt(null);
   }
+  const downloadReceipt = async () => {
+    if (!sourceFile || receiptLoading || (repairedFile && !verification)) return;
+    setReceiptLoading(true);
+    setReceiptError(null);
+    try {
+      const dispositions = Object.fromEntries(humanProposals.map((proposal) => [proposal.proposal_id, humanDispositions[proposal.proposal_id] ?? "PENDING"]));
+      const next = await createFinalExportReceipt({
+        originalVideo: sourceFile,
+        repairedVideo: repairedFile,
+        operations: repairedFile ? approvedOperations : undefined,
+        verification: repairedFile ? verification : undefined,
+        report,
+        title: packageInput?.title ?? "",
+        description: packageInput?.description ?? "",
+        captions: packageInput?.captions,
+        thumbnail: packageInput?.thumbnail,
+        humanDispositions: dispositions,
+      });
+      setReceipt(next);
+      downloadJson(next, "creator-preflight.release-receipt.json");
+    } catch (error) {
+      setReceiptError(errorPresentation(error).message);
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
   return (
     <section className="repair-panel" aria-labelledby="repair-heading">
       <header className="repair-header">
@@ -255,6 +286,7 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
           const humanDisposition = humanDispositions[proposal.proposal_id] ?? "PENDING";
           const setHumanDisposition = (disposition: HumanDisposition) => {
             setHumanDispositions((current) => ({ ...current, [proposal.proposal_id]: disposition }));
+            setReceipt(null);
             const next = humanProposals.find((candidate) => (
               candidate.proposal_id !== proposal.proposal_id
               && (humanDispositions[candidate.proposal_id] ?? "PENDING") === "PENDING"
@@ -313,7 +345,7 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
                         <button className="secondary-button" type="button" onClick={() => setHumanDisposition("NEEDS_CHANGE")}>Needs a change</button>
                       </>
                     ) : (
-                      <button className="secondary-button" type="button" onClick={() => { setHumanDispositions((current) => ({ ...current, [proposal.proposal_id]: "PENDING" })); openHumanReview(proposal); }}>
+                      <button className="secondary-button" type="button" onClick={() => { setHumanDispositions((current) => ({ ...current, [proposal.proposal_id]: "PENDING" })); setReceipt(null); openHumanReview(proposal); }}>
                         <RotateCcw aria-hidden="true" /> Change decision
                       </button>
                     )}
@@ -393,8 +425,26 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
         <span>Export report</span>
         {(["csv", "markdown", "json"] as const).map((format) => <button key={format} className="text-button" type="button" onClick={() => exportReport(format, report, humanDispositions, verification)}>{format === "markdown" ? "Markdown" : format.toUpperCase()}</button>)}
       </div>
+      <section className="release-receipt" aria-labelledby="release-receipt-heading">
+        <div>
+          <strong id="release-receipt-heading">Release receipt</strong>
+          <span>{receipt ? `Exact ${receipt.package.shipping_role === "REPAIRED" ? "repaired " : ""}artifact recorded · SHA-256 ${shortDigest(receipt.package.shipping_video.sha256)} · Verdict ${receipt.verdict.replace("_", " ")}` : "Bind this result to the exact artifact and release package."}</span>
+          <small>The receipt digest detects accidental modification; it is not a digital signature.</small>
+        </div>
+        <button className="secondary-button" type="button" disabled={!sourceFile || receiptLoading || Boolean(repairedFile && !verification)} onClick={() => void downloadReceipt()}>
+          <Download aria-hidden="true" /> {receiptLoading ? "Creating receipt…" : "Download release receipt"}
+        </button>
+        {receiptError && <p role="alert">{receiptError}</p>}
+      </section>
     </section>
   );
+}
+
+function shortDigest(value: string): string { return `${value.slice(0, 8)}…${value.slice(-4)}`; }
+
+function downloadJson(value: unknown, filename: string) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }));
+  const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; anchor.click(); URL.revokeObjectURL(url);
 }
 
 function VerificationItems({ report, onSeek }: { report: VerificationReport; onSeek: (seconds: number) => void }) {

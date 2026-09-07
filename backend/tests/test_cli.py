@@ -8,6 +8,9 @@ import yaml
 
 from creator_preflight.cli import main
 from creator_preflight.config import PreflightConfig
+from creator_preflight.engine import PreflightScanner
+from creator_preflight.models import PublishingPackage
+from creator_preflight.release_receipt import build_final_export_receipt
 
 
 @pytest.fixture
@@ -160,6 +163,42 @@ def test_cli_captions_uses_real_parser_in_json_mode(
     assert payload["caption_summary"]["source_format"] == "srt"
     assert payload["caption_summary"]["cue_count"] == 1
     assert "captions.parse" in [check["check_id"] for check in payload["checks"]]
+
+
+def test_verify_receipt_cli_valid_mismatch_and_invalid(
+    video_with_audio: Path, ready_config_path: Path, tmp_path: Path, capsys
+) -> None:
+    config = PreflightConfig()
+    config.rules.video.minimum_width = 160
+    config.rules.video.minimum_height = 90
+    config.rules.video.allowed_aspect_ratios = ["16:9"]
+    report = PreflightScanner(config=config).scan(
+        video_with_audio,
+        PublishingPackage(title="Valid title", description="Valid description"),
+    )
+    receipt = build_final_export_receipt(
+        shipping_video_path=video_with_audio,
+        report=report,
+        config=config,
+        title="Valid title",
+        description="Valid description",
+    )
+    receipt_path = tmp_path / "receipt.json"
+    receipt_path.write_text(receipt.model_dump_json(indent=2), encoding="utf-8")
+
+    assert main(["verify-receipt", str(receipt_path), "--video", str(video_with_audio)]) == 0
+    assert "RECEIPT VALID" in capsys.readouterr().out
+
+    wrong = tmp_path / "wrong.mp4"
+    wrong.write_bytes(b"wrong")
+    assert main(["verify-receipt", str(receipt_path), "--video", str(wrong)]) == 1
+    assert "RECEIPT MISMATCH" in capsys.readouterr().out
+
+    payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+    payload["verdict"] = "BLOCKED"
+    receipt_path.write_text(json.dumps(payload), encoding="utf-8")
+    assert main(["verify-receipt", str(receipt_path), "--video", str(video_with_audio)]) == 2
+    assert "INVALID RECEIPT" in capsys.readouterr().out
 
 
 def test_cli_malformed_captions_appear_in_human_report(

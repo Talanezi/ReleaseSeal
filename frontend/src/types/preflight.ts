@@ -471,3 +471,42 @@ export interface VerificationReport {
   review_reel_available: boolean;
   limitations: string[];
 }
+
+export type ReceiptKind = "FINAL_EXPORT" | "REVISION";
+
+export interface ArtifactIdentity {
+  sha256: string;
+  size_bytes: number;
+}
+
+export interface FinalExportReceipt {
+  receipt_schema_version: "1.0";
+  receipt_kind: "FINAL_EXPORT";
+  created_at: string;
+  scanner_version: string;
+  verdict: FindingStatus;
+  scan_completeness: ScanCompleteness;
+  configuration_fingerprint_sha256: string;
+  package: {
+    shipping_video: ArtifactIdentity;
+    shipping_role: "ORIGINAL" | "REPAIRED";
+    package_fingerprint_sha256: string;
+  };
+  repair: Record<string, unknown> | null;
+  receipt_content_sha256: string;
+}
+
+export interface RevisionReceipt {
+  receipt_schema_version: "1.0";
+  receipt_kind: "REVISION";
+  created_at: string;
+  scanner_version: string;
+  verdict: "NOT_APPLICABLE";
+  scan_completeness: "COMPLETE";
+  configuration_fingerprint_sha256: string;
+  previous_video: ArtifactIdentity;
+  revised_video: ArtifactIdentity;
+  revision_notes_sha256: string;
+  revision_fingerprint_sha256: string;
+  receipt_content_sha256: string;
+}

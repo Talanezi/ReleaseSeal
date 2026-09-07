@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { needsReviewReport, revisionCheckReport } from "../mocks/reports";
-import { applyRepairs, assistMetadata, checkRevision, extractReleaseContract, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, reviewRevisionSemantics, scanPreflight, verifyRepair } from "./preflight";
+import { applyRepairs, assistMetadata, checkRevision, createFinalExportReceipt, createRevisionReceipt, extractReleaseContract, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, reviewRevisionSemantics, scanPreflight, verifyRepair } from "./preflight";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -84,6 +84,26 @@ describe("preflight API client", () => {
     expect((body?.get("revised_file") as File).name).toBe("revised cut.mp4");
     expect(body?.get("notes")).toBe("00:12 Remove old section");
     expect(report.additional_change_count).toBe(2);
+  });
+
+  it("requests backend-owned Final Export and Revision receipts", async () => {
+    const requests: Array<{ url: string; form: FormData }> = [];
+    vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
+      requests.push({ url: String(url), form: init?.body as FormData });
+      return Promise.resolve(jsonResponse(String(url).endsWith("revision") ? revisionReceiptFixture() : finalReceiptFixture()));
+    }));
+    const original = new File(["original"], "original.mp4");
+    const previous = new File(["previous"], "previous.mp4");
+    const revised = new File(["revised"], "revised.mp4");
+    const finalReceipt = await createFinalExportReceipt({ originalVideo: original, report: needsReviewReport, title: "Title", description: "Description" });
+    const revisionReceipt = await createRevisionReceipt({ previousVideo: previous, revisedVideo: revised, notes: "00:10 Restore picture", revisionCheck: revisionCheckReport });
+    expect(requests.map((item) => item.url)).toEqual(["/api/v1/release-receipts/final-export", "/api/v1/release-receipts/revision"]);
+    expect((requests[0].form.get("file") as File).name).toBe("original.mp4");
+    expect(JSON.parse(String(requests[0].form.get("report_json"))).schema_version).toBe(needsReviewReport.schema_version);
+    expect((requests[1].form.get("previous_file") as File).name).toBe("previous.mp4");
+    expect(requests[1].form.get("notes")).toBe("00:10 Restore picture");
+    expect(finalReceipt.package.shipping_role).toBe("ORIGINAL");
+    expect(revisionReceipt.receipt_kind).toBe("REVISION");
   });
 
   it("rejects a malformed revision response", async () => {
@@ -297,6 +317,14 @@ function capabilitiesFixture() {
     maximum_video_upload_size_bytes: 2_147_483_648,
     full_review_unavailable_reasons: [],
   };
+}
+
+const sha = "a".repeat(64);
+function finalReceiptFixture() {
+  return { receipt_schema_version: "1.0", receipt_kind: "FINAL_EXPORT", created_at: "2026-09-07T12:00:00Z", scanner_version: "0.0.0", verdict: "NEEDS_REVIEW", scan_completeness: "COMPLETE", configuration_fingerprint_sha256: sha, package: { shipping_video: { sha256: sha, size_bytes: 8 }, shipping_role: "ORIGINAL", package_fingerprint_sha256: sha }, repair: null, receipt_content_sha256: sha };
+}
+function revisionReceiptFixture() {
+  return { receipt_schema_version: "1.0", receipt_kind: "REVISION", created_at: "2026-09-07T12:00:00Z", scanner_version: "0.0.0", verdict: "NOT_APPLICABLE", scan_completeness: "COMPLETE", configuration_fingerprint_sha256: sha, previous_video: { sha256: sha, size_bytes: 8 }, revised_video: { sha256: sha, size_bytes: 7 }, revision_notes_sha256: sha, revision_fingerprint_sha256: sha, receipt_content_sha256: sha };
 }
 
 const semanticReviewFixture = {
