@@ -21,6 +21,7 @@ Creation tools help make an edit. Release mistakes still hide in the finished re
 
 - Inspects streams and decodes bounded FFmpeg evidence for black, brief flashes, silence, static frames, unreadable media failures, and suspicious near-full-scale sample density.
 - Checks title, description, URLs, chapters, format recommendations, SRT/WebVTT timing, caption structure, and coverage.
+- Optionally turns a pasted delivery brief or manually entered obligations into a strict Release Contract. Deterministic requirements participate in the real release gate; semantic talking points remain advisory.
 - Optionally reviews opening alignment, high-confidence continuity issues, and up to three selected public factual claims with provider citation metadata.
 - Shows exact evidence in one player; timestamped findings and timeline markers seek directly to it.
 - Maps trusted repetition and black-gap findings to one backend-owned `REMOVE_RANGE` operation. Every edit requires preview and approval; the source is never overwritten.
@@ -39,8 +40,8 @@ Creation tools help make an edit. Release mistakes still hide in the finished re
 
 | Layer | Owns | Does not claim |
 |---|---|---|
-| Deterministic | Media structure, timestamps, physical revision changes, caption transforms, repair execution, regression comparison | Creative intent or semantic correctness |
-| Optional AI | Opening/content interpretation, selected grounded claims, bounded revision-note interpretation | Certification, exhaustive review, or authority over deterministic evidence |
+| Deterministic | Media structure, publishing metadata, supplied caption evidence, Release Contract rules, physical revision changes, caption transforms, repair execution, regression comparison | Creative intent or semantic correctness |
+| Optional AI | Brief-to-contract structuring, advisory contract semantics, opening/content interpretation, selected grounded claims, bounded revision-note interpretation | Certification, invented obligations, or authority over deterministic evidence |
 | Human | Ambiguous creative judgment and final approval | That an accepted intentional finding was automatically repaired |
 
 Content verdict (`READY`, `NEEDS_REVIEW`, `BLOCKED`) is separate from scan completeness (`COMPLETE`, `PARTIAL`, `FAILED`). Provider failure cannot masquerade as a creator-content warning.
@@ -62,7 +63,7 @@ That writes ignored assets plus a provenance manifest under `frontend/public/dem
 ```text
 FINAL EXPORT
 Finished package
-  -> deterministic checks + optional content review
+  -> deterministic checks + optional typed Release Contract + optional content review
   -> timestamped findings + human judgment
   -> bounded preview/repair
   -> repaired export
@@ -106,7 +107,7 @@ Open `http://127.0.0.1:5173`. **Local Checks Only** requires no key and never up
 export GEMINI_API_KEY="your-server-side-key"
 ```
 
-The key stays server-side. Full Review may upload the selected video and thumbnail; Revision semantic review uploads only bounded evidence clips. Network access and provider availability are required only for explicitly requested AI work.
+The key stays server-side. Full Review may upload the selected video and thumbnail; Revision semantic review uploads only bounded evidence clips. Release requirements can always be entered manually without Gemini; **Extract requirements** uses Gemini only to structure explicit text from the pasted brief, and the backend—not the model—evaluates deterministic obligations. Network access and provider availability are required only for explicitly requested AI work.
 
 CLI and deterministic demo:
 
@@ -139,7 +140,7 @@ See [SECURITY.md](SECURITY.md) for precise boundaries.
 
 ## Limitations
 
-Semantic review is probabilistic. Physical change does not prove semantic intent. AI revision review is request-limited, untimed notes are not auto-located, arbitrary large scene reordering is unsupported, and repetitive/static media may yield approximate boundaries. Repair Mode intentionally supports only validated removal. Factual review checks selected claims rather than certifying a video. Browser codec support varies. There is no persistent project history or collaboration system.
+Semantic review is probabilistic. Contract text checks use supplied caption text and do not claim independent speech verification; without supported text evidence they remain not evaluated. Physical change does not prove semantic intent. AI revision review is request-limited, untimed notes are not auto-located, arbitrary large scene reordering is unsupported, and repetitive/static media may yield approximate boundaries. Repair Mode intentionally supports only validated removal. Factual review checks selected claims rather than certifying a video. Browser codec support varies. There is no persistent project history or collaboration system.
 
 ## Architecture
 

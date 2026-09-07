@@ -17,6 +17,7 @@ import type {
   ScanProgress,
   RevisionCheckReport,
   RevisionSemanticReviewReport,
+  ReleaseContract,
 } from "../types/preflight";
 import { PRODUCT_NAME } from "../brand";
 
@@ -39,6 +40,7 @@ export interface PreflightScanInput {
   captions?: File | null;
   thumbnail?: File | null;
   reviewMode: ReviewMode;
+  releaseContract?: ReleaseContract | null;
 }
 
 export interface RepairMediaResult {
@@ -92,6 +94,7 @@ export async function scanPreflight(
   if (options.progressId) form.append("progress_id", options.progressId);
   if (input.captions) form.append("captions", input.captions, input.captions.name);
   if (input.thumbnail) form.append("thumbnail", input.thumbnail, input.thumbnail.name);
+  if (input.releaseContract) form.append("release_contract_json", JSON.stringify(input.releaseContract));
 
   let response: Response;
   try {
@@ -125,6 +128,25 @@ export async function scanPreflight(
       { code: "invalid_response", status: response.status },
     );
   }
+  return payload;
+}
+
+export async function extractReleaseContract(brief: string, options: { signal?: AbortSignal } = {}): Promise<ReleaseContract> {
+  const form = new FormData();
+  form.append("brief", brief);
+  let response: Response;
+  try {
+    response = await fetch("/api/v1/release-contracts/extract", { method: "POST", body: form, signal: options.signal });
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new PreflightApiError("Could not reach requirement extraction.", { code: "backend_unreachable", cause: error });
+  }
+  const payload = await parseJsonResponse(response);
+  if (!response.ok) {
+    const structured = parseStructuredError(payload);
+    throw new PreflightApiError(structured?.error.message ?? "Requirements could not be extracted.", { code: structured?.error.code ?? "request_failed", status: response.status });
+  }
+  if (!isReleaseContract(payload)) throw new PreflightApiError("The backend returned an invalid release contract.", { code: "invalid_response", status: response.status });
   return payload;
 }
 
@@ -452,9 +474,48 @@ function isPreflightReport(value: unknown): value is PreflightReport {
     && isPromiseCheckSummary(value.promise_check)
     && isViewerPassSummary(value.viewer_pass)
     && isClaimReviewSummary(value.claim_review)
+    && isReleaseContractEvaluation(value.release_contract)
     && isRepairPlan(value.repair_plan)
     && isReleaseBrief(value.release_brief)
     && isNonnegativeNumber(value.scan_duration_seconds);
+}
+
+function isReleaseContract(value: unknown): value is ReleaseContract {
+  return isRecord(value) && value.schema_version === "1.0" && (value.name === null || typeof value.name === "string")
+    && Array.isArray(value.requirements) && value.requirements.length <= 30
+    && value.requirements.every(isReleaseRequirement);
+}
+
+const releaseRequirementTypes = ["REQUIRED_TEXT", "REQUIRED_EXACT_TOKEN", "REQUIRED_URL", "REQUIRED_BEFORE_TIME", "FORBIDDEN_TEXT", "TITLE_CONTAINS", "DESCRIPTION_CONTAINS", "DESCRIPTION_URL", "MAX_DURATION", "MIN_RESOLUTION", "ASPECT_RATIO", "CAPTIONS_REQUIRED", "REQUIRED_TALKING_POINT", "FORBIDDEN_CLAIM"] as const;
+
+function isReleaseRequirement(item: unknown): boolean {
+  if (!isRecord(item) || typeof item.id !== "string" || !releaseRequirementTypes.includes(item.type as typeof releaseRequirementTypes[number])
+    || typeof item.instruction !== "string" || (item.provenance !== "manual" && item.provenance !== "extracted")
+    || (item.source_excerpt !== null && typeof item.source_excerpt !== "string")) return false;
+  const semantic = item.type === "REQUIRED_TALKING_POINT" || item.type === "FORBIDDEN_CLAIM";
+  if (item.evaluation_class !== (semantic ? "SEMANTIC" : "DETERMINISTIC")) return false;
+  if (item.type === "CAPTIONS_REQUIRED") return true;
+  if (item.type === "MAX_DURATION") return typeof item.maximum_seconds === "number" && item.maximum_seconds > 0;
+  if (item.type === "MIN_RESOLUTION") return typeof item.minimum_width === "number" && item.minimum_width > 0 && typeof item.minimum_height === "number" && item.minimum_height > 0;
+  if (item.type === "ASPECT_RATIO") return typeof item.width_ratio === "number" && item.width_ratio > 0 && typeof item.height_ratio === "number" && item.height_ratio > 0 && typeof item.tolerance === "number";
+  return typeof item.value === "string" && item.value.length > 0
+    && (item.type !== "REQUIRED_BEFORE_TIME" || (typeof item.before_seconds === "number" && item.before_seconds > 0));
+}
+
+function isReleaseContractEvaluation(value: unknown): boolean {
+  return isRecord(value) && (value.contract === null || isReleaseContract(value.contract))
+    && Array.isArray(value.results) && value.results.every((item) => isRecord(item)
+      && typeof item.requirement_id === "string" && releaseRequirementTypes.includes(item.requirement_type as typeof releaseRequirementTypes[number]) && typeof item.instruction === "string"
+      && (item.evaluation_class === "DETERMINISTIC" || item.evaluation_class === "SEMANTIC")
+      && (item.status === "PASS" || item.status === "FAIL" || item.status === "NEEDS_REVIEW" || item.status === "NOT_EVALUATED")
+      && typeof item.evidence === "string" && (item.timestamp_seconds === null || isNonnegativeNumber(item.timestamp_seconds))
+      && (item.evidence_source === "CAPTION_TEXT" || item.evidence_source === "PUBLISHING_METADATA" || item.evidence_source === "MEDIA_INSPECTION" || item.evidence_source === "AI_SEMANTIC" || item.evidence_source === "NONE")
+      && (item.expected === null || typeof item.expected === "string")
+      && (item.confidence === null || (isNonnegativeNumber(item.confidence) && item.confidence <= 1))
+      && (item.reason_code === null || typeof item.reason_code === "string"))
+    && isNonnegativeNumber(value.passed_count) && isNonnegativeNumber(value.failed_count)
+    && isNonnegativeNumber(value.needs_review_count) && isNonnegativeNumber(value.not_evaluated_count)
+    && isNonnegativeNumber(value.runtime_seconds);
 }
 
 function isScanProgress(value: unknown): value is ScanProgress {
@@ -568,6 +629,7 @@ function isPreflightCapabilities(value: unknown): value is PreflightCapabilities
     && typeof value.gemini_api_key_configured === "boolean"
     && typeof value.full_review_available === "boolean"
     && typeof value.metadata_assist_available === "boolean"
+    && typeof value.release_contract_extraction_available === "boolean"
     && typeof value.local_checks_available === "boolean"
     && typeof value.revision_check_available === "boolean"
     && typeof value.revision_semantic_review_available === "boolean"

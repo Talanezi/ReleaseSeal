@@ -187,6 +187,15 @@ export const needsReviewReport: PreflightReport = {
     insufficient_evidence_count: 0,
     explanation: null,
   },
+  release_contract: {
+    contract: null,
+    results: [],
+    passed_count: 0,
+    failed_count: 0,
+    needs_review_count: 0,
+    not_evaluated_count: 0,
+    runtime_seconds: 0,
+  },
   repair_plan: {
     proposals: findings.map((finding, index) => {
       const repairable = finding.code === "VIDEO_BLACK_SEGMENT";

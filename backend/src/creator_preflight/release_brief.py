@@ -230,10 +230,11 @@ def _prioritized_actions(findings: list[Finding], repair_plan: RepairPlan | None
     ordered = sorted(
         groups.items(),
         key=lambda item: (
-            0 if any((finding.code, finding.timestamp_start_seconds, finding.timestamp_end_seconds) in repairable for finding in item[1])
-            else 1 if item[0] == "AUDIO_LONG_SILENCE"
-            else 2 if len(item[1]) > 1
-            else 3,
+            0 if any(finding.source == "release_contract.deterministic" for finding in item[1])
+            else 1 if any((finding.code, finding.timestamp_start_seconds, finding.timestamp_end_seconds) in repairable for finding in item[1])
+            else 2 if item[0] == "AUDIO_LONG_SILENCE"
+            else 3 if len(item[1]) > 1
+            else 4,
             findings.index(item[1][0]),
         ),
     )

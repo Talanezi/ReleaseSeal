@@ -2,11 +2,20 @@
 
 ## Current milestone
 
-Milestone 24 — Final Proof, Demo Readiness, and Release Polish.
+Milestone 25 — Contract-Driven Release Gate.
 
-Status: Engineering complete on 2026-09-06. Authentic demo media and the final public name remain owner-controlled gates.
+Status: Complete on 2026-09-07. No live provider call was required.
 
 ## Completed
+
+- Milestone 25 adds a strict, discriminated Release Contract with fourteen explicit requirement types; there is no generic rule or provider-authored execution escape hatch.
+- Manual contracts work without Gemini. Optional text-only brief extraction uses native structured output, requires exact excerpts from the supplied brief, preserves literal codes/URLs/times/numbers, rejects duplicates and malformed or invented obligations, and is capped at 20,000 brief characters and 30 requirements.
+- Deterministic contract evaluation reuses inspected media, submitted publishing metadata, and parsed caption text. Deterministic failures participate in the real `BLOCKED` gate; missing evidence becomes `NOT_EVALUATED` and partial completeness rather than a pass.
+- At most five semantic requirements are evaluated advisory-only in one bounded text request over at most 20,000 caption characters during Full Review. Low confidence becomes `NEEDS_REVIEW`; provider failure cannot become deterministic contract failure.
+- Final Export now includes an editable Release requirements section, typed multipart transport, first-class result rows with seekable evidence, release-priority findings, and JSON/Markdown/CSV export coverage. Repair verification carries the same contract into the repaired scan.
+- Milestone 25 affected backend gate: 99 passed, 0 failed, with one upstream Starlette TestClient deprecation warning. The set covers Release Contract, API/report, release summary, repair verification, and deterministic Revision Check regressions.
+- Milestone 25 frontend gate: 3 files and 78 tests passed. TypeScript validation and the Vite production build passed with 1,831 modules transformed. Python compile, `git diff --check`, ignored-secret checks, and generated-media/provider-artifact checks passed.
+- A normal seven-row deterministic contract evaluated in approximately 0.000329 seconds on the development machine, below the 100 ms acceptance target. No Gemini or other provider request was made for M25 acceptance.
 
 - Product scope and priorities documented.
 - Target architecture and repository boundaries documented.

@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from creator_preflight.repair_models import RepairPlan
 from creator_preflight.release_models import ReleaseBrief, ReleaseBriefSource
+from creator_preflight.release_contract import ReleaseContract, ReleaseContractEvaluation
 
 
 class FindingSeverity(str, Enum):
@@ -111,6 +112,7 @@ class PublishingPackage(BaseModel):
     captions_path: Path | None = None
     thumbnail_path: Path | None = None
     profile_id: str | None = Field(default=None, min_length=1)
+    release_contract: ReleaseContract | None = None
 
 
 class CheckResult(BaseModel):
@@ -246,7 +248,7 @@ class PreflightReport(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = "1.8"
+    schema_version: str = "1.9"
     verdict: FindingStatus
     scan_completeness: ScanCompleteness = ScanCompleteness.COMPLETE
     review_mode: ReviewMode = ReviewMode.LOCAL
@@ -265,6 +267,7 @@ class PreflightReport(BaseModel):
     promise_check: PromiseCheckSummary
     viewer_pass: ViewerPassSummary
     claim_review: ClaimReviewSummary
+    release_contract: ReleaseContractEvaluation = Field(default_factory=ReleaseContractEvaluation)
     repair_plan: RepairPlan = Field(default_factory=RepairPlan)
     release_brief: ReleaseBrief = Field(default_factory=lambda: ReleaseBrief(
         source=ReleaseBriefSource.DETERMINISTIC,
@@ -303,6 +306,7 @@ class PreflightCapabilities(BaseModel):
     gemini_api_key_configured: bool
     full_review_available: bool
     metadata_assist_available: bool
+    release_contract_extraction_available: bool
     local_checks_available: bool
     revision_check_available: bool
     revision_semantic_review_available: bool

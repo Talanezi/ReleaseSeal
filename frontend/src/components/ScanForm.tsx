@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Captions, FileImage, FileVideo2, Lightbulb, Play, RefreshCw, Upload, X } from "lucide-react";
-import { assistMetadata, errorPresentation, isAbortError } from "../api/preflight";
+import { Captions, FileImage, FileVideo2, Lightbulb, Play, Plus, RefreshCw, Upload, X } from "lucide-react";
+import { assistMetadata, errorPresentation, extractReleaseContract, isAbortError } from "../api/preflight";
 import { formatBytes } from "../utils/format";
-import type { MetadataAssistResult, PreflightCapabilities, ReviewMode } from "../types/preflight";
+import type { MetadataAssistResult, PreflightCapabilities, ReleaseContract, ReleaseRequirement, ReleaseRequirementType, ReviewMode } from "../types/preflight";
 import { loadFinalExportDemo } from "../demoAssets";
 import { PRODUCT_NAME } from "../brand";
 
@@ -13,6 +13,7 @@ export interface ScanInputs {
   captions: File | null;
   thumbnail: File | null;
   reviewMode: ReviewMode;
+  releaseContract: ReleaseContract | null;
 }
 
 interface ScanFormProps {
@@ -90,6 +91,7 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
       const demo = await loadFinalExportDemo();
       onChange({
         ...demo,
+        releaseContract: null,
         reviewMode: capabilities?.full_review_available ? "full" : "local",
       });
     } catch {
@@ -107,7 +109,8 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
     && !uploadTooLarge
     && (inputs.reviewMode === "local"
       ? capabilities?.local_checks_available !== false
-      : capabilities?.full_review_available),
+      : capabilities?.full_review_available)
+    && contractIsComplete(inputs.releaseContract),
   );
 
   return (
@@ -314,6 +317,12 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
             )}
           </div>
 
+          <ReleaseRequirementsEditor
+            contract={inputs.releaseContract}
+            extractionAvailable={capabilities?.release_contract_extraction_available ?? false}
+            onChange={(releaseContract) => onChange({ ...inputs, releaseContract })}
+          />
+
           <div className="field-group captions-field">
             <div>
               <span className="field-label"><FileImage aria-hidden="true" /> Thumbnail <em>Optional</em></span>
@@ -372,6 +381,90 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
       </form>
     </main>
   );
+}
+
+const requirementLabels: Record<ReleaseRequirementType, string> = {
+  REQUIRED_TEXT: "Required text", REQUIRED_EXACT_TOKEN: "Required exact text", REQUIRED_URL: "Required URL",
+  REQUIRED_BEFORE_TIME: "Required before a time", FORBIDDEN_TEXT: "Forbidden text", TITLE_CONTAINS: "Title must contain",
+  DESCRIPTION_CONTAINS: "Description must contain", DESCRIPTION_URL: "Description must contain URL",
+  MAX_DURATION: "Maximum duration", MIN_RESOLUTION: "Minimum resolution", ASPECT_RATIO: "Aspect ratio",
+  CAPTIONS_REQUIRED: "Captions required", REQUIRED_TALKING_POINT: "Required talking point", FORBIDDEN_CLAIM: "Forbidden claim",
+};
+
+function ReleaseRequirementsEditor({ contract, extractionAvailable, onChange }: {
+  contract: ReleaseContract | null;
+  extractionAvailable: boolean;
+  onChange: (contract: ReleaseContract | null) => void;
+}) {
+  const [brief, setBrief] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const requirements = contract?.requirements ?? [];
+  const replace = (next: ReleaseRequirement[]) => onChange(next.length ? { schema_version: "1.0", name: contract?.name ?? null, requirements: next } : null);
+  const extract = async () => {
+    setLoading(true); setError(null);
+    try { onChange(await extractReleaseContract(brief)); }
+    catch (reason) { setError(errorPresentation(reason).message); }
+    finally { setLoading(false); }
+  };
+  return (
+    <section className="release-requirements-editor" aria-labelledby="release-requirements-heading">
+      <div className="field-label-row"><h3 id="release-requirements-heading">Release requirements <em>Optional</em></h3><span>{requirements.length} / 30</span></div>
+      <p className="field-hint">Add delivery obligations that this exact export must satisfy.</p>
+      <textarea value={brief} maxLength={20000} rows={4} placeholder="Paste a client or sponsor brief…" onChange={(event) => setBrief(event.target.value)} />
+      <button className="secondary-button compact" type="button" disabled={!extractionAvailable || !brief.trim() || loading} onClick={() => void extract()}>
+        <Lightbulb aria-hidden="true" /> {loading ? "Extracting…" : "Extract requirements"}
+      </button>
+      {!extractionAvailable && <p className="field-hint">Automatic extraction is unavailable; structured requirements can still be added manually.</p>}
+      {error && <p role="alert">{error}</p>}
+      {contract && requirements.length === 0 && <p className="field-hint">No supported release requirement was found in that brief.</p>}
+      {requirements.map((requirement, index) => (
+        <div className="release-requirement-row" key={requirement.id}>
+          <select aria-label={`Requirement ${index + 1} type`} value={requirement.type} onChange={(event) => {
+            const next = [...requirements]; next[index] = newRequirement(event.target.value as ReleaseRequirementType, requirement.id); replace(next);
+          }}>{Object.entries(requirementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <input aria-label={`Requirement ${index + 1} instruction`} value={requirement.instruction} onChange={(event) => replace(updateRequirement(requirements, index, { instruction: event.target.value }))} />
+          <RequirementParameters requirement={requirement} onChange={(change) => replace(updateRequirement(requirements, index, change))} />
+          {requirement.source_excerpt && <small>From brief: “{requirement.source_excerpt}”</small>}
+          <button className="text-button" type="button" onClick={() => replace(requirements.filter((_, itemIndex) => itemIndex !== index))}>Remove</button>
+        </div>
+      ))}
+      <button className="text-button" type="button" disabled={requirements.length >= 30} onClick={() => replace([...requirements, newRequirement("REQUIRED_TEXT")])}><Plus aria-hidden="true" /> Add requirement</button>
+    </section>
+  );
+}
+
+function RequirementParameters({ requirement, onChange }: { requirement: ReleaseRequirement; onChange: (change: Partial<ReleaseRequirement>) => void }) {
+  if (requirement.type === "CAPTIONS_REQUIRED") return null;
+  if (requirement.type === "MAX_DURATION") return <input type="number" min="0.01" aria-label="Maximum seconds" value={requirement.maximum_seconds ?? 60} onChange={(event) => onChange({ maximum_seconds: Number(event.target.value) })} />;
+  if (requirement.type === "MIN_RESOLUTION") return <div className="requirement-parameters"><input type="number" min="1" aria-label="Minimum width" value={requirement.minimum_width ?? 1920} onChange={(event) => onChange({ minimum_width: Number(event.target.value) })} /><span>×</span><input type="number" min="1" aria-label="Minimum height" value={requirement.minimum_height ?? 1080} onChange={(event) => onChange({ minimum_height: Number(event.target.value) })} /></div>;
+  if (requirement.type === "ASPECT_RATIO") return <div className="requirement-parameters"><input type="number" min="1" aria-label="Aspect width" value={requirement.width_ratio ?? 16} onChange={(event) => onChange({ width_ratio: Number(event.target.value) })} /><span>:</span><input type="number" min="1" aria-label="Aspect height" value={requirement.height_ratio ?? 9} onChange={(event) => onChange({ height_ratio: Number(event.target.value) })} /></div>;
+  return <div className="requirement-parameters"><input aria-label="Expected value" value={requirement.value ?? ""} placeholder="Required value" onChange={(event) => onChange({ value: event.target.value })} />{requirement.type === "REQUIRED_BEFORE_TIME" && <input type="number" min="0.01" aria-label="Deadline seconds" value={requirement.before_seconds ?? 30} onChange={(event) => onChange({ before_seconds: Number(event.target.value) })} />}</div>;
+}
+
+function updateRequirement(items: ReleaseRequirement[], index: number, change: Partial<ReleaseRequirement>): ReleaseRequirement[] {
+  const next = [...items]; next[index] = { ...next[index], ...change, provenance: "manual", source_excerpt: null }; return next;
+}
+
+function newRequirement(type: ReleaseRequirementType, id = `requirement-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`): ReleaseRequirement {
+  const semantic = type === "REQUIRED_TALKING_POINT" || type === "FORBIDDEN_CLAIM";
+  const base: ReleaseRequirement = { id, type, instruction: requirementLabels[type], provenance: "manual", source_excerpt: null, evaluation_class: semantic ? "SEMANTIC" : "DETERMINISTIC" };
+  if (type === "CAPTIONS_REQUIRED") return base;
+  if (type === "MAX_DURATION") return { ...base, maximum_seconds: 480 };
+  if (type === "MIN_RESOLUTION") return { ...base, minimum_width: 1920, minimum_height: 1080 };
+  if (type === "ASPECT_RATIO") return { ...base, width_ratio: 16, height_ratio: 9, tolerance: 0.02 };
+  return { ...base, value: "", ...(type === "REQUIRED_BEFORE_TIME" ? { before_seconds: 30 } : {}) };
+}
+
+function contractIsComplete(contract: ReleaseContract | null): boolean {
+  return !contract || contract.requirements.every((item) => {
+    if (!item.instruction.trim()) return false;
+    if (item.type === "CAPTIONS_REQUIRED") return true;
+    if (item.type === "MAX_DURATION") return Boolean(item.maximum_seconds && item.maximum_seconds > 0);
+    if (item.type === "MIN_RESOLUTION") return Boolean(item.minimum_width && item.minimum_height);
+    if (item.type === "ASPECT_RATIO") return Boolean(item.width_ratio && item.height_ratio);
+    return Boolean(item.value?.trim()) && (item.type !== "REQUIRED_BEFORE_TIME" || Boolean(item.before_seconds && item.before_seconds > 0));
+  });
 }
 
 function ReviewModeOption({ value, selected, disabled, title, description, onSelect }: {

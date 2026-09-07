@@ -513,6 +513,12 @@ class GeminiVideoReviewer:
             remote_file = client.files.get(name=remote_file.name)
 
 
+def classify_provider_error(exc: Exception, *, phase: str) -> AIReviewError:
+    """Expose the shared safe provider-error classifier to focused AI adapters."""
+
+    return _classify_provider_error(exc, phase=phase)
+
+
 def _smoke_prompt(maximum_observations: int) -> str:
     return (
         "Inspect the video itself and report at most "

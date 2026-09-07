@@ -112,6 +112,7 @@ export interface PreflightCapabilities {
   gemini_api_key_configured: boolean;
   full_review_available: boolean;
   metadata_assist_available: boolean;
+  release_contract_extraction_available: boolean;
   local_checks_available: boolean;
   revision_check_available: boolean;
   revision_semantic_review_available: boolean;
@@ -120,6 +121,60 @@ export interface PreflightCapabilities {
   supported_review_modes: ReviewMode[];
   maximum_video_upload_size_bytes: number;
   full_review_unavailable_reasons: CapabilityReason[];
+}
+
+export type ReleaseRequirementType = "REQUIRED_TEXT" | "REQUIRED_EXACT_TOKEN" | "REQUIRED_URL"
+  | "REQUIRED_BEFORE_TIME" | "FORBIDDEN_TEXT" | "TITLE_CONTAINS" | "DESCRIPTION_CONTAINS"
+  | "DESCRIPTION_URL" | "MAX_DURATION" | "MIN_RESOLUTION" | "ASPECT_RATIO"
+  | "CAPTIONS_REQUIRED" | "REQUIRED_TALKING_POINT" | "FORBIDDEN_CLAIM";
+export type ContractEvaluationClass = "DETERMINISTIC" | "SEMANTIC";
+export type ContractStatus = "PASS" | "FAIL" | "NEEDS_REVIEW" | "NOT_EVALUATED";
+
+export interface ReleaseRequirement {
+  id: string;
+  type: ReleaseRequirementType;
+  instruction: string;
+  provenance: "manual" | "extracted";
+  source_excerpt: string | null;
+  evaluation_class: ContractEvaluationClass;
+  value?: string;
+  before_seconds?: number;
+  maximum_seconds?: number;
+  minimum_width?: number;
+  minimum_height?: number;
+  width_ratio?: number;
+  height_ratio?: number;
+  tolerance?: number;
+}
+
+export interface ReleaseContract {
+  schema_version: "1.0";
+  name: string | null;
+  requirements: ReleaseRequirement[];
+}
+
+export interface ContractRequirementResult {
+  requirement_id: string;
+  requirement_type: ReleaseRequirementType;
+  instruction: string;
+  evaluation_class: ContractEvaluationClass;
+  status: ContractStatus;
+  expected: string | null;
+  evidence: string;
+  evidence_source: "CAPTION_TEXT" | "PUBLISHING_METADATA" | "MEDIA_INSPECTION" | "AI_SEMANTIC" | "NONE";
+  timestamp_seconds: number | null;
+  confidence: number | null;
+  reason_code: string | null;
+}
+
+export interface ReleaseContractEvaluation {
+  contract: ReleaseContract | null;
+  results: ContractRequirementResult[];
+  passed_count: number;
+  failed_count: number;
+  needs_review_count: number;
+  not_evaluated_count: number;
+  runtime_seconds: number;
 }
 
 export type RevisionSegmentKind = "UNCHANGED" | "REMOVED" | "INSERTED" | "CHANGED";
@@ -347,6 +402,7 @@ export interface PreflightReport {
   promise_check: PromiseCheckSummary;
   viewer_pass: ViewerPassSummary;
   claim_review: ClaimReviewSummary;
+  release_contract: ReleaseContractEvaluation;
   repair_plan: RepairPlan;
   release_brief: ReleaseBrief;
   scan_duration_seconds: number;

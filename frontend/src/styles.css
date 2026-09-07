@@ -105,6 +105,24 @@ svg { flex: 0 0 auto; }
 }
 .video-input-section, .package-section { min-width: 0; padding: clamp(26px, 3vw, 40px); }
 .package-section { border-left: 1px solid var(--line); }
+.release-requirements-editor { margin-top: 24px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-muted); }
+.release-requirements-editor h3 { margin: 0; font-size: 1rem; }
+.release-requirements-editor textarea { width: 100%; margin: 10px 0; }
+.release-requirement-row { display: grid; gap: 8px; margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.release-requirement-row select, .release-requirement-row input { min-width: 0; }
+.requirement-parameters { display: flex; align-items: center; gap: 8px; }
+.requirement-parameters input { flex: 1; }
+.release-contract-results { margin: 22px 0; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; }
+.release-contract-heading { display: flex; justify-content: space-between; gap: 20px; align-items: end; padding: 20px 22px; border-bottom: 1px solid var(--line); }
+.release-contract-heading h2, .contract-result h3 { margin: 0; }
+.release-contract-heading span, .contract-result small { display: block; color: var(--text-muted); }
+.release-contract-list { display: grid; }
+.contract-result { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 16px 22px; border-bottom: 1px solid var(--line); }
+.contract-result:last-child { border-bottom: 0; }
+.contract-result p { margin: 5px 0; }
+.contract-result-icon { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--surface-muted); font-weight: 700; }
+.contract-result.status-fail .contract-result-icon { color: var(--critical); }
+.contract-result.status-pass .contract-result-icon { color: var(--pass); }
 .video-input-section h2, .package-section h2 {
   margin: 0 0 20px;
   font-size: 18px;
@@ -720,6 +738,10 @@ svg { flex: 0 0 auto; }
 }
 
 @media (max-width: 560px) {
+  .release-contract-heading { align-items: flex-start; flex-direction: column; }
+  .contract-result { grid-template-columns: auto minmax(0, 1fr); }
+  .contract-result .timestamp-button { grid-column: 2; justify-self: start; }
+  .requirement-parameters { align-items: stretch; flex-direction: column; }
   .app-header { min-height: 56px; padding-inline: 16px; }
   .local-indicator { display: none; }
   .page-intro h1, .processing h1, .error-surface h1 { font-size: 29px; }

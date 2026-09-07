@@ -17,6 +17,7 @@ from creator_preflight.engine import PreflightScanner
 from creator_preflight.models import PublishingPackage
 from creator_preflight.repair_models import RepairOperation
 from creator_preflight.repairs import FFmpegRepairEngine
+from creator_preflight.release_contract import MaxDuration, ReleaseContract, RequiredExactToken
 
 client = TestClient(app)
 
@@ -86,7 +87,7 @@ def test_unified_api_scan_returns_preflight_report(video_with_audio: Path) -> No
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["schema_version"] == "1.8"
+    assert payload["schema_version"] == "1.9"
     assert payload["review_mode"] == "local"
     assert payload["scan_completeness"] == "COMPLETE"
     assert payload["ai_review"]["status"] == "disabled"
@@ -94,6 +95,43 @@ def test_unified_api_scan_returns_preflight_report(video_with_audio: Path) -> No
     assert payload["media"]["width"] == 160
     assert payload["checks_run_count"] == len(payload["checks"])
     assert payload["critical_count"] == 2
+
+
+def test_scan_accepts_typed_contract_and_blocks_on_real_requirement(video_with_audio: Path) -> None:
+    contract = ReleaseContract(requirements=[MaxDuration(
+        id="duration", type="MAX_DURATION", instruction="Keep this under half a second", maximum_seconds=.5,
+    )])
+    with video_with_audio.open("rb") as media_file:
+        response = client.post(
+            "/api/v1/preflight/scan",
+            files={"file": ("video.mp4", media_file, "video/mp4")},
+            data={"title": "A title", "description": "A description", "release_contract_json": contract.model_dump_json()},
+        )
+    assert response.status_code == 200
+    assert response.json()["release_contract"]["failed_count"] == 1
+    assert response.json()["verdict"] == "BLOCKED"
+
+
+def test_scan_rejects_untyped_release_contract(video_with_audio: Path) -> None:
+    with video_with_audio.open("rb") as media_file:
+        response = client.post(
+            "/api/v1/preflight/scan",
+            files={"file": ("video.mp4", media_file, "video/mp4")},
+            data={"release_contract_json": '{"requirements":[{"type":"SHELL","id":"bad","instruction":"bad"}]}'},
+        )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "release_contract_invalid"
+
+
+def test_extract_contract_route_returns_validated_contract(monkeypatch) -> None:
+    contract = ReleaseContract(requirements=[RequiredExactToken(
+        id="promo", type="REQUIRED_EXACT_TOKEN", instruction="Use SAVE25", value="SAVE25",
+        provenance="extracted", source_excerpt="Use SAVE25",
+    )])
+    monkeypatch.setattr(api_module, "GeminiReleaseContractExtractor", lambda: SimpleNamespace(extract=lambda brief, config: contract))
+    response = client.post("/api/v1/release-contracts/extract", data={"brief": "Use SAVE25"})
+    assert response.status_code == 200
+    assert response.json()["requirements"][0]["value"] == "SAVE25"
 
 
 def test_unified_api_anomaly_report_matches_real_frontend_contract(
@@ -111,7 +149,7 @@ def test_unified_api_anomaly_report_matches_real_frontend_contract(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["schema_version"] == "1.8"
+    assert payload["schema_version"] == "1.9"
     assert payload["ai_review"]["status"] == "disabled"
     assert payload["verdict"] == "NEEDS_REVIEW"
     assert payload["media"]["width"] == 1280
@@ -634,7 +672,8 @@ def test_detector_timeout_uses_gateway_timeout_response(
 
 def test_verify_repair_rescans_and_returns_typed_report(api_anomaly_video: Path, tmp_path: Path) -> None:
     operation = RepairOperation(operation_type="REMOVE_RANGE", start_seconds=2, end_seconds=5)
-    package = PublishingPackage(title="Repair verification", description="A valid package")
+    contract = ReleaseContract(requirements=[MaxDuration(id="duration", type="MAX_DURATION", instruction="Keep under twenty seconds", maximum_seconds=20)])
+    package = PublishingPackage(title="Repair verification", description="A valid package", release_contract=contract)
     original_report = PreflightScanner().scan(api_anomaly_video, package)
     repaired = tmp_path / "repaired.mp4"
     FFmpegRepairEngine().render(api_anomaly_video, repaired, [operation])
@@ -649,6 +688,7 @@ def test_verify_repair_rescans_and_returns_typed_report(api_anomaly_video: Path,
     assert payload["approved_repair_count"] == 1
     assert payload["integrity"]["passed"] is True
     assert payload["repaired_preflight_report"]["review_mode"] == "local"
+    assert payload["repaired_preflight_report"]["release_contract"]["passed_count"] == 1
     assert any(item["original_finding"]["code"] == "VIDEO_BLACK_SEGMENT" for item in payload["resolved"])
     assert payload["unexpected_changes"] == []
     assert payload["review_reel_available"] is True

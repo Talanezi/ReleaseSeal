@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { needsReviewReport, revisionCheckReport } from "../mocks/reports";
-import { applyRepairs, assistMetadata, checkRevision, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, reviewRevisionSemantics, scanPreflight, verifyRepair } from "./preflight";
+import { applyRepairs, assistMetadata, checkRevision, extractReleaseContract, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, reviewRevisionSemantics, scanPreflight, verifyRepair } from "./preflight";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -11,6 +11,7 @@ describe("preflight API client", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(capabilitiesFixture())));
     const capabilities = await fetchCapabilities();
     expect(capabilities.full_review_available).toBe(true);
+    expect(capabilities.release_contract_extraction_available).toBe(true);
     expect(capabilities.supported_review_modes).toEqual(["full", "local"]);
     expect(capabilities.maximum_video_upload_size_bytes).toBe(2_147_483_648);
   });
@@ -34,6 +35,7 @@ describe("preflight API client", () => {
       captions,
       thumbnail,
       reviewMode: "full",
+      releaseContract: { schema_version: "1.0", name: null, requirements: [{ id: "promo", type: "REQUIRED_EXACT_TOKEN", instruction: "Use SAVE25", provenance: "manual", source_excerpt: null, evaluation_class: "DETERMINISTIC", value: "SAVE25" }] },
     }, { progressId: "67e55044-10b1-426f-9247-bb680e5fe0c8" });
 
     expect(requestUrl).toBe("/api/v1/preflight/scan");
@@ -51,12 +53,22 @@ describe("preflight API client", () => {
     expect(form.get("description")).toBe("First line\nSecond line");
     expect(form.get("review_mode")).toBe("full");
     expect(form.get("progress_id")).toBe("67e55044-10b1-426f-9247-bb680e5fe0c8");
+    expect(JSON.parse(String(form.get("release_contract_json"))).requirements[0].value).toBe("SAVE25");
     expect(uploadedCaptions).toBeInstanceOf(File);
     expect((uploadedCaptions as File).name).toBe("captions.vtt");
     expect((uploadedCaptions as File).size).toBe(captions.size);
     expect(uploadedThumbnail).toBeInstanceOf(File);
     expect((uploadedThumbnail as File).name).toBe("thumbnail.png");
     expect(report).toEqual(needsReviewReport);
+  });
+
+  it("extracts and validates typed release requirements", async () => {
+    let body: FormData | undefined;
+    const contract = { schema_version: "1.0", name: null, requirements: [{ id: "promo", type: "REQUIRED_EXACT_TOKEN", instruction: "Use SAVE25", provenance: "extracted", source_excerpt: "Use SAVE25", evaluation_class: "DETERMINISTIC", value: "SAVE25" }] };
+    vi.stubGlobal("fetch", vi.fn((_url: RequestInfo | URL, init?: RequestInit) => { body = init?.body as FormData; return Promise.resolve(jsonResponse(contract)); }));
+    const result = await extractReleaseContract("Use SAVE25");
+    expect(body?.get("brief")).toBe("Use SAVE25");
+    expect(result.requirements[0].value).toBe("SAVE25");
   });
 
   it("constructs and validates the revision multipart request", async () => {
@@ -275,6 +287,7 @@ function capabilitiesFixture() {
     gemini_api_key_configured: true,
       full_review_available: true,
       metadata_assist_available: true,
+      release_contract_extraction_available: true,
     local_checks_available: true,
     revision_check_available: true,
     revision_semantic_review_available: true,

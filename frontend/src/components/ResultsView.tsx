@@ -162,6 +162,10 @@ export function ResultsView({
         )}
       </section>
 
+      {report.release_contract.contract && (
+        <ReleaseRequirementsResults report={report} onSeek={seekToSeconds} />
+      )}
+
       {report.review_mode === "full" && <ReviewDetails report={report} />}
 
       <div className="review-workspace unified-workspace">
@@ -267,6 +271,36 @@ export function ResultsView({
       </details>
     </main>
   );
+}
+
+function ReleaseRequirementsResults({ report, onSeek }: { report: PreflightReport; onSeek: (seconds: number) => void }) {
+  const review = report.release_contract;
+  return (
+    <section className="release-contract-results" aria-labelledby="release-contract-title">
+      <div className="release-contract-heading">
+        <div><span>Delivery gate</span><h2 id="release-contract-title">Release requirements</h2></div>
+        <p><strong>{review.passed_count} of {review.results.length}</strong> passed · {review.failed_count} failed · {review.needs_review_count} need review{review.not_evaluated_count ? ` · ${review.not_evaluated_count} not evaluated` : ""}</p>
+      </div>
+      <div className="release-contract-list">
+        {review.results.map((result) => (
+          <article className={`contract-result status-${result.status.toLowerCase()}`} key={result.requirement_id}>
+            <div className="contract-result-icon" aria-hidden="true">{result.status === "PASS" ? "✓" : result.status === "FAIL" ? "×" : result.status === "NEEDS_REVIEW" ? "!" : "–"}</div>
+            <div>
+              <h3>{result.instruction}</h3>
+              <p>{result.evidence}</p>
+              <small>{result.evaluation_class === "DETERMINISTIC" ? "Deterministic" : "AI-assisted"} · {contractSourceLabel(result.evidence_source)}</small>
+              {result.expected && <small>Expected: {result.expected}</small>}
+            </div>
+            {result.timestamp_seconds !== null && <button className="timestamp-button" type="button" onClick={() => onSeek(result.timestamp_seconds!)}><Clock3 aria-hidden="true" /> {formatTimecode(result.timestamp_seconds)}</button>}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function contractSourceLabel(source: PreflightReport["release_contract"]["results"][number]["evidence_source"]): string {
+  return { CAPTION_TEXT: "Caption text", PUBLISHING_METADATA: "Publishing metadata", MEDIA_INSPECTION: "Media inspection", AI_SEMANTIC: "Semantic review", NONE: "No evidence available" }[source];
 }
 
 function ClaimReviewSummaryView({ report }: { report: PreflightReport }) {

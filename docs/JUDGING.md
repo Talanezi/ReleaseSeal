@@ -10,6 +10,7 @@ Creator Preflight is creative release assurance for two related decisions: wheth
 | Preview, approve, render, and verify a narrow repair | FFmpeg repair and automatic verification integration tests | `repairs.py`, `verification.py` | Only allowlisted range removal |
 | Revision maps V1/V2 physical changes and notes | Identical, re-encode, removal, insertion, replacement, audio, and multi-edit tests | `revision.py`, `revision_check.py` | Physical change does not prove intent |
 | Optional bounded semantic revision review | Fake-provider matrix plus one accepted controlled live case | `revision_evidence.py`, `revision_semantic.py` | Eligible timestamped requests only |
+| Contract-driven release gate | Deterministic matrix, hostile extraction tests, API and result UI tests | `release_contract.py`, `release_contract_extraction.py`, Final Export form/results | AI structures explicit brief text; backend evaluates deterministic obligations |
 
 ## Creativity
 

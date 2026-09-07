@@ -30,6 +30,46 @@ afterEach(() => {
 });
 
 describe("Creator Preflight frontend", () => {
+  it("edits manual release requirements without requiring Gemini", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Add requirement" }));
+    expect(screen.getByLabelText("Requirement 1 type")).toHaveValue("REQUIRED_TEXT");
+    await user.selectOptions(screen.getByLabelText("Requirement 1 type"), "MAX_DURATION");
+    await user.clear(screen.getByLabelText("Maximum seconds"));
+    await user.type(screen.getByLabelText("Maximum seconds"), "480");
+    expect(screen.getByLabelText("Maximum seconds")).toHaveValue(480);
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+    expect(screen.queryByLabelText("Requirement 1 type")).not.toBeInTheDocument();
+  });
+
+  it("turns extracted requirements into editable structured rows", async () => {
+    const contract = { schema_version: "1.0", name: null, requirements: [{ id: "promo", type: "REQUIRED_EXACT_TOKEN", instruction: "Use promo code", provenance: "extracted", source_excerpt: "Use SAVE25", evaluation_class: "DETERMINISTIC", value: "SAVE25" }] };
+    vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL) => String(url).endsWith("/capabilities") ? Promise.resolve(jsonResponse(capabilitiesFixture())) : Promise.resolve(jsonResponse(contract))));
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByPlaceholderText("Paste a client or sponsor brief…"), "Use SAVE25");
+    await user.click(screen.getByRole("button", { name: "Extract requirements" }));
+    expect(await screen.findByDisplayValue("SAVE25")).toBeInTheDocument();
+    expect(screen.getByText(/From brief: “Use SAVE25”/)).toBeInTheDocument();
+    await user.clear(screen.getByDisplayValue("SAVE25"));
+    await user.type(screen.getByLabelText("Expected value"), "SAVE30");
+    expect(screen.queryByText(/From brief:/)).not.toBeInTheDocument();
+  });
+
+  it("renders contract outcomes and seeks timestamped evidence", () => {
+    const report: PreflightReport = { ...readyReport, verdict: "BLOCKED", release_contract: {
+      contract: { schema_version: "1.0", name: "Sponsor delivery", requirements: [{ id: "promo", type: "REQUIRED_EXACT_TOKEN", instruction: "Use SAVE25", provenance: "manual", source_excerpt: null, evaluation_class: "DETERMINISTIC", value: "SAVE25" }] },
+      results: [{ requirement_id: "promo", requirement_type: "REQUIRED_EXACT_TOKEN", instruction: "Use SAVE25", evaluation_class: "DETERMINISTIC", status: "FAIL", expected: "SAVE25", evidence: "Required evidence was not found in supplied captions.", evidence_source: "CAPTION_TEXT", timestamp_seconds: 12, confidence: null, reason_code: null }],
+      passed_count: 0, failed_count: 1, needs_review_count: 0, not_evaluated_count: 0, runtime_seconds: .001,
+    } };
+    render(<ResultsView report={report} previewUrl="blob:video" />);
+    expect(screen.getByRole("heading", { name: "Release requirements" })).toBeInTheDocument();
+    expect(screen.getByText("0 of 1")).toBeInTheDocument();
+    expect(screen.getByText(/Deterministic · Caption text/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /00:12.00/ }));
+    expect(screen.getByTestId("preview-video")).toHaveAttribute("src", "blob:video");
+  });
   it("labels trusted report synthesis as a Review summary", () => {
     render(<ResultsView report={readyReport} filename="ready.mp4" previewUrl="blob:ready" />);
     expect(screen.getByText("Review summary")).toBeInTheDocument();
@@ -1050,6 +1090,7 @@ function capabilitiesFixture(fullReviewAvailable = true) {
     gemini_api_key_configured: fullReviewAvailable,
     full_review_available: fullReviewAvailable,
     metadata_assist_available: fullReviewAvailable,
+    release_contract_extraction_available: fullReviewAvailable,
     local_checks_available: true,
     revision_check_available: true,
     revision_semantic_review_available: true,

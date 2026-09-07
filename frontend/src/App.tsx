@@ -22,6 +22,7 @@ const emptyInputs: ScanInputs = {
   captions: null,
   thumbnail: null,
   reviewMode: "local",
+  releaseContract: null,
 };
 const emptyRevisionInputs: RevisionInputs = { previousVideo: null, revisedVideo: null, notes: "" };
 
@@ -124,6 +125,7 @@ export function App() {
           captions: inputs.captions,
           thumbnail: inputs.thumbnail,
           reviewMode: inputs.reviewMode,
+          releaseContract: inputs.releaseContract,
         },
         { signal: controller.signal, progressId },
       );

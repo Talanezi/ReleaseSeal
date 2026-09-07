@@ -54,6 +54,13 @@ from creator_preflight.promise_check import (
 )
 from creator_preflight.repairs import build_repair_plan
 from creator_preflight.release_brief import ai_release_brief, deterministic_release_brief
+from creator_preflight.release_contract import (
+    ContractStatus,
+    EvaluationClass,
+    contract_findings,
+    evaluate_release_contract,
+    evaluate_semantic_requirements,
+)
 from creator_preflight.rules import evaluate_package_rules
 from creator_preflight.transcription import (
     SpeechTranscriber,
@@ -288,6 +295,23 @@ class PreflightScanner:
         promise_summary = PromiseCheckSummary(status=PromiseCheckStatus.DISABLED)
         viewer_summary = ViewerPassSummary(status=ViewerPassStatus.DISABLED)
         claim_summary = ClaimReviewSummary(status=ClaimReviewStatus.DISABLED)
+        contract_evaluation = evaluate_release_contract(
+            package.release_contract,
+            package=package,
+            media=anomaly_result.media,
+            caption_cues=caption_cues,
+            caption_summary=caption_summary,
+            caption_findings=caption_findings,
+        )
+        semantic_contract_enabled = (
+            effective_review_mode is ReviewMode.FULL
+            and self.config.ai_review.enabled
+            and any(
+                item.evaluation_class is EvaluationClass.SEMANTIC
+                for item in (package.release_contract.requirements if package.release_contract else [])
+            )
+            and bool(caption_cues)
+        )
         promise_enabled = (
             self.config.ai_review.enabled
             and self.config.ai_review.promise_check.enabled
@@ -314,7 +338,7 @@ class PreflightScanner:
         task_errors: dict[str, AIReviewError] = {}
         shared_provider_error: AIReviewError | None = None
         session: GeminiReviewSession | None = None
-        needs_provider = claim_enabled or viewer_enabled or (promise_enabled and bool(package.title.strip()))
+        needs_provider = claim_enabled or viewer_enabled or semantic_contract_enabled or (promise_enabled and bool(package.title.strip()))
         if needs_provider and self.ai_adapter is not None:
             try:
                 report_progress("preparing_ai_media", 38, "Getting the review media ready")
@@ -340,6 +364,8 @@ class PreflightScanner:
                     task_errors["viewer"] = exc
                 if claim_enabled:
                     task_errors["claims"] = exc
+                if semantic_contract_enabled:
+                    task_errors["release_contract"] = exc
 
         promise_attempted = promise_enabled and bool(package.title.strip()) and "promise" not in task_errors
         if promise_attempted:
@@ -415,6 +441,16 @@ class PreflightScanner:
                 task_errors["claims"] = exc
         if claim_attempted:
             report_progress("factual_review", 86, "Checking factual claims")
+
+        if semantic_contract_enabled and "release_contract" not in task_errors and session is not None:
+            try:
+                contract_evaluation = evaluate_semantic_requirements(
+                    contract_evaluation,
+                    caption_cues=caption_cues,
+                    session=session,
+                )
+            except AIReviewError as exc:
+                task_errors["release_contract"] = exc
 
         if promise_result is not None:
             promise_task_findings = promise_findings(
@@ -561,12 +597,24 @@ class PreflightScanner:
                 ),
                 reason_code=first_error.code if first_error else None,
             )
+        incomplete_contract_rows = [
+            item for item in contract_evaluation.results
+            if item.status is ContractStatus.NOT_EVALUATED
+        ]
+        if incomplete_contract_rows and not any(issue.component in {"release_contract", "ai.release_contract"} for issue in execution_issues):
+            execution_issues.append(ExecutionIssue(
+                component="release_contract",
+                reason_code="release_contract_not_evaluated",
+                message=f"{len(incomplete_contract_rows)} release requirement(s) could not be evaluated from the available evidence.",
+            ))
+        contract_task_findings = contract_findings(contract_evaluation)
         findings = reconcile_findings(
             [
                 *anomaly_result.findings,
                 *package_result.findings,
                 *caption_findings,
                 *ai_findings,
+                *contract_task_findings,
             ]
         )
         findings.sort(key=finding_sort_key)
@@ -578,6 +626,16 @@ class PreflightScanner:
             *package_result.checks,
             *caption_checks,
             *ai_checks,
+            *[
+                CheckResult(
+                    check_id=f"release_contract.{item.requirement_id}",
+                    passed=item.status is ContractStatus.PASS,
+                    finding_codes=[
+                        f"RELEASE_CONTRACT_{item.requirement_id.upper()}"
+                    ] if item.status in {ContractStatus.FAIL, ContractStatus.NEEDS_REVIEW} else [],
+                )
+                for item in contract_evaluation.results
+            ],
         ]
         passed_count = sum(check.passed for check in checks)
         warning_count = sum(
@@ -651,6 +709,7 @@ class PreflightScanner:
             promise_check=promise_summary,
             viewer_pass=viewer_summary,
             claim_review=claim_summary,
+            release_contract=contract_evaluation,
             repair_plan=repair_plan,
             release_brief=release_brief,
             scan_duration_seconds=perf_counter() - started_at,

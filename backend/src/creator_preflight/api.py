@@ -36,6 +36,8 @@ from creator_preflight.models import (
 )
 from creator_preflight.progress import ScanProgress, ScanProgressStage, ScanProgressStore
 from creator_preflight.repair_models import RepairOperation, RepairOperationBatch
+from creator_preflight.release_contract import MAX_BRIEF_CHARACTERS, ReleaseContract
+from creator_preflight.release_contract_extraction import GeminiReleaseContractExtractor
 from creator_preflight.repairs import FFmpegRepairEngine, RepairError
 from creator_preflight.revision import RevisionMapError, RevisionMapper
 from creator_preflight.revision_check import RevisionCheckError, RevisionCheckService
@@ -52,6 +54,7 @@ from creator_preflight.verification_models import ReviewReelManifest, Verificati
 
 app = FastAPI(title="Creator Preflight", version="0.1.0")
 _VIDEO_SUFFIXES = {".mp4", ".mov", ".mkv", ".webm"}
+_MAX_RELEASE_CONTRACT_JSON_CHARACTERS = 100_000
 
 
 class UploadLimitError(Exception):
@@ -70,6 +73,10 @@ class RequestOriginError(Exception):
 
 class ReviewModeError(Exception):
     message = "Review mode must be either 'full' or 'local'."
+
+
+class ReleaseContractInputError(Exception):
+    message = "The release contract could not be validated."
 
 
 class _ProcessScanCapacity:
@@ -153,6 +160,12 @@ async def review_mode_error_handler(request: Request, exc: ReviewModeError) -> J
     return _error_response(400, "review_mode_invalid", exc.message)
 
 
+@app.exception_handler(ReleaseContractInputError)
+async def release_contract_input_error_handler(request: Request, exc: ReleaseContractInputError) -> JSONResponse:
+    del request
+    return _error_response(400, "release_contract_invalid", exc.message)
+
+
 @app.exception_handler(RepairError)
 async def repair_error_handler(request: Request, exc: RepairError) -> JSONResponse:
     del request
@@ -212,6 +225,7 @@ async def capabilities() -> PreflightCapabilities:
         gemini_api_key_configured=gemini_key,
         full_review_available=local_available and gemini_dependency and gemini_key,
         metadata_assist_available=local_available and gemini_dependency and gemini_key and config.ai_review.metadata_assist.enabled,
+        release_contract_extraction_available=gemini_dependency and gemini_key,
         local_checks_available=local_available,
         revision_check_available=local_available,
         revision_semantic_review_available=(
@@ -226,6 +240,24 @@ async def capabilities() -> PreflightCapabilities:
         maximum_video_upload_size_bytes=config.api.maximum_video_upload_size_bytes,
         full_review_unavailable_reasons=reasons,
     )
+
+
+@app.post("/api/v1/release-contracts/extract", response_model=ReleaseContract)
+async def extract_release_contract(request: Request, brief: str = Form(...)) -> ReleaseContract:
+    """Structure an explicitly supplied brief; evaluation remains backend-owned."""
+
+    config, _ = _api_config()
+    _require_allowed_origin(request, config)
+    if not brief.strip() or len(brief) > MAX_BRIEF_CHARACTERS:
+        raise ReleaseContractInputError()
+    if not _scan_capacity.acquire(config.api.maximum_concurrent_scans):
+        raise ScanBusyError()
+    try:
+        return await anyio.to_thread.run_sync(
+            partial(GeminiReleaseContractExtractor().extract, brief, config.ai_review)
+        )
+    finally:
+        _scan_capacity.release()
 
 
 @app.post("/api/v1/revisions/semantic-review", response_model=RevisionSemanticReviewReport)
@@ -432,6 +464,7 @@ async def scan_uploaded_package(
     thumbnail: UploadFile | None = File(default=None),
     review_mode: str = Form(default="local"),
     progress_id: str | None = Form(default=None),
+    release_contract_json: str | None = Form(default=None),
 ) -> PreflightReport:
     """Temporarily store a package and run the shared scanner off the event loop."""
 
@@ -444,6 +477,21 @@ async def scan_uploaded_package(
                 await upload.close()
         raise
     mode = _parse_review_mode(review_mode)
+    if release_contract_json and len(release_contract_json) > _MAX_RELEASE_CONTRACT_JSON_CHARACTERS:
+        for upload in (file, captions, thumbnail):
+            if upload is not None:
+                await upload.close()
+        raise ReleaseContractInputError()
+    try:
+        release_contract = (
+            ReleaseContract.model_validate_json(release_contract_json)
+            if release_contract_json else None
+        )
+    except ValidationError as exc:
+        for upload in (file, captions, thumbnail):
+            if upload is not None:
+                await upload.close()
+        raise ReleaseContractInputError() from exc
     config = _effective_web_config(base_config, mode)
     if not _scan_capacity.acquire(config.api.maximum_concurrent_scans):
         await file.close()
@@ -472,7 +520,13 @@ async def scan_uploaded_package(
                 )
             if progress_id:
                 _scan_progress.update(progress_id, ScanProgressStage.PREPARING_MEDIA, 8, "Getting the video ready")
-            package = PublishingPackage(title=title, description=description, captions_path=caption_path, thumbnail_path=thumbnail_path)
+            package = PublishingPackage(
+                title=title,
+                description=description,
+                captions_path=caption_path,
+                thumbnail_path=thumbnail_path,
+                release_contract=release_contract,
+            )
             scanner = PreflightScanner(config=config, configuration_source=configuration_source)
             def progress(stage: str, percent: int, message: str) -> None:
                 if progress_id:
@@ -618,7 +672,13 @@ async def verify_repaired_video(
                         operations=batch.operations,
                     )
                 )
-            package = PublishingPackage(title=title, description=description, captions_path=caption_path, thumbnail_path=thumbnail_path)
+            package = PublishingPackage(
+                title=title,
+                description=description,
+                captions_path=caption_path,
+                thumbnail_path=thumbnail_path,
+                release_contract=original_report.release_contract.contract,
+            )
             scanner = PreflightScanner(config=config, configuration_source=configuration_source)
             repaired_report = await anyio.to_thread.run_sync(partial(scanner.scan, repaired_path, package, review_mode=mode))
             return await anyio.to_thread.run_sync(
