@@ -46,6 +46,9 @@ def test_default_detector_configuration_loads() -> None:
     assert config.rules.title.maximum_recommended_length == 100
     assert config.rules.description.validate_urls is True
     assert config.rules.captions.maximum_uncovered_gap_seconds == 10.0
+    assert config.release_package.thumbnail_assurance.enabled is True
+    assert config.release_package.thumbnail_assurance.analysis_max_dimension == 320
+    assert config.release_package.thumbnail_assurance.minimum_delivered_text_height_pixels == 8.0
     assert config.transcription.enabled is False
     assert config.transcription.local_files_only is True
 

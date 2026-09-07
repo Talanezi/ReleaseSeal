@@ -573,9 +573,49 @@ function isReleasePackageSummary(value: unknown): boolean {
         && isNonnegativeNumber(item.safe_margin_fraction) && isNonnegativeNumber(item.badge_x) && isNonnegativeNumber(item.badge_y)
         && isNonnegativeNumber(item.badge_width) && isNonnegativeNumber(item.badge_height))
       && Array.isArray(value.delivery_preview.critical_region_intersections)))
+    && (value.thumbnail_assurance === null || isThumbnailAssuranceReport(value.thumbnail_assurance))
     && isNonnegativeNumber(value.construction_seconds)
     && isNonnegativeNumber(value.thumbnail_evaluation_seconds)
     && isNonnegativeNumber(value.preview_metadata_seconds);
+}
+
+function isThumbnailAssuranceReport(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const assuranceStatus = (item: unknown) => item === "CLEAR" || item === "NEEDS_REVIEW" || item === "NOT_EVALUATED";
+  const box = (item: unknown) => isRecord(item)
+    && isNonnegativeNumber(item.x) && isNonnegativeNumber(item.y)
+    && isNonnegativeNumber(item.width) && isNonnegativeNumber(item.height);
+  return typeof value.schema_version === "string"
+    && (value.evidence_class === "MEASURED" || value.evidence_class === "ADVISORY" || value.evidence_class === "NOT_EVALUATED")
+    && assuranceStatus(value.status)
+    && isNonnegativeNumber(value.source_width) && isNonnegativeNumber(value.source_height)
+    && isNonnegativeNumber(value.analysis_width) && isNonnegativeNumber(value.analysis_height)
+    && isNonnegativeNumber(value.confident_region_count)
+    && Array.isArray(value.regions) && value.regions.every((item) => isRecord(item)
+      && typeof item.region_id === "string" && item.evidence_class === "ADVISORY" && box(item.box)
+      && isNonnegativeNumber(item.source_x) && isNonnegativeNumber(item.source_y)
+      && isNonnegativeNumber(item.source_width) && isNonnegativeNumber(item.source_height)
+      && isNonnegativeNumber(item.estimated_cap_height_pixels) && isNonnegativeNumber(item.confidence)
+      && isNonnegativeNumber(item.estimated_local_contrast_ratio) && isNonnegativeNumber(item.contrast_evidence_confidence))
+    && Array.isArray(value.delivered_text) && value.delivered_text.every((item) => isRecord(item)
+      && typeof item.region_id === "string" && item.evidence_class === "MEASURED" && typeof item.surface_id === "string"
+      && isNonnegativeNumber(item.delivered_height_pixels) && assuranceStatus(item.status)
+      && isNonnegativeNumber(item.badge_overlap_fraction)
+      && (item.edge_safety === "CLEAR" || item.edge_safety === "NEAR_EDGE" || item.edge_safety === "INTERSECTS_UNSAFE_AREA"))
+    && Array.isArray(value.surfaces) && value.surfaces.every((item) => isRecord(item)
+      && typeof item.surface_id === "string" && item.evidence_class === "ADVISORY" && typeof item.label === "string"
+      && isNonnegativeNumber(item.display_width) && isNonnegativeNumber(item.display_height)
+      && (item.unreadable_text_area_share === null || isNonnegativeNumber(item.unreadable_text_area_share))
+      && isNonnegativeNumber(item.detail_retention_ratio) && assuranceStatus(item.detail_status))
+    && isNonnegativeNumber(value.minimum_region_confidence)
+    && isNonnegativeNumber(value.minimum_delivered_text_height_pixels)
+    && isNonnegativeNumber(value.minimum_estimated_contrast_ratio)
+    && isNonnegativeNumber(value.minimum_detail_retention_ratio)
+    && typeof value.reason === "string"
+    && Array.isArray(value.finding_codes) && value.finding_codes.every((item) => typeof item === "string")
+    && isNonnegativeNumber(value.decode_seconds) && isNonnegativeNumber(value.text_detection_seconds)
+    && isNonnegativeNumber(value.contrast_seconds) && isNonnegativeNumber(value.detail_seconds)
+    && isNonnegativeNumber(value.total_seconds);
 }
 
 function isReleaseContract(value: unknown): value is ReleaseContract {

@@ -17,6 +17,7 @@ Start at `/proof/` for a backend-free inspection path. The page links every clai
 | Contract-driven release gate | Deterministic matrix, hostile extraction tests, API and result UI tests | `release_contract.py`, `release_contract_extraction.py`, Final Export form/results | AI structures explicit brief text; backend evaluates deterministic obligations |
 | Artifact-bound release evidence | Exact-video/package mutation matrix plus CLI verification | `release_receipt.py`, receipt API routes, Final Export/Revision receipt downloads | Receipt digest detects stale modification; it is not a signature or legal attestation |
 | Whole delivery package | One compact result for video, authentic thumbnail, captions, publishing text, chapters, and requirements | `release_package.py`, Final Export package summary and delivery preview | Thumbnail review is bounded file/geometry analysis, not a creative-quality score |
+| Automated thumbnail delivery assurance | Provider-free pixel analysis measures confident text-like regions at delivered sizes, estimated contrast, modeled chrome/edge overlap, and structural detail retention | `thumbnail_assurance.py`, `test_thumbnail_assurance.py`, Delivery Preview overlays | Heuristic interpretation is advisory, abstains on uncertain/textless images, and never predicts CTR or blocks release |
 
 ## Creativity
 

@@ -10,6 +10,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from creator_preflight.thumbnails import ThumbnailInfo
+from creator_preflight.thumbnail_assurance import ThumbnailAssuranceReport, assurance_findings
 
 
 class PackageComponentState(str, Enum):
@@ -130,6 +131,7 @@ class ReleasePackageSummary(BaseModel):
     thumbnail_height: int | None = Field(default=None, gt=0)
     thumbnail_checks: list[ThumbnailDeliveryCheck] = Field(default_factory=list)
     delivery_preview: DeliveryPreviewMetadata | None = None
+    thumbnail_assurance: ThumbnailAssuranceReport | None = None
     construction_seconds: float = Field(ge=0, allow_inf_nan=False)
     thumbnail_evaluation_seconds: float = Field(ge=0, allow_inf_nan=False)
     preview_metadata_seconds: float = Field(ge=0, allow_inf_nan=False)
@@ -177,6 +179,7 @@ def evaluate_release_package(
     maximum_thumbnail_file_size_bytes: int,
     delivery_surfaces: tuple[DeliverySurface, ...] = DEFAULT_DELIVERY_SURFACES,
     critical_regions: list[ThumbnailCriticalRegion] | None = None,
+    thumbnail_assurance: ThumbnailAssuranceReport | None = None,
 ) -> ReleasePackageEvaluation:
     from creator_preflight.models import CheckResult, Finding, FindingSeverity, FindingStatus
     from creator_preflight.rules import parse_chapters
@@ -186,6 +189,8 @@ def evaluate_release_package(
     findings: list[Finding] = []
     checks: list[CheckResult] = []
     thumbnail_checks: list[ThumbnailDeliveryCheck] = []
+    if thumbnail_assurance is not None:
+        findings.extend(assurance_findings(thumbnail_assurance))
 
     if package.thumbnail_path is not None and thumbnail_info is None:
         findings.append(Finding(
@@ -259,6 +264,7 @@ def evaluate_release_package(
         thumbnail_height=thumbnail_info.height if thumbnail_info else None,
         thumbnail_checks=thumbnail_checks,
         delivery_preview=preview,
+        thumbnail_assurance=thumbnail_assurance,
         construction_seconds=perf_counter() - started,
         thumbnail_evaluation_seconds=thumbnail_elapsed,
         preview_metadata_seconds=preview_elapsed,

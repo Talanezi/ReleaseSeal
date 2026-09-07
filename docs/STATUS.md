@@ -2,11 +2,17 @@
 
 ## Current milestone
 
-Milestone 29 — Hostile Release Freeze.
+Milestone 30 — Automated Thumbnail Delivery Assurance.
 
 Status: Complete on 2026-09-07. No live provider call was required.
 
 ## Completed
+
+- Milestone 30 adds an isolated, deterministic thumbnail-assurance service behind the validated M27 Release Package boundary. It uses one bounded FFmpeg RGB decode, independently implemented text-like geometry/gradient analysis, conservative fragment consolidation and abstention, measured delivered cap-height across the four existing delivery surfaces, advisory estimated local contrast, exact duration-badge/safe-edge intersection geometry, and advisory downscale/detail retention. It adds no OCR, model weights, face detection, saliency, provider call, randomness, accessibility certification, CTR/virality claim, or combined quality score.
+- Assurance evidence is explicitly `MEASURED`, `ADVISORY`, or `NOT_EVALUATED`. Confident small text, weak estimated contrast, chrome collision, and edge risk may produce review-only findings; they never create a deterministic block. Malformed or absent thumbnails remain owned by M27 and do not run M30 analysis. Report schema 1.11 carries the strict assurance report through the existing result and JSON/Markdown/CSV handoff paths without changing Release Contract or receipt semantics.
+- Milestone 30 calibration covered large/tiny/multiple-size/outlined text, low contrast, busy backgrounds, duration-badge collision, safe/unsafe edges, textless natural-like imagery, detail-heavy/simple compositions, and near-equivalent PNG/JPEG encoding. Textless and low-confidence busy imagery abstained without false text findings; outline/shadow fragments consolidated; the controlled badge fixture produced a deterministic 0.8364 overlap fraction. The authentic ignored USGS 1333×750 JPEG smoke test abstained from text detection, emitted no finding, and measured clear detail retention of 0.7714/0.8368/1.0 across the applicable surfaces.
+- Median seven-run performance was 208.180ms total for a controlled 1280×720 fixture (31.192ms decode, 9.523ms text detection, 0.622ms contrast, 158.961ms detail analysis) and 212.400ms total for the authentic USGS thumbnail (36.683ms decode, 9.158ms text detection, 0.003ms contrast, 158.693ms detail analysis).
+- Milestone 30 affected backend validation passed 198 tests with one upstream Starlette warning, covering assurance, package/Final Export, contract, receipt, repair/verification, Revision, API, CLI, and report regressions. The complete frontend suite passed 86 tests across four files; TypeScript and the two-entry Vite production build passed with 1,835 modules. M29-frozen scanner/repair-verifier/contract/receipt/RevisionMapper/Judge-Proof contracts were not refactored or reinterpreted.
 
 - Milestone 29 hostile release audit found no scanner, repair, contract, receipt, Revision, package, or proof-engine production defect. Focused additions now explicitly protect unusual valid 17 fps/odd-dimension media, upload limits without `Content-Length`, traversal-style upload names, exact contract-deadline boundaries, conservative URL normalization, empty/local-only semantic contracts, negative repair ranges, repair source immutability, and changed/missing/stale Judge Proof evidence.
 - The public proof already attributed the Yellowstone media to the U.S. Geological Survey and identified it as public domain; the proof surface now also says explicitly that attribution does not imply endorsement. Markdown link validation found no broken repository-document links, and production-critical TODO/FIXME/HACK review found only intentional placeholder-detection fixtures/copy.

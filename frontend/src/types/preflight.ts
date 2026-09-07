@@ -215,6 +215,75 @@ export interface DeliveryPreviewMetadata {
   }>;
 }
 
+export type ThumbnailAssuranceStatus = "CLEAR" | "NEEDS_REVIEW" | "NOT_EVALUATED";
+
+export interface ThumbnailAssuranceBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface ThumbnailTextRegion {
+  region_id: string;
+  evidence_class: "MEASURED" | "ADVISORY" | "NOT_EVALUATED";
+  box: ThumbnailAssuranceBox;
+  source_x: number;
+  source_y: number;
+  source_width: number;
+  source_height: number;
+  estimated_cap_height_pixels: number;
+  confidence: number;
+  estimated_local_contrast_ratio: number;
+  contrast_evidence_confidence: number;
+}
+
+export interface DeliveredTextMeasurement {
+  region_id: string;
+  evidence_class: "MEASURED" | "ADVISORY" | "NOT_EVALUATED";
+  surface_id: string;
+  delivered_height_pixels: number;
+  status: ThumbnailAssuranceStatus;
+  badge_overlap_fraction: number;
+  edge_safety: "CLEAR" | "NEAR_EDGE" | "INTERSECTS_UNSAFE_AREA";
+}
+
+export interface ThumbnailSurfaceAssurance {
+  surface_id: string;
+  evidence_class: "MEASURED" | "ADVISORY" | "NOT_EVALUATED";
+  label: string;
+  display_width: number;
+  display_height: number;
+  unreadable_text_area_share: number | null;
+  detail_retention_ratio: number;
+  detail_status: ThumbnailAssuranceStatus;
+}
+
+export interface ThumbnailAssuranceReport {
+  schema_version: string;
+  evidence_class: "MEASURED" | "ADVISORY" | "NOT_EVALUATED";
+  status: ThumbnailAssuranceStatus;
+  source_width: number;
+  source_height: number;
+  analysis_width: number;
+  analysis_height: number;
+  confident_region_count: number;
+  regions: ThumbnailTextRegion[];
+  delivered_text: DeliveredTextMeasurement[];
+  surfaces: ThumbnailSurfaceAssurance[];
+  minimum_region_confidence: number;
+  minimum_delivered_text_height_pixels: number;
+  minimum_estimated_contrast_ratio: number;
+  minimum_detail_retention_ratio: number;
+  reason: string;
+  finding_codes: string[];
+  decode_seconds: number;
+  text_detection_seconds: number;
+  contrast_seconds: number;
+  detail_seconds: number;
+  total_seconds: number;
+}
+
 export interface ReleasePackageSummary {
   video: PackageComponent;
   thumbnail: PackageComponent;
@@ -229,6 +298,7 @@ export interface ReleasePackageSummary {
   thumbnail_height: number | null;
   thumbnail_checks: ThumbnailDeliveryCheck[];
   delivery_preview: DeliveryPreviewMetadata | null;
+  thumbnail_assurance: ThumbnailAssuranceReport | null;
   construction_seconds: number;
   thumbnail_evaluation_seconds: number;
   preview_metadata_seconds: number;

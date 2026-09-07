@@ -238,6 +238,22 @@ describe("preflight API client", () => {
     })).rejects.toMatchObject({ code: "invalid_response" });
   });
 
+  it("rejects malformed thumbnail-assurance evidence", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({
+      ...needsReviewReport,
+      release_package: {
+        ...needsReviewReport.release_package,
+        thumbnail_assurance: { schema_version: "1.0", status: "CERTIFIED" },
+      },
+    })));
+    await expect(scanPreflight({
+      video: new File(["video"], "video.mp4", { type: "video/mp4" }),
+      title: "Title",
+      description: "Description",
+      reviewMode: "local",
+    })).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
   it("constructs narrow preview and apply multipart repair requests", async () => {
     const requests: Array<{ url: string; form: FormData }> = [];
     vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL, init?: RequestInit) => {

@@ -283,7 +283,11 @@ export function ResultsView({
 function ReleasePackageResults({ report, thumbnail }: { report: PreflightReport; thumbnail: File | null }) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [showSafeArea, setShowSafeArea] = useState(false);
+  const [showTextRegions, setShowTextRegions] = useState(false);
+  const [showDurationBadge, setShowDurationBadge] = useState(true);
+  const [showFlaggedRegions, setShowFlaggedRegions] = useState(false);
   const summary = report.release_package;
+  const assurance = summary.thumbnail_assurance;
   useEffect(() => {
     if (!thumbnail || typeof URL.createObjectURL !== "function") {
       setThumbnailUrl(null);
@@ -302,7 +306,6 @@ function ReleasePackageResults({ report, thumbnail }: { report: PreflightReport;
     <section className="release-package" aria-labelledby="release-package-title">
       <div className="release-package-heading">
         <div><span>Delivery checklist</span><h2 id="release-package-title">Release package</h2></div>
-        {summary.delivery_preview && <button className="text-button" type="button" aria-pressed={showSafeArea} onClick={() => setShowSafeArea((value) => !value)}>{showSafeArea ? "Hide safe area" : "Show safe area"}</button>}
       </div>
       <ul className="package-components">
         {components.map(([label, component]) => (
@@ -313,6 +316,20 @@ function ReleasePackageResults({ report, thumbnail }: { report: PreflightReport;
         ))}
       </ul>
       {summary.thumbnail_checks.length > 0 && <div className="thumbnail-checks" aria-label="Thumbnail delivery checks">{summary.thumbnail_checks.map((check) => <p key={check.check_id} className={check.status === "PASS" ? "is-pass" : "is-review"}><strong>{check.label}</strong><span>{check.measured}</span></p>)}</div>}
+      {assurance && <div className="thumbnail-assurance" aria-label="Thumbnail delivery assurance">
+        <div className="thumbnail-assurance-heading"><div><h3>Thumbnail delivery assurance</h3><p>{assurance.reason}</p></div><strong className={`assurance-${assurance.status.toLowerCase()}`}>{assurance.status === "CLEAR" ? "No delivery flags" : assurance.status === "NEEDS_REVIEW" ? "Review delivery" : "Text checks abstained"}</strong></div>
+        <div className="assurance-measurements">
+          <span><strong>{assurance.confident_region_count}</strong> confident text-like {assurance.confident_region_count === 1 ? "region" : "regions"}</span>
+          {assurance.regions.map((region) => <span key={region.region_id}><strong>{region.estimated_local_contrast_ratio.toFixed(2)}:1</strong> estimated local contrast</span>)}
+          {assurance.surfaces.slice(0, 2).map((surface) => <span key={surface.surface_id}><strong>{Math.round(surface.detail_retention_ratio * 100)}%</strong> detail retained · {surface.label}</span>)}
+        </div>
+        <div className="assurance-overlay-controls" aria-label="Thumbnail evidence overlays">
+          <button type="button" aria-pressed={showTextRegions} onClick={() => setShowTextRegions((value) => !value)}>Text-like regions</button>
+          <button type="button" aria-pressed={showFlaggedRegions} onClick={() => setShowFlaggedRegions((value) => !value)}>Flagged regions</button>
+          <button type="button" aria-pressed={showDurationBadge} onClick={() => setShowDurationBadge((value) => !value)}>Duration badge</button>
+          <button type="button" aria-pressed={showSafeArea} onClick={() => setShowSafeArea((value) => !value)}>Safe area</button>
+        </div>
+      </div>}
       {thumbnailUrl && summary.delivery_preview && (
         <div className="delivery-preview" aria-label="Thumbnail delivery preview">
           <h3>Delivery preview</h3>
@@ -322,9 +339,15 @@ function ReleasePackageResults({ report, thumbnail }: { report: PreflightReport;
               <figure key={surface.surface_id}>
                 <div className={`delivery-artwork${showSafeArea ? " show-safe-area" : ""}`} style={{ aspectRatio: `${surface.display_width} / ${surface.display_height}`, "--safe-margin": `${surface.safe_margin_fraction * 100}%` } as CSSProperties}>
                   <img src={thumbnailUrl} alt="" />
-                  {summary.delivery_preview?.duration_badge_text && <span className="duration-badge" style={{ left: `${surface.badge_x * 100}%`, top: `${surface.badge_y * 100}%`, width: `${surface.badge_width * 100}%`, height: `${surface.badge_height * 100}%` }}>{summary.delivery_preview.duration_badge_text}</span>}
+                  {assurance?.regions.map((region) => {
+                    const measurement = assurance.delivered_text.find((item) => item.region_id === region.region_id && item.surface_id === surface.surface_id);
+                    const flagged = measurement?.status === "NEEDS_REVIEW" || (measurement?.badge_overlap_fraction ?? 0) >= .1 || measurement?.edge_safety === "INTERSECTS_UNSAFE_AREA";
+                    if (!showTextRegions && !(showFlaggedRegions && flagged)) return null;
+                    return <span key={region.region_id} className={`thumbnail-evidence-box${flagged ? " is-flagged" : ""}`} aria-label={`${flagged ? "Flagged" : "Detected"} text-like region`} style={{ left: `${region.box.x * 100}%`, top: `${region.box.y * 100}%`, width: `${region.box.width * 100}%`, height: `${region.box.height * 100}%` }} />;
+                  })}
+                  {showDurationBadge && summary.delivery_preview?.duration_badge_text && <span className="duration-badge" style={{ left: `${surface.badge_x * 100}%`, top: `${surface.badge_y * 100}%`, width: `${surface.badge_width * 100}%`, height: `${surface.badge_height * 100}%` }}>{summary.delivery_preview.duration_badge_text}</span>}
                 </div>
-                <figcaption><strong>{surface.label}</strong><span>{surface.display_width}×{surface.display_height} px delivered box</span></figcaption>
+                <figcaption><strong>{surface.label}</strong><span>{surface.display_width}×{surface.display_height} px delivered box</span>{assurance && <span>{surfaceText(assurance, surface.surface_id)}</span>}</figcaption>
               </figure>
             ))}
           </div>
@@ -332,6 +355,17 @@ function ReleasePackageResults({ report, thumbnail }: { report: PreflightReport;
       )}
     </section>
   );
+}
+
+function surfaceText(assurance: NonNullable<PreflightReport["release_package"]["thumbnail_assurance"]>, surfaceId: string): string {
+  const surface = assurance.surfaces.find((item) => item.surface_id === surfaceId);
+  const delivered = assurance.delivered_text.filter((item) => item.surface_id === surfaceId);
+  if (!surface) return "";
+  const smallest = delivered.length ? Math.min(...delivered.map((item) => item.delivered_height_pixels)) : null;
+  const text = smallest === null ? "Text size not evaluated" : `Smallest detected text ${smallest.toFixed(1)} px`;
+  const unreadable = surface.unreadable_text_area_share === null ? "" : ` · ${Math.round(surface.unreadable_text_area_share * 100)}% text-like area below floor`;
+  const detail = `${Math.round(surface.detail_retention_ratio * 100)}% structural detail retained${surface.detail_status === "NEEDS_REVIEW" ? " (detail-loss advisory)" : ""}`;
+  return `${text}${unreadable} · ${detail}`;
 }
 
 function OriginalReceiptAction({ report, sourceFile, packageInput }: {

@@ -249,7 +249,7 @@ class PreflightReport(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = "1.10"
+    schema_version: str = "1.11"
     verdict: FindingStatus
     scan_completeness: ScanCompleteness = ScanCompleteness.COMPLETE
     review_mode: ReviewMode = ReviewMode.LOCAL

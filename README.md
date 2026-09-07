@@ -7,7 +7,7 @@ Creator Preflight is creative release assurance for finished media. It checks th
 Two workflows are first-class:
 
 - **Final Export — Review one finished video before it ships.** Deterministic media, package, and caption checks can be extended with optional content review. Findings are timestamped and seekable; supported removals are previewed, approved, rendered to a new file, and rechecked for regressions.
-- **Release package — Check the whole delivery together.** Video, supplied thumbnail, captions, publishing text, chapters, and release requirements are summarized from validated scan state. Supplied thumbnails receive bounded decode, dimension, aspect, size, and approximate delivery-surface geometry checks.
+- **Release package — Check the whole delivery together.** Video, supplied thumbnail, captions, publishing text, chapters, and release requirements are summarized from validated scan state. Supplied thumbnails receive bounded decode, dimension, aspect, size, and approximate delivery-surface geometry checks, plus provider-free pixel analysis for confident text-like regions, delivered height, estimated local contrast, chrome/edge overlap, and detail retention.
 - **Revision — Compare a previous cut with the revised cut.** A local deterministic map aligns the two timelines through removals and insertions, correlates timestamped notes, and surfaces additional changes. Optional semantic review sends only bounded evidence clips for eligible requests.
 - **Release receipts — Record exactly what was checked.** Completed Final Export and Revision results can produce backend-owned JSON receipts bound to the exact media and package with SHA-256 identities and a canonical content digest.
 
@@ -123,7 +123,7 @@ export GEMINI_API_KEY="your-server-side-key"
 
 The key stays server-side. Full Review may upload the selected video and thumbnail; Revision semantic review uploads only bounded evidence clips. Release requirements can always be entered manually without Gemini; **Extract requirements** uses Gemini only to structure explicit text from the pasted brief, and the backend—not the model—evaluates deterministic obligations. Network access and provider availability are required only for explicitly requested AI work.
 
-Thumbnail delivery preview uses the actual supplied image and the inspected video duration across a small set of approximate YouTube presentation boxes. These models can change as platform UI changes. M27 does not perform OCR, text-legibility, contrast, saliency, face, or creative-quality scoring; Release Contract remains authoritative for stakeholder obligations such as requiring a thumbnail.
+Thumbnail delivery preview uses the actual supplied image and the inspected video duration across a small set of approximate YouTube presentation boxes. These models can change as platform UI changes. The isolated deterministic thumbnail-assurance pass decodes a bounded 320px analysis plane through FFmpeg, finds only confident text-like geometry, measures its delivered height, estimates local luminance contrast, tests modeled badge/edge intersections, and reports advisory structural-detail retention. It performs no OCR, saliency, face detection, learned inference, provider call, CTR prediction, accessibility certification, or overall quality scoring. A textless or uncertain image abstains from text-specific judgments, and heuristic results can request review but never block delivery. Release Contract remains authoritative for stakeholder obligations such as requiring a thumbnail.
 
 ## Release receipts
 

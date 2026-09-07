@@ -7,7 +7,7 @@ import { ResultsView } from "./components/ResultsView";
 import { ProcessingState } from "./components/ProcessingState";
 import { RevisionResultsView } from "./components/RevisionResultsView";
 import { blockedReport, needsReviewReport, readyReport, revisionCheckReport } from "./mocks/reports";
-import type { PreflightReport, ScanProgress, VerificationReport } from "./types/preflight";
+import type { PreflightReport, ScanProgress, ThumbnailAssuranceReport, VerificationReport } from "./types/preflight";
 import { formatTimecode } from "./utils/format";
 
 const createObjectURL = vi.fn(() => "blob:creator-preflight-local-preview");
@@ -17,6 +17,29 @@ const NativeURL = URL;
 class TestURL extends NativeURL {
   static createObjectURL = createObjectURL;
   static revokeObjectURL = revokeObjectURL;
+}
+
+function thumbnailAssuranceFixture(): ThumbnailAssuranceReport {
+  return {
+    schema_version: "1.0", evidence_class: "ADVISORY", status: "NEEDS_REVIEW",
+    source_width: 1280, source_height: 720, analysis_width: 320, analysis_height: 180,
+    confident_region_count: 1,
+    regions: [{ region_id: "text-1", evidence_class: "ADVISORY", box: { x: .76, y: .74, width: .2, height: .12 }, source_x: 973, source_y: 533, source_width: 256, source_height: 86, estimated_cap_height_pixels: 86, confidence: .88, estimated_local_contrast_ratio: 2.1, contrast_evidence_confidence: .88 }],
+    delivered_text: [{ region_id: "text-1", evidence_class: "MEASURED", surface_id: "mobile_feed", delivered_height_pixels: 11.23, status: "CLEAR", badge_overlap_fraction: .65, edge_safety: "INTERSECTS_UNSAFE_AREA" }],
+    surfaces: [{ surface_id: "mobile_feed", evidence_class: "ADVISORY", label: "Mobile feed / search", display_width: 168, display_height: 94, unreadable_text_area_share: 0, detail_retention_ratio: .74, detail_status: "CLEAR" }],
+    minimum_region_confidence: .72, minimum_delivered_text_height_pixels: 8, minimum_estimated_contrast_ratio: 2.5, minimum_detail_retention_ratio: .72,
+    reason: "Measured delivery evidence identified thumbnail details worth reviewing.", finding_codes: ["THUMBNAIL_TEXT_CHROME_COLLISION"],
+    decode_seconds: .02, text_detection_seconds: .01, contrast_seconds: .001, detail_seconds: .02, total_seconds: .051,
+  };
+}
+
+function blobText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(String(reader.result));
+    reader.readAsText(blob);
+  });
 }
 
 beforeEach(() => {
@@ -111,15 +134,22 @@ describe("Creator Preflight frontend", () => {
         surfaces: [{ surface_id: "mobile_feed", label: "Mobile feed / search", display_width: 168, display_height: 94, safe_margin_fraction: .035, badge_x: .73, badge_y: .72, badge_width: .23, badge_height: .22 }],
         critical_region_intersections: [],
       },
+      thumbnail_assurance: thumbnailAssuranceFixture(),
     } };
     render(<ResultsView report={report} packageInput={{ title: "Title", description: "Description", thumbnail: new File(["jpeg"], "yellowstone.jpg", { type: "image/jpeg" }), reviewMode: "local" }} />);
     expect(screen.getByRole("heading", { name: "Release package" })).toBeInTheDocument();
     expect(screen.getByText("Mobile feed / search")).toBeInTheDocument();
     expect(screen.getByText("168×94 px delivered box")).toBeInTheDocument();
     expect(screen.getByText("3:32")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Thumbnail delivery assurance" })).toBeInTheDocument();
+    expect(screen.getByText("11.2 px", { exact: false })).toBeInTheDocument();
     expect(screen.getAllByText("Not supplied")).toHaveLength(2);
-    await user.click(screen.getByRole("button", { name: "Show safe area" }));
-    expect(screen.getByRole("button", { name: "Hide safe area" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "Safe area" }));
+    expect(screen.getByRole("button", { name: "Safe area" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "Flagged regions" }));
+    expect(screen.getAllByLabelText("Flagged text-like region")).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Duration badge" }));
+    expect(screen.queryByText("3:32")).not.toBeInTheDocument();
   });
   it("labels trusted report synthesis as a Review summary", () => {
     render(<ResultsView report={readyReport} filename="ready.mp4" previewUrl="blob:ready" />);
@@ -956,7 +986,8 @@ describe("Creator Preflight frontend", () => {
   it("exports trusted review state as CSV, Markdown, and JSON", async () => {
     const user = userEvent.setup();
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
-    render(<ResultsView report={needsReviewReport} />);
+    const report: PreflightReport = { ...needsReviewReport, release_package: { ...needsReviewReport.release_package, thumbnail_assurance: thumbnailAssuranceFixture() } };
+    render(<ResultsView report={report} />);
 
     await user.click(screen.getByRole("button", { name: "CSV" }));
     await user.click(screen.getByRole("button", { name: "Markdown" }));
@@ -965,6 +996,10 @@ describe("Creator Preflight frontend", () => {
     expect(click).toHaveBeenCalledTimes(3);
     const objectUrlCalls = createObjectURL.mock.calls as unknown[][];
     expect(objectUrlCalls.filter(([value]) => value instanceof Blob)).toHaveLength(3);
+    const exportedBlobs = objectUrlCalls.map(([value]) => value).filter((value): value is Blob => value instanceof Blob);
+    expect(await blobText(exportedBlobs[0])).toContain("Thumbnail delivery assurance");
+    expect(await blobText(exportedBlobs[1])).toContain("Thumbnail delivery assurance");
+    expect(await blobText(exportedBlobs[2])).toContain('"thumbnail_assurance"');
     click.mockRestore();
   });
 

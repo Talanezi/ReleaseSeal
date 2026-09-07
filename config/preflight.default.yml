@@ -142,6 +142,15 @@ release_package:
   minimum_thumbnail_height: 720
   target_thumbnail_aspect_ratio: 1.7777777777777777
   thumbnail_aspect_ratio_tolerance: 0.02
+  # Provider-free pixel measurements. Heuristic interpretation may create a
+  # review finding, never a deterministic block.
+  thumbnail_assurance:
+    enabled: true
+    analysis_max_dimension: 320
+    minimum_region_confidence: 0.72
+    minimum_delivered_text_height_pixels: 8.0
+    minimum_estimated_contrast_ratio: 2.5
+    minimum_detail_retention_ratio: 0.72
 
 # Bounded deterministic visual comparison and short Review Reel generation
 # for Creator Preflight-produced repaired exports.

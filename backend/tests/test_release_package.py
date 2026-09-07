@@ -50,6 +50,7 @@ def test_invalid_and_absent_thumbnail_states_are_truthful():
     assert invalid.findings[0].code == "THUMBNAIL_INVALID"
     absent = _evaluate(package=PublishingPackage(title="Title"))
     assert absent.summary.thumbnail.state is PackageComponentState.NOT_REQUIRED
+    assert absent.summary.thumbnail_assurance is None
     assert absent.findings == []
 
 

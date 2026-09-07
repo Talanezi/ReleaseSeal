@@ -14,6 +14,7 @@ from pydantic import (
 )
 
 from creator_preflight.models import FindingSeverity
+from creator_preflight.thumbnail_assurance import ThumbnailAssurancePolicy
 
 
 class BlackDetectorConfig(BaseModel):
@@ -296,6 +297,7 @@ class ReleasePackageConfig(BaseModel):
     minimum_thumbnail_height: int = Field(default=720, gt=0, le=16384)
     target_thumbnail_aspect_ratio: float = Field(default=16 / 9, gt=0, le=10)
     thumbnail_aspect_ratio_tolerance: float = Field(default=.02, ge=0, le=.1)
+    thumbnail_assurance: ThumbnailAssurancePolicy = Field(default_factory=ThumbnailAssurancePolicy)
 
 
 class VerificationConfig(BaseModel):

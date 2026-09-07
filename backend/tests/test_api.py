@@ -87,7 +87,7 @@ def test_unified_api_scan_returns_preflight_report(video_with_audio: Path) -> No
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["schema_version"] == "1.10"
+    assert payload["schema_version"] == "1.11"
     assert payload["review_mode"] == "local"
     assert payload["scan_completeness"] == "COMPLETE"
     assert payload["ai_review"]["status"] == "disabled"
@@ -172,7 +172,7 @@ def test_unified_api_anomaly_report_matches_real_frontend_contract(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["schema_version"] == "1.10"
+    assert payload["schema_version"] == "1.11"
     assert payload["ai_review"]["status"] == "disabled"
     assert payload["verdict"] == "NEEDS_REVIEW"
     assert payload["media"]["width"] == 1280
@@ -626,6 +626,7 @@ def test_api_accepts_png_thumbnail_and_cleans_temporary_file(
         )
     assert response.status_code == 200
     assert response.json()["promise_check"]["status"] == "disabled"
+    assert response.json()["release_package"]["thumbnail_assurance"]["status"] == "NOT_EVALUATED"
     assert created_paths and all(not path.exists() for path in created_paths)
 
 
@@ -643,6 +644,7 @@ def test_api_reports_corrupt_thumbnail_as_invalid_package_content(video_with_aud
     payload = response.json()
     assert payload["verdict"] == "BLOCKED"
     assert payload["release_package"]["thumbnail"]["state"] == "PRESENT_INVALID"
+    assert payload["release_package"]["thumbnail_assurance"] is None
     assert "THUMBNAIL_INVALID" in [item["code"] for item in payload["findings"]]
 
 

@@ -61,7 +61,7 @@ from creator_preflight.release_contract import (
     evaluate_release_contract,
     evaluate_semantic_requirements,
 )
-from creator_preflight.release_package import evaluate_release_package
+from creator_preflight.release_package import DEFAULT_DELIVERY_SURFACES, evaluate_release_package
 from creator_preflight.rules import evaluate_package_rules
 from creator_preflight.transcription import (
     SpeechTranscriber,
@@ -69,6 +69,7 @@ from creator_preflight.transcription import (
     WhisperTranscriber,
 )
 from creator_preflight.thumbnails import ThumbnailValidationError, inspect_thumbnail
+from creator_preflight.thumbnail_assurance import ThumbnailAssuranceService
 from creator_preflight.viewer_pass import (
     GeminiViewerPassReviewer,
     ViewerPassOverallStatus,
@@ -272,6 +273,7 @@ class PreflightScanner:
                 )
         thumbnail_info = None
         thumbnail_error = None
+        thumbnail_assurance = None
         if package.thumbnail_path is not None:
             try:
                 thumbnail_info = inspect_thumbnail(
@@ -284,6 +286,16 @@ class PreflightScanner:
                 )
             except ThumbnailValidationError as exc:
                 thumbnail_error = exc.message
+        if thumbnail_info is not None:
+            thumbnail_assurance = ThumbnailAssuranceService(
+                ffmpeg_binary=self.ffmpeg_binary,
+                timeout_seconds=min(self.timeout_seconds, 30),
+            ).analyze(
+                package.thumbnail_path,
+                thumbnail=thumbnail_info,
+                delivery_surfaces=DEFAULT_DELIVERY_SURFACES,
+                policy=self.config.release_package.thumbnail_assurance,
+            )
         release_package_result = evaluate_release_package(
             package=package,
             media=anomaly_result.media,
@@ -297,6 +309,7 @@ class PreflightScanner:
             target_aspect_ratio=self.config.release_package.target_thumbnail_aspect_ratio,
             aspect_ratio_tolerance=self.config.release_package.thumbnail_aspect_ratio_tolerance,
             maximum_thumbnail_file_size_bytes=self.config.ai_review.promise_check.maximum_thumbnail_file_size_bytes,
+            thumbnail_assurance=thumbnail_assurance,
         )
         review_thumbnail_path = package.thumbnail_path if thumbnail_info is not None else None
         report_progress(

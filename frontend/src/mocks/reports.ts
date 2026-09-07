@@ -201,6 +201,7 @@ export const needsReviewReport: PreflightReport = {
     thumbnail_height: null,
     thumbnail_checks: [],
     delivery_preview: null,
+    thumbnail_assurance: null,
     construction_seconds: 0.001,
     thumbnail_evaluation_seconds: 0,
     preview_metadata_seconds: 0,
