@@ -43,6 +43,97 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 svg { flex: 0 0 auto; }
 
+/* Portable Judge Proof Mode is a separate static entry point, not part of the scan workspace. */
+.proof-shell { min-height: 100vh; background: var(--app-bg); }
+.proof-header { height: 62px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px, 4vw, 56px); border-bottom: 1px solid var(--line); background: var(--surface); font-size: 14px; font-weight: 680; }
+.proof-header a, .proof-footer a { color: var(--action); text-underline-offset: 3px; }
+.proof-main { width: min(1160px, 100%); margin: 0 auto; padding: 64px clamp(20px, 4vw, 48px) 80px; }
+.proof-hero { max-width: 900px; }
+.proof-eyebrow { margin: 0 0 13px; color: var(--action); font-size: 12px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+.proof-hero h1 { margin: 0; font-size: clamp(38px, 6vw, 68px); font-weight: 640; letter-spacing: -.055em; line-height: .99; }
+.proof-hero > p:last-child { max-width: 760px; margin: 24px 0 0; color: var(--muted); font-size: 18px; line-height: 1.6; }
+.proof-disclosure { display: flex; gap: 14px; margin: 38px 0; padding: 18px 20px; border: 1px solid #bfd0c6; background: #f0f6f2; line-height: 1.5; }
+.proof-disclosure svg { width: 21px; color: var(--action); }
+.proof-disclosure span { display: grid; gap: 3px; color: var(--muted); font-size: 13px; }
+.proof-disclosure strong { color: var(--text); }
+.proof-nav { display: grid; grid-template-columns: repeat(5, 1fr); margin-bottom: 64px; border: 1px solid var(--line); background: var(--surface); }
+.proof-nav a { min-width: 0; display: flex; align-items: center; gap: 9px; padding: 14px; color: var(--text); border-right: 1px solid var(--line); font-size: 12px; font-weight: 650; text-decoration: none; }
+.proof-nav a:last-child { border-right: 0; }
+.proof-nav span, .proof-section > header > span { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 50%; color: var(--action); background: #edf3ef; }
+.proof-section { scroll-margin-top: 20px; margin-top: 72px; }
+.proof-section > header { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 24px; }
+.proof-section > header h2 { margin: 0; font-size: 29px; letter-spacing: -.035em; }
+.proof-section > header p { margin: 5px 0 0; color: var(--muted); line-height: 1.5; }
+.proof-two-column, .proof-package-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .8fr); gap: 20px; }
+.proof-media-card, .proof-fact-panel, .proof-package-summary, .proof-thumbnail-preview, .proof-contract-callout, .proof-requirement, .proof-receipt-grid, .proof-verifier-pair > div { border: 1px solid var(--line); background: var(--surface); }
+.proof-media-card video, .proof-wide-video, .proof-video-pair video { width: 100%; display: block; background: #111; }
+.proof-media-meta { display: grid; gap: 4px; padding: 14px 16px; }
+.proof-media-meta span { color: var(--muted); font-size: 12px; text-transform: capitalize; }
+.proof-fact-panel { padding: 20px; }
+.proof-fact-panel h3, .proof-package-summary h3, .proof-thumbnail-preview h3 { margin: 20px 0 12px; font-size: 14px; }
+.proof-metric { display: grid; gap: 3px; }
+.proof-metric strong { font-size: 22px; text-transform: capitalize; }
+.proof-metric span { color: var(--muted); font-size: 12px; }
+.proof-metric-pass strong { color: var(--pass); }
+.proof-metric-review strong { color: var(--warning); }
+.proof-evidence-list { display: grid; gap: 1px; max-height: 330px; margin: 0; padding: 0; overflow: auto; list-style: none; background: var(--line); }
+.proof-evidence-list button { width: 100%; display: flex; gap: 10px; padding: 11px; text-align: left; background: var(--surface); }
+.proof-evidence-list button:hover { background: var(--surface-muted); }
+.proof-evidence-list svg { width: 15px; color: var(--action); }
+.proof-evidence-list span, .proof-package-summary div span, .proof-revision-list div span { display: grid; gap: 3px; }
+.proof-evidence-list small, .proof-package-summary small, .proof-revision-list small { color: var(--muted); }
+.proof-package-grid { margin-top: 20px; grid-template-columns: .8fr 1.2fr; }
+.proof-package-summary, .proof-thumbnail-preview { padding: 20px; }
+.proof-package-summary h3, .proof-thumbnail-preview h3 { margin-top: 0; }
+.proof-package-summary > div { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.proof-package-summary svg { width: 16px; color: var(--pass); }
+.proof-neutral-mark { width: 16px; color: var(--quiet); text-align: center; }
+.proof-thumb-stage { position: relative; max-width: 520px; }
+.proof-thumb-stage img { width: 100%; display: block; }
+.proof-thumb-stage span { position: absolute; right: 3%; bottom: 5%; padding: 4px 7px; color: white; border-radius: 4px; background: rgb(0 0 0 / .84); font-size: 12px; font-weight: 700; }
+.proof-thumbnail-preview p, .proof-thumbnail-preview small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.proof-metric-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-bottom: 20px; background: var(--line); border: 1px solid var(--line); }
+.proof-metric-row .proof-metric { padding: 17px; background: var(--surface); }
+.proof-repair-flow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 18px; margin-bottom: 20px; }
+.proof-repair-flow > div { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; padding: 18px; border: 1px solid var(--line); background: var(--surface); }
+.proof-repair-flow > div span { grid-column: 2; color: var(--muted); font-size: 12px; }
+.proof-repair-flow svg { width: 18px; color: var(--action); }
+.proof-wide-video { max-height: 560px; }
+.proof-contract-callout { display: flex; gap: 15px; padding: 20px; border-left: 4px solid var(--critical); }
+.proof-contract-callout svg { color: var(--critical); }
+.proof-contract-callout p { margin: 6px 0 0; color: var(--muted); }
+.proof-requirement-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px; }
+.proof-requirement { display: grid; gap: 6px; padding: 16px; }
+.proof-requirement > span { color: var(--pass); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
+.proof-requirement.proof-fail > span { color: var(--critical); }
+.proof-requirement small, .proof-source-note { color: var(--muted); line-height: 1.5; }
+.proof-source-note { font-size: 12px; }
+.proof-video-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.proof-video-pair > div { display: grid; gap: 8px; }
+.proof-revision-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+.proof-revision-list > div { display: flex; gap: 10px; padding: 15px; border: 1px solid var(--line); background: var(--surface); }
+.proof-revision-list svg { width: 17px; color: var(--pass); }
+.proof-revision-list div:last-child svg { color: var(--warning); }
+.proof-receipt-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); }
+.proof-receipt-grid > div { display: grid; gap: 6px; padding: 18px; background: var(--surface); }
+.proof-receipt-grid span { color: var(--muted); font-size: 12px; }
+.proof-receipt-grid strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.proof-verifier-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.proof-verifier-pair > div { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; padding: 18px; }
+.proof-verifier-pair span { grid-column: 2; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.proof-valid svg { color: var(--pass); }
+.proof-mismatch svg { color: var(--warning); }
+.proof-footer { padding: 24px; color: var(--muted); border-top: 1px solid var(--line); background: var(--surface); text-align: center; font-size: 12px; }
+.proof-load-state { min-height: 100vh; display: grid; place-content: center; padding: 30px; text-align: center; }
+@media (max-width: 760px) {
+  .proof-nav { grid-template-columns: 1fr; }
+  .proof-nav a { border-right: 0; border-bottom: 1px solid var(--line); }
+  .proof-two-column, .proof-package-grid, .proof-video-pair, .proof-requirement-grid, .proof-revision-list, .proof-verifier-pair { grid-template-columns: 1fr; }
+  .proof-metric-row { grid-template-columns: repeat(2, 1fr); }
+  .proof-repair-flow { grid-template-columns: 1fr; }
+  .proof-repair-flow > svg { transform: rotate(90deg); justify-self: center; }
+}
+
 .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
 .app-header {
   position: sticky;

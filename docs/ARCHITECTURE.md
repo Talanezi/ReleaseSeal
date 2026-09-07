@@ -30,6 +30,10 @@ The scanner reconciles redundant black-contained freeze findings, sorts final fi
 
 The M27 package evaluator never invents missing requirements: absent optional thumbnail, captions, chapters, or contract state is neutral unless an existing rule or Release Contract says otherwise. Supplied PNG/JPEG files reuse the bounded content decoder and receive minimum-resolution, relative 16:9, and file-size checks. Four centralized typed delivery surfaces provide approximate box, edge, and duration-badge geometry; preview metadata uses the probed video duration. Explicit normalized critical regions can be tested against badge/edge geometry, but no region is inferred and no OCR, saliency, learned vision, or quality score exists.
 
+M28 adds no scanner capability. `JudgeProofBundle` is a strict, versioned read model built only by `scripts/build_judge_proof.py`. The generator compacts the attributed USGS owner-demo media, then invokes the production `PreflightScanner`, repair renderer, repaired-export verifier, Release Contract evaluator, `RevisionCheckService`, receipt builders, and `ReceiptVerifier`. It serializes those typed outputs plus content-addressed relative asset references under `frontend/public/proof/`. The companion verifier parses the same strict schema, hashes every referenced asset, reruns exact-artifact receipt checks (including a temporary one-byte mutation), and rejects any bundle that loses its required observed conditions.
+
+The frontend has a separate static Vite entry at `proof/index.html`. It fetches and renders the authoritative bundle and performs no scan, verdict, repair, contract, revision, or receipt logic. Both entry HTML and proof assets are emitted by a normal production build, so viewing proof requires neither FastAPI nor a provider. Regeneration remains a maintainer operation requiring local production dependencies and the ignored attributed owner-demo inputs. The page visibly labels results as precomputed engine evidence.
+
 ## Target shape
 
 Creator Preflight is a local, single-application system with two adapters around one Python scanning engine:

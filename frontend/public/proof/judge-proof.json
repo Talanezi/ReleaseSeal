@@ -1,0 +1,2421 @@
+{
+  "schema_version": "1.0",
+  "generator_version": "1",
+  "generation_origin": "GENERATED_FROM_ENGINE",
+  "generated_at": "2026-09-07T13:12:20.399239Z",
+  "provenance": {
+    "source_type": "public_domain",
+    "source_credit": "U.S. Geological Survey",
+    "source_title": "Before the supereruptions: Yellowstone’s ancient volcanoes",
+    "source_url": "https://www.usgs.gov/media/videos/supereruptions-yellowstones-ancient-volcanoes-yellowstone-monthly-update-august-2026",
+    "source_sha256": "732a9e700516c38e9d57893e92f9a2a20e82cbcfcbe8f0cff2b4323855a52036",
+    "owner_demo_generator_version": "2"
+  },
+  "final_export": {
+    "generation_origin": "GENERATED_FROM_ENGINE",
+    "original_video": {
+      "relative_path": "assets/yellowstone-final-export.mp4",
+      "sha256": "b89deb5f450f84d70a478bef31173fad110d1b5175feeb33ff104d70302d0e2c",
+      "size_bytes": 9153400,
+      "mime_type": "video/mp4"
+    },
+    "repaired_video": {
+      "relative_path": "assets/yellowstone-repaired.mp4",
+      "sha256": "0e981e11ffe82496e523c36798de503f8fa41ebd9ba2a489835bd3121700ad82",
+      "size_bytes": 23314146,
+      "mime_type": "video/mp4"
+    },
+    "thumbnail": {
+      "relative_path": "assets/yellowstone-thumbnail.jpg",
+      "sha256": "fc539347ca07d7b78899ea6943029bccc6897d44884e1099b58961fa7f1afdec",
+      "size_bytes": 875348,
+      "mime_type": "image/jpeg"
+    },
+    "title": "A creative release review",
+    "description": "A creator video prepared for the release-assurance demo.",
+    "original_report": {
+      "schema_version": "1.10",
+      "verdict": "NEEDS_REVIEW",
+      "scan_completeness": "COMPLETE",
+      "review_mode": "local",
+      "execution_issues": [],
+      "media": {
+        "duration_seconds": 212.166667,
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "file_size_bytes": 9153400,
+        "has_video": true,
+        "video_stream_count": 1,
+        "video_codec": "h264",
+        "width": 1280,
+        "height": 720,
+        "display_aspect_ratio": "16:9",
+        "frame_rate": 12.0,
+        "pixel_format": "yuv420p",
+        "has_audio": true,
+        "audio_stream_count": 1,
+        "audio_codec": "aac",
+        "channel_count": 2,
+        "sample_rate": 48000
+      },
+      "findings": [
+        {
+          "code": "VIDEO_BLACK_SEGMENT",
+          "severity": "warning",
+          "status": "NEEDS_REVIEW",
+          "message": "A sustained near-black video section may need review.",
+          "source": "video.black",
+          "timestamp_start_seconds": 24.0,
+          "timestamp_end_seconds": 27.083333,
+          "details": {
+            "category": "video",
+            "title": "Sustained near-black section",
+            "duration_seconds": 3.083333,
+            "minimum_duration_seconds": 2.0,
+            "pixel_black_threshold": 0.1,
+            "picture_black_ratio": 0.98
+          },
+          "suggestion": "Check whether this dark section is intentional and appropriately timed."
+        },
+        {
+          "code": "AUDIO_LONG_SILENCE",
+          "severity": "warning",
+          "status": "NEEDS_REVIEW",
+          "message": "A sustained silent audio section may need review.",
+          "source": "audio.silence",
+          "timestamp_start_seconds": 54.019625,
+          "timestamp_end_seconds": 59.007917,
+          "details": {
+            "category": "audio",
+            "title": "Long silent section",
+            "duration_seconds": 4.988292000000001,
+            "minimum_duration_seconds": 2.0,
+            "noise_threshold_db": -50.0
+          },
+          "suggestion": "Confirm that this silent section is intentional."
+        },
+        {
+          "code": "VIDEO_FREEZE_SEGMENT",
+          "severity": "warning",
+          "status": "NEEDS_REVIEW",
+          "message": "A sustained static-frame section may need review.",
+          "source": "video.freeze",
+          "timestamp_start_seconds": 73.333333,
+          "timestamp_end_seconds": 77.166667,
+          "details": {
+            "category": "video",
+            "title": "Sustained static-frame section",
+            "duration_seconds": 3.833334000000008,
+            "minimum_duration_seconds": 2.5,
+            "noise_threshold_db": -60.0
+          },
+          "suggestion": "Check whether this static section is an intentional still or title card."
+        },
+        {
+          "code": "VIDEO_FREEZE_SEGMENT",
+          "severity": "warning",
+          "status": "NEEDS_REVIEW",
+          "message": "A sustained static-frame section may need review.",
+          "source": "video.freeze",
+          "timestamp_start_seconds": 94.916667,
+          "timestamp_end_seconds": 100.0,
+          "details": {
+            "category": "video",
+            "title": "Sustained static-frame section",
+            "duration_seconds": 5.083332999999996,
+            "minimum_duration_seconds": 2.5,
+            "noise_threshold_db": -60.0
+          },
+          "suggestion": "Check whether this static section is an intentional still or title card."
+        },
+        {
+          "code": "VIDEO_FREEZE_SEGMENT",
+          "severity": "warning",
+          "status": "NEEDS_REVIEW",
+          "message": "A sustained static-frame section may need review.",
+          "source": "video.freeze",
+          "timestamp_start_seconds": 100.0,
+          "timestamp_end_seconds": 104.083333,
+          "details": {
+            "category": "video",
+            "title": "Sustained static-frame section",
+            "duration_seconds": 4.083332999999996,
+            "minimum_duration_seconds": 2.5,
+            "noise_threshold_db": -60.0
+          },
+          "suggestion": "Check whether this static section is an intentional still or title card."
+        },
+        {
+          "code": "VIDEO_FREEZE_SEGMENT",
+          "severity": "warning",
+          "status": "NEEDS_REVIEW",
+          "message": "A sustained static-frame section may need review.",
+          "source": "video.freeze",
+          "timestamp_start_seconds": 109.0,
+          "timestamp_end_seconds": 115.25,
+          "details": {
+            "category": "video",
+            "title": "Sustained static-frame section",
+            "duration_seconds": 6.25,
+            "minimum_duration_seconds": 2.5,
+            "noise_threshold_db": -60.0
+          },
+          "suggestion": "Check whether this static section is an intentional still or title card."
+        },
+        {
+          "code": "VIDEO_SHORT_BLACK_FLASH",
+          "severity": "warning",
+          "status": "NEEDS_REVIEW",
+          "message": "A very brief near-black flash was detected between surrounding frames.",
+          "source": "video.black",
+          "timestamp_start_seconds": 174.333333,
+          "timestamp_end_seconds": 174.416667,
+          "details": {
+            "category": "video",
+            "title": "Brief black flash candidate",
+            "duration_seconds": 0.0833333,
+            "minimum_duration_seconds": 0.08,
+            "maximum_duration_seconds": 0.35
+          },
+          "suggestion": "Review this moment frame by frame to confirm whether the flash is an intentional edit."
+        }
+      ],
+      "checks": [
+        {
+          "check_id": "media.video_stream",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "media.audio_stream",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "detector.black",
+          "passed": false,
+          "finding_codes": [
+            "VIDEO_BLACK_SEGMENT",
+            "VIDEO_SHORT_BLACK_FLASH"
+          ]
+        },
+        {
+          "check_id": "detector.freeze",
+          "passed": false,
+          "finding_codes": [
+            "VIDEO_FREEZE_SEGMENT",
+            "VIDEO_FREEZE_SEGMENT",
+            "VIDEO_FREEZE_SEGMENT",
+            "VIDEO_FREEZE_SEGMENT"
+          ]
+        },
+        {
+          "check_id": "detector.silence",
+          "passed": false,
+          "finding_codes": [
+            "AUDIO_LONG_SILENCE"
+          ]
+        },
+        {
+          "check_id": "detector.audio_peak",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "video.minimum_width",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "video.minimum_height",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "video.aspect_ratio",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "title.required",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "title.recommended_length",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "description.required",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "description.url_syntax",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "chapters.syntax",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "thumbnail.decode",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "thumbnail.file_size",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "thumbnail.resolution",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "thumbnail.aspect_ratio",
+          "passed": true,
+          "finding_codes": []
+        }
+      ],
+      "checks_run_count": 18,
+      "passed_check_count": 15,
+      "warning_count": 7,
+      "critical_count": 0,
+      "configuration_profile": "default",
+      "configuration_source": "judge-proof deterministic defaults",
+      "caption_summary": null,
+      "ai_review": {
+        "enabled": false,
+        "provider": "gemini",
+        "model": "gemini-3.7-flash",
+        "status": "disabled",
+        "observation_count": 0,
+        "runtime_seconds": null,
+        "cleanup_succeeded": null,
+        "reason_code": null
+      },
+      "promise_check": {
+        "status": "disabled",
+        "inferred_promise": null,
+        "first_substantive_address_seconds": null,
+        "first_substantive_address_evidence": null,
+        "opening_alignment": null,
+        "overall_delivery": null,
+        "explanation": null,
+        "confidence": null,
+        "thumbnail_alignment": null
+      },
+      "viewer_pass": {
+        "status": "disabled",
+        "summary": null,
+        "issue_count": 0
+      },
+      "claim_review": {
+        "status": "disabled",
+        "claims_checked": 0,
+        "supported_count": 0,
+        "conflict_count": 0,
+        "insufficient_evidence_count": 0,
+        "explanation": null
+      },
+      "release_package": {
+        "video": {
+          "state": "PRESENT_VALID",
+          "detail": "1280×720 · 3:32"
+        },
+        "thumbnail": {
+          "state": "PRESENT_VALID",
+          "detail": "1333×750 image/jpeg"
+        },
+        "captions": {
+          "state": "NOT_REQUIRED",
+          "detail": "Not supplied"
+        },
+        "title": {
+          "state": "PRESENT_VALID",
+          "detail": "Supplied"
+        },
+        "description": {
+          "state": "PRESENT_VALID",
+          "detail": "Supplied"
+        },
+        "chapters": {
+          "state": "NOT_REQUIRED",
+          "detail": "Not supplied"
+        },
+        "release_contract": {
+          "state": "NOT_REQUIRED",
+          "detail": "Not supplied"
+        },
+        "thumbnail_mime_type": "image/jpeg",
+        "thumbnail_file_size_bytes": 875348,
+        "thumbnail_width": 1333,
+        "thumbnail_height": 750,
+        "thumbnail_checks": [
+          {
+            "check_id": "decode",
+            "label": "Decode validity",
+            "status": "PASS",
+            "measured": "image/jpeg",
+            "expected": "Valid PNG or JPEG"
+          },
+          {
+            "check_id": "file_size",
+            "label": "File size",
+            "status": "PASS",
+            "measured": "875348 bytes",
+            "expected": "At most 5000000 bytes"
+          },
+          {
+            "check_id": "resolution",
+            "label": "Resolution",
+            "status": "PASS",
+            "measured": "1333×750",
+            "expected": "At least 1280×720"
+          },
+          {
+            "check_id": "aspect_ratio",
+            "label": "Aspect ratio",
+            "status": "PASS",
+            "measured": "1333:750",
+            "expected": "16:9 delivery artwork"
+          }
+        ],
+        "delivery_preview": {
+          "duration_badge_text": "3:32",
+          "surfaces": [
+            {
+              "surface_id": "mobile_feed",
+              "label": "Mobile feed / search",
+              "display_width": 168,
+              "display_height": 94,
+              "safe_margin_fraction": 0.035,
+              "badge_x": 0.73,
+              "badge_y": 0.72,
+              "badge_width": 0.23,
+              "badge_height": 0.22
+            },
+            {
+              "surface_id": "desktop_grid",
+              "label": "Desktop grid",
+              "display_width": 246,
+              "display_height": 138,
+              "safe_margin_fraction": 0.03,
+              "badge_x": 0.76,
+              "badge_y": 0.76,
+              "badge_width": 0.2,
+              "badge_height": 0.18
+            },
+            {
+              "surface_id": "desktop_sidebar",
+              "label": "Desktop sidebar",
+              "display_width": 168,
+              "display_height": 94,
+              "safe_margin_fraction": 0.035,
+              "badge_x": 0.73,
+              "badge_y": 0.72,
+              "badge_width": 0.23,
+              "badge_height": 0.22
+            },
+            {
+              "surface_id": "tv_large",
+              "label": "TV / large surface",
+              "display_width": 320,
+              "display_height": 180,
+              "safe_margin_fraction": 0.025,
+              "badge_x": 0.78,
+              "badge_y": 0.78,
+              "badge_width": 0.18,
+              "badge_height": 0.16
+            }
+          ],
+          "critical_region_intersections": []
+        },
+        "construction_seconds": 0.00015054107643663883,
+        "thumbnail_evaluation_seconds": 0.000030041905120015144,
+        "preview_metadata_seconds": 0.00009450002107769251
+      },
+      "release_contract": {
+        "contract": null,
+        "results": [],
+        "passed_count": 0,
+        "failed_count": 0,
+        "needs_review_count": 0,
+        "not_evaluated_count": 0,
+        "runtime_seconds": 2.9999064281582832e-6
+      },
+      "repair_plan": {
+        "proposals": [
+          {
+            "proposal_id": "repair-7d514dd3f4b14608",
+            "finding_code": "VIDEO_BLACK_SEGMENT",
+            "finding_title": "Sustained near-black section",
+            "explanation": "Remove the black interval at 00:24.00–00:27.08 and ripple the remaining video and audio together. Preview this pacing change first.",
+            "source": "video.black",
+            "repairability": "PREVIEW_REQUIRED",
+            "operation": {
+              "operation_type": "REMOVE_RANGE",
+              "start_seconds": 24.0,
+              "end_seconds": 27.083333
+            },
+            "start_seconds": 24.0,
+            "end_seconds": 27.083333,
+            "expected_duration_change_seconds": -3.0833329999999997,
+            "original_start_seconds": null,
+            "original_end_seconds": null,
+            "evidence": {
+              "category": "video",
+              "title": "Sustained near-black section",
+              "duration_seconds": 3.083333,
+              "minimum_duration_seconds": 2.0,
+              "pixel_black_threshold": 0.1,
+              "picture_black_ratio": 0.98
+            }
+          },
+          {
+            "proposal_id": "repair-f751a5c1b3112d5b",
+            "finding_code": "AUDIO_LONG_SILENCE",
+            "finding_title": "Long silent section",
+            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "source": "audio.silence",
+            "repairability": "HUMAN_ONLY",
+            "operation": null,
+            "start_seconds": 54.019625,
+            "end_seconds": 59.007917,
+            "expected_duration_change_seconds": null,
+            "original_start_seconds": null,
+            "original_end_seconds": null,
+            "evidence": {
+              "category": "audio",
+              "title": "Long silent section",
+              "duration_seconds": 4.988292000000001,
+              "minimum_duration_seconds": 2.0,
+              "noise_threshold_db": -50.0
+            }
+          },
+          {
+            "proposal_id": "repair-1bf37242ba44cc4d",
+            "finding_code": "VIDEO_FREEZE_SEGMENT",
+            "finding_title": "Sustained static-frame section",
+            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "source": "video.freeze",
+            "repairability": "HUMAN_ONLY",
+            "operation": null,
+            "start_seconds": 73.333333,
+            "end_seconds": 77.166667,
+            "expected_duration_change_seconds": null,
+            "original_start_seconds": null,
+            "original_end_seconds": null,
+            "evidence": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 3.833334000000008,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            }
+          },
+          {
+            "proposal_id": "repair-0d9242c684d6f96b",
+            "finding_code": "VIDEO_FREEZE_SEGMENT",
+            "finding_title": "Sustained static-frame section",
+            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "source": "video.freeze",
+            "repairability": "HUMAN_ONLY",
+            "operation": null,
+            "start_seconds": 94.916667,
+            "end_seconds": 100.0,
+            "expected_duration_change_seconds": null,
+            "original_start_seconds": null,
+            "original_end_seconds": null,
+            "evidence": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 5.083332999999996,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            }
+          },
+          {
+            "proposal_id": "repair-aa1083700bac4a0a",
+            "finding_code": "VIDEO_FREEZE_SEGMENT",
+            "finding_title": "Sustained static-frame section",
+            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "source": "video.freeze",
+            "repairability": "HUMAN_ONLY",
+            "operation": null,
+            "start_seconds": 100.0,
+            "end_seconds": 104.083333,
+            "expected_duration_change_seconds": null,
+            "original_start_seconds": null,
+            "original_end_seconds": null,
+            "evidence": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 4.083332999999996,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            }
+          },
+          {
+            "proposal_id": "repair-a784982de43e75b4",
+            "finding_code": "VIDEO_FREEZE_SEGMENT",
+            "finding_title": "Sustained static-frame section",
+            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "source": "video.freeze",
+            "repairability": "HUMAN_ONLY",
+            "operation": null,
+            "start_seconds": 109.0,
+            "end_seconds": 115.25,
+            "expected_duration_change_seconds": null,
+            "original_start_seconds": null,
+            "original_end_seconds": null,
+            "evidence": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 6.25,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            }
+          },
+          {
+            "proposal_id": "repair-de48928991fa37e8",
+            "finding_code": "VIDEO_SHORT_BLACK_FLASH",
+            "finding_title": "Brief black flash candidate",
+            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "source": "video.black",
+            "repairability": "HUMAN_ONLY",
+            "operation": null,
+            "start_seconds": 174.333333,
+            "end_seconds": 174.416667,
+            "expected_duration_change_seconds": null,
+            "original_start_seconds": null,
+            "original_end_seconds": null,
+            "evidence": {
+              "category": "video",
+              "title": "Brief black flash candidate",
+              "duration_seconds": 0.0833333,
+              "minimum_duration_seconds": 0.08,
+              "maximum_duration_seconds": 0.35
+            }
+          }
+        ],
+        "safe_count": 0,
+        "preview_required_count": 1,
+        "human_only_count": 6
+      },
+      "release_brief": {
+        "source": "deterministic",
+        "headline": "7 items need attention",
+        "summary": "Start here: preview the repair for sustained near-black section at 00:24.00, then confirm whether long silent section at 00:54.02 is intentional. Review 4 related sustained static-frame findings together, starting at 01:13.33.",
+        "top_actions": [
+          "Preview the repair for sustained near-black section at 00:24.00",
+          "Confirm whether long silent section at 00:54.02 is intentional",
+          "Review 4 related sustained static-frame findings together, starting at 01:13.33"
+        ],
+        "positive_note": null
+      },
+      "scan_duration_seconds": 2.196688042022288
+    },
+    "repair_operation": {
+      "operation_type": "REMOVE_RANGE",
+      "start_seconds": 24.0,
+      "end_seconds": 27.083333
+    },
+    "verification": {
+      "schema_version": "1.0",
+      "status": "NEEDS_REVIEW",
+      "approved_repair_count": 1,
+      "resolved": [
+        {
+          "status": "RESOLVED",
+          "original_finding": {
+            "code": "VIDEO_BLACK_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained near-black video section may need review.",
+            "source": "video.black",
+            "timestamp_start_seconds": 24.0,
+            "timestamp_end_seconds": 27.083333,
+            "details": {
+              "category": "video",
+              "title": "Sustained near-black section",
+              "duration_seconds": 3.083333,
+              "minimum_duration_seconds": 2.0,
+              "pixel_black_threshold": 0.1,
+              "picture_black_ratio": 0.98
+            },
+            "suggestion": "Check whether this dark section is intentional and appropriately timed."
+          },
+          "repaired_finding": null,
+          "expected_repaired_start_seconds": null,
+          "expected_repaired_end_seconds": null,
+          "deterministically_verified": true,
+          "explanation": "The approved operation removed the complete targeted interval."
+        }
+      ],
+      "remaining": [
+        {
+          "status": "REMAINING",
+          "original_finding": {
+            "code": "AUDIO_LONG_SILENCE",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained silent audio section may need review.",
+            "source": "audio.silence",
+            "timestamp_start_seconds": 54.019625,
+            "timestamp_end_seconds": 59.007917,
+            "details": {
+              "category": "audio",
+              "title": "Long silent section",
+              "duration_seconds": 4.988292000000001,
+              "minimum_duration_seconds": 2.0,
+              "noise_threshold_db": -50.0
+            },
+            "suggestion": "Confirm that this silent section is intentional."
+          },
+          "repaired_finding": {
+            "code": "AUDIO_LONG_SILENCE",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained silent audio section may need review.",
+            "source": "audio.silence",
+            "timestamp_start_seconds": 50.936292,
+            "timestamp_end_seconds": 55.924583,
+            "details": {
+              "category": "audio",
+              "title": "Long silent section",
+              "duration_seconds": 4.988290999999997,
+              "minimum_duration_seconds": 2.0,
+              "noise_threshold_db": -50.0
+            },
+            "suggestion": "Confirm that this silent section is intentional."
+          },
+          "expected_repaired_start_seconds": 50.936291999999995,
+          "expected_repaired_end_seconds": 55.924584,
+          "deterministically_verified": false,
+          "explanation": "The same finding remains at its expected repaired-timeline location."
+        },
+        {
+          "status": "REMAINING",
+          "original_finding": {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 73.333333,
+            "timestamp_end_seconds": 77.166667,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 3.833334000000008,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          "repaired_finding": {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 70.25,
+            "timestamp_end_seconds": 74.083333,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 3.833332999999996,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          "expected_repaired_start_seconds": 70.25,
+          "expected_repaired_end_seconds": 74.08333400000002,
+          "deterministically_verified": false,
+          "explanation": "The same finding remains at its expected repaired-timeline location."
+        },
+        {
+          "status": "REMAINING",
+          "original_finding": {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 94.916667,
+            "timestamp_end_seconds": 100.0,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 5.083332999999996,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          "repaired_finding": {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 91.833333,
+            "timestamp_end_seconds": 96.916667,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 5.083334000000008,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          "expected_repaired_start_seconds": 91.83333400000001,
+          "expected_repaired_end_seconds": 96.916667,
+          "deterministically_verified": false,
+          "explanation": "The same finding remains at its expected repaired-timeline location."
+        },
+        {
+          "status": "REMAINING",
+          "original_finding": {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 100.0,
+            "timestamp_end_seconds": 104.083333,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 4.083332999999996,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          "repaired_finding": {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 96.916667,
+            "timestamp_end_seconds": 101.0,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 4.083332999999996,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          "expected_repaired_start_seconds": 96.916667,
+          "expected_repaired_end_seconds": 101.0,
+          "deterministically_verified": false,
+          "explanation": "The same finding remains at its expected repaired-timeline location."
+        },
+        {
+          "status": "REMAINING",
+          "original_finding": {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 109.0,
+            "timestamp_end_seconds": 115.25,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 6.25,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          "repaired_finding": {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 105.916667,
+            "timestamp_end_seconds": 112.166667,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 6.25,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          "expected_repaired_start_seconds": 105.916667,
+          "expected_repaired_end_seconds": 112.16666700000002,
+          "deterministically_verified": false,
+          "explanation": "The same finding remains at its expected repaired-timeline location."
+        },
+        {
+          "status": "REMAINING",
+          "original_finding": {
+            "code": "VIDEO_SHORT_BLACK_FLASH",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A very brief near-black flash was detected between surrounding frames.",
+            "source": "video.black",
+            "timestamp_start_seconds": 174.333333,
+            "timestamp_end_seconds": 174.416667,
+            "details": {
+              "category": "video",
+              "title": "Brief black flash candidate",
+              "duration_seconds": 0.0833333,
+              "minimum_duration_seconds": 0.08,
+              "maximum_duration_seconds": 0.35
+            },
+            "suggestion": "Review this moment frame by frame to confirm whether the flash is an intentional edit."
+          },
+          "repaired_finding": {
+            "code": "VIDEO_SHORT_BLACK_FLASH",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A very brief near-black flash was detected between surrounding frames.",
+            "source": "video.black",
+            "timestamp_start_seconds": 171.25,
+            "timestamp_end_seconds": 171.333333,
+            "details": {
+              "category": "video",
+              "title": "Brief black flash candidate",
+              "duration_seconds": 0.0833333,
+              "minimum_duration_seconds": 0.08,
+              "maximum_duration_seconds": 0.35
+            },
+            "suggestion": "Review this moment frame by frame to confirm whether the flash is an intentional edit."
+          },
+          "expected_repaired_start_seconds": 171.25,
+          "expected_repaired_end_seconds": 171.33333399999995,
+          "deterministically_verified": false,
+          "explanation": "The same finding remains at its expected repaired-timeline location."
+        }
+      ],
+      "new": [],
+      "unexpected_changes": [],
+      "original_duration_seconds": 212.166667,
+      "repaired_duration_seconds": 209.083008,
+      "expected_duration_seconds": 209.08333399999998,
+      "integrity": {
+        "passed": true,
+        "duration_matches": true,
+        "streams_match": true,
+        "resolution_matches": true,
+        "operations_verified": 1,
+        "reference_intervals_survived": true,
+        "explanation": "Rendered duration, stream presence, resolution, and surviving reference intervals match the approved operation plan."
+      },
+      "repaired_preflight_report": {
+        "schema_version": "1.10",
+        "verdict": "NEEDS_REVIEW",
+        "scan_completeness": "COMPLETE",
+        "review_mode": "local",
+        "execution_issues": [],
+        "media": {
+          "duration_seconds": 209.083008,
+          "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+          "file_size_bytes": 23314146,
+          "has_video": true,
+          "video_stream_count": 1,
+          "video_codec": "h264",
+          "width": 1280,
+          "height": 720,
+          "display_aspect_ratio": "16:9",
+          "frame_rate": 12.0,
+          "pixel_format": "yuv420p",
+          "has_audio": true,
+          "audio_stream_count": 1,
+          "audio_codec": "aac",
+          "channel_count": 2,
+          "sample_rate": 48000
+        },
+        "findings": [
+          {
+            "code": "AUDIO_LONG_SILENCE",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained silent audio section may need review.",
+            "source": "audio.silence",
+            "timestamp_start_seconds": 50.936292,
+            "timestamp_end_seconds": 55.924583,
+            "details": {
+              "category": "audio",
+              "title": "Long silent section",
+              "duration_seconds": 4.988290999999997,
+              "minimum_duration_seconds": 2.0,
+              "noise_threshold_db": -50.0
+            },
+            "suggestion": "Confirm that this silent section is intentional."
+          },
+          {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 70.25,
+            "timestamp_end_seconds": 74.083333,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 3.833332999999996,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 91.833333,
+            "timestamp_end_seconds": 96.916667,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 5.083334000000008,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 96.916667,
+            "timestamp_end_seconds": 101.0,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 4.083332999999996,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          {
+            "code": "VIDEO_FREEZE_SEGMENT",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A sustained static-frame section may need review.",
+            "source": "video.freeze",
+            "timestamp_start_seconds": 105.916667,
+            "timestamp_end_seconds": 112.166667,
+            "details": {
+              "category": "video",
+              "title": "Sustained static-frame section",
+              "duration_seconds": 6.25,
+              "minimum_duration_seconds": 2.5,
+              "noise_threshold_db": -60.0
+            },
+            "suggestion": "Check whether this static section is an intentional still or title card."
+          },
+          {
+            "code": "VIDEO_SHORT_BLACK_FLASH",
+            "severity": "warning",
+            "status": "NEEDS_REVIEW",
+            "message": "A very brief near-black flash was detected between surrounding frames.",
+            "source": "video.black",
+            "timestamp_start_seconds": 171.25,
+            "timestamp_end_seconds": 171.333333,
+            "details": {
+              "category": "video",
+              "title": "Brief black flash candidate",
+              "duration_seconds": 0.0833333,
+              "minimum_duration_seconds": 0.08,
+              "maximum_duration_seconds": 0.35
+            },
+            "suggestion": "Review this moment frame by frame to confirm whether the flash is an intentional edit."
+          }
+        ],
+        "checks": [
+          {
+            "check_id": "media.video_stream",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "media.audio_stream",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "detector.black",
+            "passed": false,
+            "finding_codes": [
+              "VIDEO_SHORT_BLACK_FLASH"
+            ]
+          },
+          {
+            "check_id": "detector.freeze",
+            "passed": false,
+            "finding_codes": [
+              "VIDEO_FREEZE_SEGMENT",
+              "VIDEO_FREEZE_SEGMENT",
+              "VIDEO_FREEZE_SEGMENT",
+              "VIDEO_FREEZE_SEGMENT"
+            ]
+          },
+          {
+            "check_id": "detector.silence",
+            "passed": false,
+            "finding_codes": [
+              "AUDIO_LONG_SILENCE"
+            ]
+          },
+          {
+            "check_id": "detector.audio_peak",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "video.minimum_width",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "video.minimum_height",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "video.aspect_ratio",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "title.required",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "title.recommended_length",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "description.required",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "description.url_syntax",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "chapters.syntax",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "thumbnail.decode",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "thumbnail.file_size",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "thumbnail.resolution",
+            "passed": true,
+            "finding_codes": []
+          },
+          {
+            "check_id": "thumbnail.aspect_ratio",
+            "passed": true,
+            "finding_codes": []
+          }
+        ],
+        "checks_run_count": 18,
+        "passed_check_count": 15,
+        "warning_count": 6,
+        "critical_count": 0,
+        "configuration_profile": "default",
+        "configuration_source": "judge-proof deterministic defaults",
+        "caption_summary": null,
+        "ai_review": {
+          "enabled": false,
+          "provider": "gemini",
+          "model": "gemini-3.7-flash",
+          "status": "disabled",
+          "observation_count": 0,
+          "runtime_seconds": null,
+          "cleanup_succeeded": null,
+          "reason_code": null
+        },
+        "promise_check": {
+          "status": "disabled",
+          "inferred_promise": null,
+          "first_substantive_address_seconds": null,
+          "first_substantive_address_evidence": null,
+          "opening_alignment": null,
+          "overall_delivery": null,
+          "explanation": null,
+          "confidence": null,
+          "thumbnail_alignment": null
+        },
+        "viewer_pass": {
+          "status": "disabled",
+          "summary": null,
+          "issue_count": 0
+        },
+        "claim_review": {
+          "status": "disabled",
+          "claims_checked": 0,
+          "supported_count": 0,
+          "conflict_count": 0,
+          "insufficient_evidence_count": 0,
+          "explanation": null
+        },
+        "release_package": {
+          "video": {
+            "state": "PRESENT_VALID",
+            "detail": "1280×720 · 3:29"
+          },
+          "thumbnail": {
+            "state": "PRESENT_VALID",
+            "detail": "1333×750 image/jpeg"
+          },
+          "captions": {
+            "state": "NOT_REQUIRED",
+            "detail": "Not supplied"
+          },
+          "title": {
+            "state": "PRESENT_VALID",
+            "detail": "Supplied"
+          },
+          "description": {
+            "state": "PRESENT_VALID",
+            "detail": "Supplied"
+          },
+          "chapters": {
+            "state": "NOT_REQUIRED",
+            "detail": "Not supplied"
+          },
+          "release_contract": {
+            "state": "NOT_REQUIRED",
+            "detail": "Not supplied"
+          },
+          "thumbnail_mime_type": "image/jpeg",
+          "thumbnail_file_size_bytes": 875348,
+          "thumbnail_width": 1333,
+          "thumbnail_height": 750,
+          "thumbnail_checks": [
+            {
+              "check_id": "decode",
+              "label": "Decode validity",
+              "status": "PASS",
+              "measured": "image/jpeg",
+              "expected": "Valid PNG or JPEG"
+            },
+            {
+              "check_id": "file_size",
+              "label": "File size",
+              "status": "PASS",
+              "measured": "875348 bytes",
+              "expected": "At most 5000000 bytes"
+            },
+            {
+              "check_id": "resolution",
+              "label": "Resolution",
+              "status": "PASS",
+              "measured": "1333×750",
+              "expected": "At least 1280×720"
+            },
+            {
+              "check_id": "aspect_ratio",
+              "label": "Aspect ratio",
+              "status": "PASS",
+              "measured": "1333:750",
+              "expected": "16:9 delivery artwork"
+            }
+          ],
+          "delivery_preview": {
+            "duration_badge_text": "3:29",
+            "surfaces": [
+              {
+                "surface_id": "mobile_feed",
+                "label": "Mobile feed / search",
+                "display_width": 168,
+                "display_height": 94,
+                "safe_margin_fraction": 0.035,
+                "badge_x": 0.73,
+                "badge_y": 0.72,
+                "badge_width": 0.23,
+                "badge_height": 0.22
+              },
+              {
+                "surface_id": "desktop_grid",
+                "label": "Desktop grid",
+                "display_width": 246,
+                "display_height": 138,
+                "safe_margin_fraction": 0.03,
+                "badge_x": 0.76,
+                "badge_y": 0.76,
+                "badge_width": 0.2,
+                "badge_height": 0.18
+              },
+              {
+                "surface_id": "desktop_sidebar",
+                "label": "Desktop sidebar",
+                "display_width": 168,
+                "display_height": 94,
+                "safe_margin_fraction": 0.035,
+                "badge_x": 0.73,
+                "badge_y": 0.72,
+                "badge_width": 0.23,
+                "badge_height": 0.22
+              },
+              {
+                "surface_id": "tv_large",
+                "label": "TV / large surface",
+                "display_width": 320,
+                "display_height": 180,
+                "safe_margin_fraction": 0.025,
+                "badge_x": 0.78,
+                "badge_y": 0.78,
+                "badge_width": 0.18,
+                "badge_height": 0.16
+              }
+            ],
+            "critical_region_intersections": []
+          },
+          "construction_seconds": 0.00008270901162177324,
+          "thumbnail_evaluation_seconds": 0.00002704199869185686,
+          "preview_metadata_seconds": 0.000034082913771271706
+        },
+        "release_contract": {
+          "contract": null,
+          "results": [],
+          "passed_count": 0,
+          "failed_count": 0,
+          "needs_review_count": 0,
+          "not_evaluated_count": 0,
+          "runtime_seconds": 1.0420335456728935e-6
+        },
+        "repair_plan": {
+          "proposals": [
+            {
+              "proposal_id": "repair-d582467cb09fd273",
+              "finding_code": "AUDIO_LONG_SILENCE",
+              "finding_title": "Long silent section",
+              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "source": "audio.silence",
+              "repairability": "HUMAN_ONLY",
+              "operation": null,
+              "start_seconds": 50.936292,
+              "end_seconds": 55.924583,
+              "expected_duration_change_seconds": null,
+              "original_start_seconds": null,
+              "original_end_seconds": null,
+              "evidence": {
+                "category": "audio",
+                "title": "Long silent section",
+                "duration_seconds": 4.988290999999997,
+                "minimum_duration_seconds": 2.0,
+                "noise_threshold_db": -50.0
+              }
+            },
+            {
+              "proposal_id": "repair-7b640134f1163302",
+              "finding_code": "VIDEO_FREEZE_SEGMENT",
+              "finding_title": "Sustained static-frame section",
+              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "source": "video.freeze",
+              "repairability": "HUMAN_ONLY",
+              "operation": null,
+              "start_seconds": 70.25,
+              "end_seconds": 74.083333,
+              "expected_duration_change_seconds": null,
+              "original_start_seconds": null,
+              "original_end_seconds": null,
+              "evidence": {
+                "category": "video",
+                "title": "Sustained static-frame section",
+                "duration_seconds": 3.833332999999996,
+                "minimum_duration_seconds": 2.5,
+                "noise_threshold_db": -60.0
+              }
+            },
+            {
+              "proposal_id": "repair-cd8990b6509c83ce",
+              "finding_code": "VIDEO_FREEZE_SEGMENT",
+              "finding_title": "Sustained static-frame section",
+              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "source": "video.freeze",
+              "repairability": "HUMAN_ONLY",
+              "operation": null,
+              "start_seconds": 91.833333,
+              "end_seconds": 96.916667,
+              "expected_duration_change_seconds": null,
+              "original_start_seconds": null,
+              "original_end_seconds": null,
+              "evidence": {
+                "category": "video",
+                "title": "Sustained static-frame section",
+                "duration_seconds": 5.083334000000008,
+                "minimum_duration_seconds": 2.5,
+                "noise_threshold_db": -60.0
+              }
+            },
+            {
+              "proposal_id": "repair-8d0c5632340b9fbd",
+              "finding_code": "VIDEO_FREEZE_SEGMENT",
+              "finding_title": "Sustained static-frame section",
+              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "source": "video.freeze",
+              "repairability": "HUMAN_ONLY",
+              "operation": null,
+              "start_seconds": 96.916667,
+              "end_seconds": 101.0,
+              "expected_duration_change_seconds": null,
+              "original_start_seconds": null,
+              "original_end_seconds": null,
+              "evidence": {
+                "category": "video",
+                "title": "Sustained static-frame section",
+                "duration_seconds": 4.083332999999996,
+                "minimum_duration_seconds": 2.5,
+                "noise_threshold_db": -60.0
+              }
+            },
+            {
+              "proposal_id": "repair-76a30204446d8367",
+              "finding_code": "VIDEO_FREEZE_SEGMENT",
+              "finding_title": "Sustained static-frame section",
+              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "source": "video.freeze",
+              "repairability": "HUMAN_ONLY",
+              "operation": null,
+              "start_seconds": 105.916667,
+              "end_seconds": 112.166667,
+              "expected_duration_change_seconds": null,
+              "original_start_seconds": null,
+              "original_end_seconds": null,
+              "evidence": {
+                "category": "video",
+                "title": "Sustained static-frame section",
+                "duration_seconds": 6.25,
+                "minimum_duration_seconds": 2.5,
+                "noise_threshold_db": -60.0
+              }
+            },
+            {
+              "proposal_id": "repair-a761ebf49092df43",
+              "finding_code": "VIDEO_SHORT_BLACK_FLASH",
+              "finding_title": "Brief black flash candidate",
+              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "source": "video.black",
+              "repairability": "HUMAN_ONLY",
+              "operation": null,
+              "start_seconds": 171.25,
+              "end_seconds": 171.333333,
+              "expected_duration_change_seconds": null,
+              "original_start_seconds": null,
+              "original_end_seconds": null,
+              "evidence": {
+                "category": "video",
+                "title": "Brief black flash candidate",
+                "duration_seconds": 0.0833333,
+                "minimum_duration_seconds": 0.08,
+                "maximum_duration_seconds": 0.35
+              }
+            }
+          ],
+          "safe_count": 0,
+          "preview_required_count": 0,
+          "human_only_count": 6
+        },
+        "release_brief": {
+          "source": "deterministic",
+          "headline": "6 items need attention",
+          "summary": "Start here: confirm whether long silent section at 00:50.94 is intentional. Review 4 related sustained static-frame findings together, starting at 01:10.25.",
+          "top_actions": [
+            "Confirm whether long silent section at 00:50.94 is intentional",
+            "Review 4 related sustained static-frame findings together, starting at 01:10.25",
+            "Brief black flash candidate at 02:51.25"
+          ],
+          "positive_note": null
+        },
+        "scan_duration_seconds": 2.6753706249874085
+      },
+      "regression_analysis_completeness": "COMPLETE",
+      "review_reel_manifest": {
+        "entries": [
+          {
+            "reel_start_seconds": 0.0,
+            "reel_end_seconds": 6.25,
+            "source_start_seconds": 20.999999999999996,
+            "source_end_seconds": 27.249999999999996,
+            "reason": "Approved range removed",
+            "category": "repair",
+            "source_id": "repair-1"
+          },
+          {
+            "reel_start_seconds": 6.25,
+            "reel_end_seconds": 17.238290999999997,
+            "source_start_seconds": 47.936292,
+            "source_end_seconds": 58.924583,
+            "reason": "Still needs attention: A sustained silent audio section may need review.",
+            "category": "finding",
+            "source_id": "AUDIO_LONG_SILENCE"
+          },
+          {
+            "reel_start_seconds": 17.238290999999997,
+            "reel_end_seconds": 27.071623999999986,
+            "source_start_seconds": 67.25,
+            "source_end_seconds": 77.083333,
+            "reason": "Still needs attention: A sustained static-frame section may need review.",
+            "category": "finding",
+            "source_id": "VIDEO_FREEZE_SEGMENT"
+          },
+          {
+            "reel_start_seconds": 27.071623999999993,
+            "reel_end_seconds": 53.40495800000001,
+            "source_start_seconds": 88.833333,
+            "source_end_seconds": 115.166667,
+            "reason": "Still needs attention: A sustained static-frame section may need review.",
+            "category": "finding",
+            "source_id": "VIDEO_FREEZE_SEGMENT"
+          },
+          {
+            "reel_start_seconds": 53.404958,
+            "reel_end_seconds": 59.488291000000004,
+            "source_start_seconds": 168.25,
+            "source_end_seconds": 174.333333,
+            "reason": "Still needs attention: A very brief near-black flash was detected between surrounding frames.",
+            "category": "finding",
+            "source_id": "VIDEO_SHORT_BLACK_FLASH"
+          }
+        ],
+        "total_duration_seconds": 59.48829100000001
+      },
+      "review_reel_available": true,
+      "limitations": [
+        "Unexpected-change analysis compares bounded low-resolution visual samples; audio verification covers readability, stream presence, and duration rather than waveform identity."
+      ]
+    },
+    "receipt": {
+      "receipt_schema_version": "1.0",
+      "receipt_kind": "FINAL_EXPORT",
+      "created_at": "2026-09-07T13:12:20.399239Z",
+      "scanner_version": "0.0.0",
+      "verdict": "NEEDS_REVIEW",
+      "scan_completeness": "COMPLETE",
+      "configuration_fingerprint_sha256": "6a7c0c00e1aefd4905015b635b6124f60ab2b075ca5f1893593f4d5ec943ceae",
+      "deterministic_results": {
+        "checks_run": 18,
+        "checks_passed": 15,
+        "finding_codes": [
+          "AUDIO_LONG_SILENCE",
+          "VIDEO_FREEZE_SEGMENT",
+          "VIDEO_FREEZE_SEGMENT",
+          "VIDEO_FREEZE_SEGMENT",
+          "VIDEO_FREEZE_SEGMENT",
+          "VIDEO_SHORT_BLACK_FLASH"
+        ],
+        "contract_passed": 0,
+        "contract_failed": 0,
+        "contract_not_evaluated": 0
+      },
+      "advisory_results": {
+        "ai_review_status": "disabled",
+        "opening_status": "disabled",
+        "continuity_status": "disabled",
+        "factual_status": "disabled",
+        "finding_codes": [],
+        "semantic_contract_passed": 0,
+        "semantic_contract_needs_review": 0,
+        "semantic_contract_not_evaluated": 0
+      },
+      "human_dispositions": [],
+      "package": {
+        "shipping_video": {
+          "sha256": "0e981e11ffe82496e523c36798de503f8fa41ebd9ba2a489835bd3121700ad82",
+          "size_bytes": 23314146
+        },
+        "shipping_role": "REPAIRED",
+        "thumbnail": {
+          "presence": "PRESENT",
+          "sha256": "fc539347ca07d7b78899ea6943029bccc6897d44884e1099b58961fa7f1afdec",
+          "size_bytes": 875348
+        },
+        "captions": {
+          "presence": "ABSENT",
+          "sha256": null,
+          "size_bytes": null
+        },
+        "normalized_title_sha256": "7de0afea1e8d54bc88bbe10eea79b6206c9be4ffef8692726f2d77eb18297987",
+        "normalized_description_sha256": "7b11fb6f40f883045cd382be0c66ecbaba86c3a52ec930829787b5ca5d9ec9c2",
+        "contract": {
+          "presence": "ABSENT",
+          "contract": null,
+          "canonical_sha256": null,
+          "deterministic_results_sha256": null,
+          "semantic_results_sha256": null,
+          "deterministic_results": [],
+          "semantic_results": [],
+          "deterministic_failed_count": 0,
+          "semantic_needs_review_count": 0,
+          "verdict_contribution": "NONE"
+        },
+        "package_fingerprint_sha256": "3d6cbac9c1dc960222b212b95d2527a94038640282d209338938e799e6fc809b"
+      },
+      "repair": {
+        "original_video": {
+          "sha256": "b89deb5f450f84d70a478bef31173fad110d1b5175feeb33ff104d70302d0e2c",
+          "size_bytes": 9153400
+        },
+        "repaired_video": {
+          "sha256": "0e981e11ffe82496e523c36798de503f8fa41ebd9ba2a489835bd3121700ad82",
+          "size_bytes": 23314146
+        },
+        "approved_operations": [
+          {
+            "operation_type": "REMOVE_RANGE",
+            "start_seconds": 24.0,
+            "end_seconds": 27.083333
+          }
+        ],
+        "verification_status": "NEEDS_REVIEW",
+        "repaired_rescan_verdict": "NEEDS_REVIEW",
+        "repaired_rescan_completeness": "COMPLETE",
+        "unexpected_change_count": 0,
+        "unexpected_changes": []
+      },
+      "receipt_content_sha256": "8f4483f7382db32f94495130cbe6d16183e1378ae3c88c51ac87a597bc598ee9"
+    },
+    "receipt_valid": {
+      "status": "VALID",
+      "receipt_kind": "FINAL_EXPORT",
+      "recorded_verdict": "NEEDS_REVIEW",
+      "recorded_completeness": "COMPLETE",
+      "checks": [
+        "Receipt content digest matches.",
+        "Package fingerprint matches the recorded package.",
+        "Video hash matches.",
+        "Thumbnail matches.",
+        "Title matches.",
+        "Description matches."
+      ],
+      "mismatches": []
+    },
+    "receipt_mutated_artifact": {
+      "status": "MISMATCH",
+      "receipt_kind": "FINAL_EXPORT",
+      "recorded_verdict": "NEEDS_REVIEW",
+      "recorded_completeness": "COMPLETE",
+      "checks": [
+        "Receipt content digest matches.",
+        "Package fingerprint matches the recorded package.",
+        "Thumbnail matches.",
+        "Title matches.",
+        "Description matches."
+      ],
+      "mismatches": [
+        "Video hash or size does not match this receipt."
+      ]
+    }
+  },
+  "release_contract": {
+    "generation_origin": "GENERATED_FROM_ENGINE",
+    "provenance": {
+      "source_type": "generated_control",
+      "source_credit": "Creator Preflight deterministic fixture generator",
+      "source_title": "SAVE20 captioned Release Contract control",
+      "source_url": null,
+      "source_sha256": "984ef9b9abce5efc3d33690c0b32c973241c02dac319aba2923bc9e3831df701",
+      "owner_demo_generator_version": null
+    },
+    "video": {
+      "relative_path": "assets/contract-control.mp4",
+      "sha256": "984ef9b9abce5efc3d33690c0b32c973241c02dac319aba2923bc9e3831df701",
+      "size_bytes": 825221,
+      "mime_type": "video/mp4"
+    },
+    "captions": {
+      "relative_path": "assets/contract-control.srt",
+      "sha256": "5ca88be25d0f51fc96830c7aa5d420a99546614b05209ad867a490723a26ef27",
+      "size_bytes": 72,
+      "mime_type": "application/x-subrip"
+    },
+    "title": "Controlled release package",
+    "description": "A deterministic release-contract proof fixture.",
+    "contract": {
+      "schema_version": "1.0",
+      "name": "Controlled delivery brief",
+      "requirements": [
+        {
+          "id": "promo",
+          "instruction": "Use exact promo code SAVE25",
+          "provenance": "manual",
+          "source_excerpt": null,
+          "value": "SAVE25",
+          "type": "REQUIRED_EXACT_TOKEN",
+          "evaluation_class": "DETERMINISTIC"
+        },
+        {
+          "id": "duration",
+          "instruction": "Keep the video under ten seconds",
+          "provenance": "manual",
+          "source_excerpt": null,
+          "type": "MAX_DURATION",
+          "evaluation_class": "DETERMINISTIC",
+          "maximum_seconds": 10.0
+        },
+        {
+          "id": "resolution",
+          "instruction": "Deliver at least 1280×720",
+          "provenance": "manual",
+          "source_excerpt": null,
+          "type": "MIN_RESOLUTION",
+          "evaluation_class": "DETERMINISTIC",
+          "minimum_width": 1280,
+          "minimum_height": 720
+        },
+        {
+          "id": "aspect",
+          "instruction": "Deliver at 16:9",
+          "provenance": "manual",
+          "source_excerpt": null,
+          "type": "ASPECT_RATIO",
+          "evaluation_class": "DETERMINISTIC",
+          "width_ratio": 16,
+          "height_ratio": 9,
+          "tolerance": 0.02
+        },
+        {
+          "id": "captions",
+          "instruction": "Supply captions",
+          "provenance": "manual",
+          "source_excerpt": null,
+          "type": "CAPTIONS_REQUIRED",
+          "evaluation_class": "DETERMINISTIC"
+        }
+      ]
+    },
+    "report": {
+      "schema_version": "1.10",
+      "verdict": "BLOCKED",
+      "scan_completeness": "COMPLETE",
+      "review_mode": "local",
+      "execution_issues": [],
+      "media": {
+        "duration_seconds": 6.0,
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "file_size_bytes": 825221,
+        "has_video": true,
+        "video_stream_count": 1,
+        "video_codec": "h264",
+        "width": 1280,
+        "height": 720,
+        "display_aspect_ratio": "16:9",
+        "frame_rate": 24.0,
+        "pixel_format": "yuv420p",
+        "has_audio": true,
+        "audio_stream_count": 1,
+        "audio_codec": "aac",
+        "channel_count": 1,
+        "sample_rate": 48000
+      },
+      "findings": [
+        {
+          "code": "RELEASE_CONTRACT_PROMO",
+          "severity": "error",
+          "status": "BLOCKED",
+          "message": "Required evidence was not found in supplied captions. A similar token, SAVE20, appears at 00:00.50; it does not satisfy the exact requirement.",
+          "source": "release_contract.deterministic",
+          "timestamp_start_seconds": null,
+          "timestamp_end_seconds": null,
+          "details": {
+            "title": "Use exact promo code SAVE25",
+            "requirement_id": "promo",
+            "requirement_type": "REQUIRED_EXACT_TOKEN"
+          },
+          "suggestion": "Review the release requirement before delivery."
+        }
+      ],
+      "checks": [
+        {
+          "check_id": "media.video_stream",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "media.audio_stream",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "detector.black",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "detector.freeze",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "detector.silence",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "detector.audio_peak",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "video.minimum_width",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "video.minimum_height",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "video.aspect_ratio",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "title.required",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "title.recommended_length",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "description.required",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "description.url_syntax",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "chapters.syntax",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "captions.parse",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "captions.timing",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "captions.within_duration",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "captions.overlap",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "captions.text",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "captions.gaps",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "release_contract.promo",
+          "passed": false,
+          "finding_codes": [
+            "RELEASE_CONTRACT_PROMO"
+          ]
+        },
+        {
+          "check_id": "release_contract.duration",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "release_contract.resolution",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "release_contract.aspect",
+          "passed": true,
+          "finding_codes": []
+        },
+        {
+          "check_id": "release_contract.captions",
+          "passed": true,
+          "finding_codes": []
+        }
+      ],
+      "checks_run_count": 25,
+      "passed_check_count": 24,
+      "warning_count": 0,
+      "critical_count": 1,
+      "configuration_profile": "default",
+      "configuration_source": "judge-proof deterministic defaults",
+      "caption_summary": {
+        "source_format": "srt",
+        "cue_count": 1,
+        "first_caption_seconds": 0.5,
+        "last_caption_seconds": 2.5,
+        "covered_duration_seconds": 2.0,
+        "timeline_coverage_percent": 33.33333333333333
+      },
+      "ai_review": {
+        "enabled": false,
+        "provider": "gemini",
+        "model": "gemini-3.7-flash",
+        "status": "disabled",
+        "observation_count": 0,
+        "runtime_seconds": null,
+        "cleanup_succeeded": null,
+        "reason_code": null
+      },
+      "promise_check": {
+        "status": "disabled",
+        "inferred_promise": null,
+        "first_substantive_address_seconds": null,
+        "first_substantive_address_evidence": null,
+        "opening_alignment": null,
+        "overall_delivery": null,
+        "explanation": null,
+        "confidence": null,
+        "thumbnail_alignment": null
+      },
+      "viewer_pass": {
+        "status": "disabled",
+        "summary": null,
+        "issue_count": 0
+      },
+      "claim_review": {
+        "status": "disabled",
+        "claims_checked": 0,
+        "supported_count": 0,
+        "conflict_count": 0,
+        "insufficient_evidence_count": 0,
+        "explanation": null
+      },
+      "release_package": {
+        "video": {
+          "state": "PRESENT_VALID",
+          "detail": "1280×720 · 0:06"
+        },
+        "thumbnail": {
+          "state": "NOT_REQUIRED",
+          "detail": "Not supplied"
+        },
+        "captions": {
+          "state": "PRESENT_VALID",
+          "detail": "1 cues"
+        },
+        "title": {
+          "state": "PRESENT_VALID",
+          "detail": "Supplied"
+        },
+        "description": {
+          "state": "PRESENT_VALID",
+          "detail": "Supplied"
+        },
+        "chapters": {
+          "state": "NOT_REQUIRED",
+          "detail": "Not supplied"
+        },
+        "release_contract": {
+          "state": "PRESENT_VALID",
+          "detail": "5 requirements"
+        },
+        "thumbnail_mime_type": null,
+        "thumbnail_file_size_bytes": null,
+        "thumbnail_width": null,
+        "thumbnail_height": null,
+        "thumbnail_checks": [],
+        "delivery_preview": null,
+        "construction_seconds": 0.000029792077839374542,
+        "thumbnail_evaluation_seconds": 1.6705598682165146e-7,
+        "preview_metadata_seconds": 1.6600824892520905e-7
+      },
+      "release_contract": {
+        "contract": {
+          "schema_version": "1.0",
+          "name": "Controlled delivery brief",
+          "requirements": [
+            {
+              "id": "promo",
+              "instruction": "Use exact promo code SAVE25",
+              "provenance": "manual",
+              "source_excerpt": null,
+              "value": "SAVE25",
+              "type": "REQUIRED_EXACT_TOKEN",
+              "evaluation_class": "DETERMINISTIC"
+            },
+            {
+              "id": "duration",
+              "instruction": "Keep the video under ten seconds",
+              "provenance": "manual",
+              "source_excerpt": null,
+              "type": "MAX_DURATION",
+              "evaluation_class": "DETERMINISTIC",
+              "maximum_seconds": 10.0
+            },
+            {
+              "id": "resolution",
+              "instruction": "Deliver at least 1280×720",
+              "provenance": "manual",
+              "source_excerpt": null,
+              "type": "MIN_RESOLUTION",
+              "evaluation_class": "DETERMINISTIC",
+              "minimum_width": 1280,
+              "minimum_height": 720
+            },
+            {
+              "id": "aspect",
+              "instruction": "Deliver at 16:9",
+              "provenance": "manual",
+              "source_excerpt": null,
+              "type": "ASPECT_RATIO",
+              "evaluation_class": "DETERMINISTIC",
+              "width_ratio": 16,
+              "height_ratio": 9,
+              "tolerance": 0.02
+            },
+            {
+              "id": "captions",
+              "instruction": "Supply captions",
+              "provenance": "manual",
+              "source_excerpt": null,
+              "type": "CAPTIONS_REQUIRED",
+              "evaluation_class": "DETERMINISTIC"
+            }
+          ]
+        },
+        "results": [
+          {
+            "requirement_id": "promo",
+            "requirement_type": "REQUIRED_EXACT_TOKEN",
+            "instruction": "Use exact promo code SAVE25",
+            "evaluation_class": "DETERMINISTIC",
+            "status": "FAIL",
+            "expected": "SAVE25",
+            "evidence": "Required evidence was not found in supplied captions. A similar token, SAVE20, appears at 00:00.50; it does not satisfy the exact requirement.",
+            "evidence_source": "CAPTION_TEXT",
+            "timestamp_seconds": null,
+            "confidence": null,
+            "reason_code": null
+          },
+          {
+            "requirement_id": "duration",
+            "requirement_type": "MAX_DURATION",
+            "instruction": "Keep the video under ten seconds",
+            "evaluation_class": "DETERMINISTIC",
+            "status": "PASS",
+            "expected": "At most 10 seconds",
+            "evidence": "Decoded duration is 6 seconds.",
+            "evidence_source": "MEDIA_INSPECTION",
+            "timestamp_seconds": null,
+            "confidence": null,
+            "reason_code": null
+          },
+          {
+            "requirement_id": "resolution",
+            "requirement_type": "MIN_RESOLUTION",
+            "instruction": "Deliver at least 1280×720",
+            "evaluation_class": "DETERMINISTIC",
+            "status": "PASS",
+            "expected": "At least 1280×720",
+            "evidence": "Inspected resolution is 1280×720.",
+            "evidence_source": "MEDIA_INSPECTION",
+            "timestamp_seconds": null,
+            "confidence": null,
+            "reason_code": null
+          },
+          {
+            "requirement_id": "aspect",
+            "requirement_type": "ASPECT_RATIO",
+            "instruction": "Deliver at 16:9",
+            "evaluation_class": "DETERMINISTIC",
+            "status": "PASS",
+            "expected": "16:9",
+            "evidence": "Inspected frame is 1280×720.",
+            "evidence_source": "MEDIA_INSPECTION",
+            "timestamp_seconds": null,
+            "confidence": null,
+            "reason_code": null
+          },
+          {
+            "requirement_id": "captions",
+            "requirement_type": "CAPTIONS_REQUIRED",
+            "instruction": "Supply captions",
+            "evaluation_class": "DETERMINISTIC",
+            "status": "PASS",
+            "expected": "Valid supported captions",
+            "evidence": "Valid caption cues were supplied.",
+            "evidence_source": "CAPTION_TEXT",
+            "timestamp_seconds": null,
+            "confidence": null,
+            "reason_code": null
+          }
+        ],
+        "passed_count": 4,
+        "failed_count": 1,
+        "needs_review_count": 0,
+        "not_evaluated_count": 0,
+        "runtime_seconds": 0.00026124995201826096
+      },
+      "repair_plan": {
+        "proposals": [
+          {
+            "proposal_id": "repair-0068529944a5415e",
+            "finding_code": "RELEASE_CONTRACT_PROMO",
+            "finding_title": "Use exact promo code SAVE25",
+            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "source": "release_contract.deterministic",
+            "repairability": "HUMAN_ONLY",
+            "operation": null,
+            "start_seconds": null,
+            "end_seconds": null,
+            "expected_duration_change_seconds": null,
+            "original_start_seconds": null,
+            "original_end_seconds": null,
+            "evidence": {
+              "title": "Use exact promo code SAVE25",
+              "requirement_id": "promo",
+              "requirement_type": "REQUIRED_EXACT_TOKEN"
+            }
+          }
+        ],
+        "safe_count": 0,
+        "preview_required_count": 0,
+        "human_only_count": 1
+      },
+      "release_brief": {
+        "source": "deterministic",
+        "headline": "Publishing is blocked",
+        "summary": "Start here: use exact promo code SAVE25.",
+        "top_actions": [
+          "Use exact promo code SAVE25"
+        ],
+        "positive_note": null
+      },
+      "scan_duration_seconds": 0.24877687508706003
+    }
+  },
+  "revision": {
+    "generation_origin": "GENERATED_FROM_ENGINE",
+    "previous_video": {
+      "relative_path": "assets/yellowstone-revision-previous.mp4",
+      "sha256": "20d294eb9b52571f01f5fa0f51a49475657dc1c726f6adecf94558d7a6b42389",
+      "size_bytes": 9152724,
+      "mime_type": "video/mp4"
+    },
+    "revised_video": {
+      "relative_path": "assets/yellowstone-revision-revised.mp4",
+      "sha256": "da7382a207068ecd8f3124dc96143c6b2edc83852a371ab35866716114e7313b",
+      "size_bytes": 9483529,
+      "mime_type": "video/mp4"
+    },
+    "notes": "00:24-00:27 Restore the missing picture\n00:54-00:59 Restore the missing audio\n",
+    "report": {
+      "schema_version": "1.0",
+      "previous_filename": "yellowstone-revision-previous.mp4",
+      "revised_filename": "yellowstone-revision-revised.mp4",
+      "revision_map": {
+        "schema_version": "1.0",
+        "previous_sha256": "20d294eb9b52571f01f5fa0f51a49475657dc1c726f6adecf94558d7a6b42389",
+        "revised_sha256": "da7382a207068ecd8f3124dc96143c6b2edc83852a371ab35866716114e7313b",
+        "previous_duration_seconds": 212.166667,
+        "revised_duration_seconds": 212.166667,
+        "previous_streams": {
+          "width": 1280,
+          "height": 720,
+          "video_codec": "h264",
+          "has_audio": true,
+          "audio_codec": "aac"
+        },
+        "revised_streams": {
+          "width": 1280,
+          "height": 720,
+          "video_codec": "h264",
+          "has_audio": true,
+          "audio_codec": "aac"
+        },
+        "sampling_policy": {
+          "visual_samples_per_second": 2.0,
+          "maximum_visual_samples": 1200,
+          "descriptor_width": 17,
+          "descriptor_height": 9,
+          "audio_sample_rate": 8000,
+          "refinement_samples_per_second": 6.0,
+          "maximum_refinement_samples": 240
+        },
+        "previous_sample_count": 424,
+        "revised_sample_count": 424,
+        "estimated_unchanged_duration_seconds": 200.0,
+        "unchanged_ratio": 0.9426551438450037,
+        "unchanged_ratio_basis": "previous_duration",
+        "segments": [
+          {
+            "segment_id": "segment-0001",
+            "kind": "UNCHANGED",
+            "previous_start_seconds": 0.0,
+            "previous_end_seconds": 24.0,
+            "revised_start_seconds": 0.0,
+            "revised_end_seconds": 24.0,
+            "visual_distance": 0.010159181084198384,
+            "audio_distance": 0.0038256267361111164,
+            "visual_changed": false,
+            "audio_changed": false,
+            "match_confidence": 0.9911075297854194,
+            "boundary_confidence": "high"
+          },
+          {
+            "segment_id": "segment-0002",
+            "kind": "CHANGED",
+            "previous_start_seconds": 24.0,
+            "previous_end_seconds": 27.0,
+            "revised_start_seconds": 24.0,
+            "revised_end_seconds": 27.0,
+            "visual_distance": 0.46516188442479384,
+            "audio_distance": 0.003973341111111113,
+            "visual_changed": true,
+            "audio_changed": false,
+            "match_confidence": 0.6270758242379426,
+            "boundary_confidence": "ambiguous"
+          },
+          {
+            "segment_id": "segment-0003",
+            "kind": "UNCHANGED",
+            "previous_start_seconds": 27.0,
+            "previous_end_seconds": 54.0,
+            "revised_start_seconds": 27.0,
+            "revised_end_seconds": 54.0,
+            "visual_distance": 0.005411364135826206,
+            "audio_distance": 0.004799422808641978,
+            "visual_changed": false,
+            "audio_changed": false,
+            "match_confidence": 0.9947110241296108,
+            "boundary_confidence": "high"
+          },
+          {
+            "segment_id": "segment-0004",
+            "kind": "CHANGED",
+            "previous_start_seconds": 54.0,
+            "previous_end_seconds": 59.0,
+            "revised_start_seconds": 54.0,
+            "revised_end_seconds": 59.0,
+            "visual_distance": 0.0007632960399846196,
+            "audio_distance": 0.6826268398333334,
+            "visual_changed": false,
+            "audio_changed": true,
+            "match_confidence": 0.8628639952013456,
+            "boundary_confidence": "high"
+          },
+          {
+            "segment_id": "segment-0005",
+            "kind": "UNCHANGED",
+            "previous_start_seconds": 59.0,
+            "previous_end_seconds": 70.0,
+            "revised_start_seconds": 59.0,
+            "revised_end_seconds": 70.0,
+            "visual_distance": 0.0054699868931529835,
+            "audio_distance": 0.005328170681818187,
+            "visual_changed": false,
+            "audio_changed": false,
+            "match_confidence": 0.994558376349114,
+            "boundary_confidence": "high"
+          },
+          {
+            "segment_id": "segment-0006",
+            "kind": "CHANGED",
+            "previous_start_seconds": 70.0,
+            "previous_end_seconds": 74.0,
+            "revised_start_seconds": 70.0,
+            "revised_end_seconds": 74.0,
+            "visual_distance": 0.11434106681724977,
+            "audio_distance": 0.005720423124999995,
+            "visual_changed": true,
+            "audio_changed": false,
+            "match_confidence": 0.9073830619212002,
+            "boundary_confidence": "high"
+          },
+          {
+            "segment_id": "segment-0007",
+            "kind": "UNCHANGED",
+            "previous_start_seconds": 74.0,
+            "previous_end_seconds": 212.0,
+            "revised_start_seconds": 74.0,
+            "revised_end_seconds": 212.0,
+            "visual_distance": 0.005512901629250736,
+            "audio_distance": 0.0038853599939613517,
+            "visual_changed": false,
+            "audio_changed": false,
+            "match_confidence": 0.9930734762630246,
+            "boundary_confidence": "ambiguous"
+          }
+        ],
+        "ambiguity_notes": [
+          "Low-information, repeated, or weakly matched material reduced confidence for one or more regions."
+        ],
+        "analysis_runtime_seconds": 3.385965875000693,
+        "identical_file_fast_path": false
+      },
+      "revision_requests": [
+        {
+          "request_id": "request-0001",
+          "source_line": 1,
+          "text": "Restore the missing picture",
+          "previous_start_seconds": 24.0,
+          "previous_end_seconds": 27.0,
+          "explicit_range": true,
+          "status": "CHANGE_DETECTED",
+          "matched_segment_ids": [
+            "segment-0002"
+          ],
+          "evidence": "Media changed near this request: changed."
+        },
+        {
+          "request_id": "request-0002",
+          "source_line": 2,
+          "text": "Restore the missing audio",
+          "previous_start_seconds": 54.0,
+          "previous_end_seconds": 59.0,
+          "explicit_range": true,
+          "status": "CHANGE_DETECTED",
+          "matched_segment_ids": [
+            "segment-0004"
+          ],
+          "evidence": "Media changed near this request: changed."
+        }
+      ],
+      "requested_change_count": 2,
+      "requested_changes_detected_count": 2,
+      "requested_changes_not_detected_count": 0,
+      "requests_needing_location_count": 0,
+      "additional_changes": [
+        {
+          "segment_id": "segment-0006",
+          "kind": "CHANGED",
+          "previous_start_seconds": 70.0,
+          "previous_end_seconds": 74.0,
+          "revised_start_seconds": 70.0,
+          "revised_end_seconds": 74.0,
+          "visual_changed": true,
+          "audio_changed": false,
+          "boundary_confidence": "high"
+        }
+      ],
+      "additional_change_count": 1,
+      "analysis_runtime_seconds": 3.3861627089791
+    },
+    "receipt": {
+      "receipt_schema_version": "1.0",
+      "receipt_kind": "REVISION",
+      "created_at": "2026-09-07T13:12:20.399239Z",
+      "scanner_version": "0.0.0",
+      "verdict": "NOT_APPLICABLE",
+      "scan_completeness": "COMPLETE",
+      "configuration_fingerprint_sha256": "6a7c0c00e1aefd4905015b635b6124f60ab2b075ca5f1893593f4d5ec943ceae",
+      "previous_video": {
+        "sha256": "20d294eb9b52571f01f5fa0f51a49475657dc1c726f6adecf94558d7a6b42389",
+        "size_bytes": 9152724
+      },
+      "revised_video": {
+        "sha256": "da7382a207068ecd8f3124dc96143c6b2edc83852a371ab35866716114e7313b",
+        "size_bytes": 9483529
+      },
+      "revision_notes_sha256": "cddd2b6bbac2697e8e0e6c6d8f65709d096a8654714734b13ad1c59988d3577c",
+      "revision_fingerprint_sha256": "41066158563df5b77b4adc4b0cbc327d9bc6d87d843c72efce8e7605559ff6bd",
+      "deterministic_results": {
+        "unchanged_percentage": 94.26551438450036,
+        "requested_results": [
+          {
+            "request_id": "request-0001",
+            "instruction": "Restore the missing picture",
+            "status": "CHANGE_DETECTED",
+            "matched_segment_ids": [
+              "segment-0002"
+            ]
+          },
+          {
+            "request_id": "request-0002",
+            "instruction": "Restore the missing audio",
+            "status": "CHANGE_DETECTED",
+            "matched_segment_ids": [
+              "segment-0004"
+            ]
+          }
+        ],
+        "additional_changes": [
+          {
+            "segment_id": "segment-0006",
+            "kind": "CHANGED",
+            "previous_start_seconds": 70.0,
+            "previous_end_seconds": 74.0,
+            "revised_start_seconds": 70.0,
+            "revised_end_seconds": 74.0,
+            "visual_changed": true,
+            "audio_changed": false,
+            "boundary_confidence": "high"
+          }
+        ]
+      },
+      "advisory_results": {
+        "review_present": false,
+        "results": []
+      },
+      "human_dispositions": [],
+      "receipt_content_sha256": "f4af49a15a578f2832478d5592858374430291592e4ce3dc77e52d4590b98e49"
+    },
+    "receipt_valid": {
+      "status": "VALID",
+      "receipt_kind": "REVISION",
+      "recorded_verdict": "NOT_APPLICABLE",
+      "recorded_completeness": "COMPLETE",
+      "checks": [
+        "Receipt content digest matches.",
+        "Previous video hash matches.",
+        "Revised video hash matches.",
+        "Revision notes match."
+      ],
+      "mismatches": []
+    }
+  }
+}

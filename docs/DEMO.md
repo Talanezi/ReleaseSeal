@@ -2,6 +2,8 @@
 
 The demonstration tells one release-assurance story through two real workflows. It does not rely on precomputed reports or force probabilistic AI to return a preferred conclusion.
 
+For repository evaluation without a running backend, open the production frontend's `/proof/` entry. Judge Proof Mode is visibly disclosed as precomputed, reproducible evidence generated through the real engine. It is a portable inspection surface, not a substitute for the live walkthrough below and never claims to scan an arbitrary judge file.
+
 ## Demo assets
 
 ### Primary attributed demo

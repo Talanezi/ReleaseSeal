@@ -9,3 +9,4 @@
 Run both from the repository root. See the root `README.md` and `demo/README.md` for prerequisites, exact commands, and expected findings.
 
 - `generate_official_demo.py` is the maintainer-only regeneration path for the deliberately tracked three-minute judge asset. Judges use **Load demo** in the browser and do not need macOS `say`; only regeneration currently requires it.
+- `build_judge_proof.sh` is the single network-free M28 regeneration path. It builds compact portable proof assets from the installed attributed owner demo through production scan, repair, verification, contract, Revision, and receipt services, then runs `verify_judge_proof.py`. It exits nonzero rather than publishing stale or unexpected evidence. Judges only need the built frontend `/proof/` entry; regeneration requires the normal Python/FFmpeg environment and ignored owner-demo inputs.

@@ -2,6 +2,25 @@
 
 All automated commands below are network-free. “Observed” describes the current tests or an already accepted controlled run; it is not a guarantee for arbitrary media.
 
+## Portable Judge Proof
+
+`./scripts/build_judge_proof.sh` generates and validates `frontend/public/proof/judge-proof.json` from production services. `backend/tests/test_judge_proof.py` validates the strict schema, artifact identities, observed facts, correct-artifact receipt, and one-byte mutation mismatch. `frontend/src/JudgeProofApp.test.tsx` validates the static presentation and its generated-engine disclosure.
+
+| Claim | Fixture/source | Expected result | Production implementation | Automated test | Observed result |
+|---|---|---|---|---|---|
+| Black detection | Attributed USGS Final Export derivative | Timestamped black finding | `PreflightScanner` + video detectors | `test_judge_proof_records_real_engine_acceptance_facts` | `24.00–27.08` detected |
+| Safe repair | Same artifact | Allowlisted range removed | `FFmpegRepairEngine` | same test + generated bundle | One `REMOVE_RANGE` operation |
+| Repaired re-scan | Repaired USGS artifact | Target resolved | `verify_repair` + scanner | same test | Black target resolved |
+| Unexpected-change protection | Original/repaired pair | Zero unrelated changes | deterministic verification | same test | 0 unexpected changes |
+| Deliberate unrelated mutation | Controlled verification fixture | Mutation detected | deterministic verification | `test_verification.py::test_visual_regression_detects_deliberate_unaffected_mutation` | Detected |
+| Contract failure | Generated 6s media + supplied SRT | SAVE25 absent; SAVE20 near-match; BLOCKED | `ReleaseContractEvaluator` through scanner | `test_judge_proof_records_real_engine_acceptance_facts` | 4 pass, 1 deterministic fail |
+| Missing text evidence | Contract fixture without captions | NOT_EVALUATED, never silent pass | `ReleaseContractEvaluator` | `test_release_contract.py::test_missing_text_source_is_not_evaluated_and_late_mention_fails` | NOT_EVALUATED |
+| Revision mapping | Authentic USGS Previous/Revised pair | 2 requested changes and 1 additional | `RevisionCheckService` | Judge proof test + `test_revision_check.py` | 94.3% unchanged; 2/2; 1 additional |
+| Whole release package | USGS video + authentic thumbnail | Truthful package states and delivery metadata | `release_package.py` through scanner | Judge proof UI test + `test_release_package.py` | 1333×750 JPEG; 3:32 badge |
+| Receipt valid | Repaired shipping artifact | VALID | receipt builders + `ReceiptVerifier` | Judge proof test + `test_release_receipt.py` | VALID |
+| Wrong receipt artifact | One-byte-mutated temporary copy | MISMATCH | `ReceiptVerifier` | self-check + Judge proof test | MISMATCH |
+| Stale receipt digest | Controlled edited receipt | INVALID_RECEIPT | `ReceiptVerifier` | `test_release_receipt.py::test_modified_receipt_with_stale_digest_is_invalid` | INVALID_RECEIPT |
+
 ## Final Export matrix
 
 | Case | Expected result | Observed result | Reproducible evidence | Class |

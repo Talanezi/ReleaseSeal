@@ -2,6 +2,8 @@
 
 Creator Preflight is creative release assurance for two related decisions: whether one final export is ready to ship, and whether a revised cut changed where the notes expected it to.
 
+Start at `/proof/` for a backend-free inspection path. The page links every claim to typed, generated engine state and clearly discloses that the evidence is precomputed. Rebuild and self-verify it with `./scripts/build_judge_proof.sh`.
+
 ## Functionality
 
 | Implemented capability | Evidence | Where to look | Material boundary |
@@ -20,6 +22,13 @@ The product treats finished-media release as an assurance problem rather than an
 
 Evidence: the two first-class workflows in `frontend/src/App.tsx`, shared typed contracts, and the end-to-end walkthrough in `docs/DEMO.md`.
 
+- Treats release readiness as an evidence-and-obligation problem, not another generative editor.
+- Connects a bounded repair to an automatic re-scan and unaffected-media regression check.
+- Separates requested Revision changes from additional physical changes and optional semantic interpretation.
+- Binds exact package artifacts and recorded decisions in a machine-verifiable receipt without overclaiming a signature.
+
+Proof pointers: `/proof/` sections B–E, `test_verification.py`, `test_revision_check.py`, and `test_release_receipt.py`.
+
 ## Technical execution
 
 - FFmpeg/FFprobe subprocesses are bounded and never use a shell.
@@ -31,8 +40,18 @@ Evidence: the two first-class workflows in `frontend/src/App.tsx`, shared typed 
 
 Evidence: `backend/tests/test_verification.py`, `test_revision.py`, `test_revision_check.py`, `test_revision_semantic.py`, and `.github/workflows/ci.yml`.
 
+Judge Proof itself is strict and self-verifying: Pydantic rejects unknown bundle fields and unsafe artifact paths; every referenced asset is SHA-256 checked; expected production facts are asserted; and exact receipt verification is rerun against both the correct and a temporary one-byte-mutated artifact. See `creator_preflight/judge_proof.py`, `scripts/build_judge_proof.py`, `scripts/verify_judge_proof.py`, and `test_judge_proof.py`.
+
 ## Real-world usefulness
 
 Final Export catches release defects at seekable timestamps and helps with a limited safe correction. Revision gives creators and reviewers a concrete change map rather than requiring a full manual rewatch to discover every physical edit. Downloads provide portable JSON/Markdown/CSV evidence.
 
 Boundary: this is a local, single-user release candidate, not a hosted collaboration or general editing system. AI can abstain and does not certify release safety.
+
+- Final Export puts black, silence, caption, package, and contract evidence at source timecodes.
+- Repair approval never overwrites the original and the corrected output is rechecked before presentation.
+- Release Contract catches delivery obligations that technical QC cannot, demonstrated by SAVE25 versus actual caption evidence SAVE20.
+- Revision shows whether requested regions physically changed and preserves unmentioned changes for review.
+- The package/receipt path connects what was inspected to the exact artifact intended to ship.
+
+Evidence pointers: `/proof/`, `docs/EVIDENCE.md`, and the focused production tests named there.
