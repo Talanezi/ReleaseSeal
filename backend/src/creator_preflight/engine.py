@@ -61,6 +61,8 @@ from creator_preflight.release_contract import (
     evaluate_release_contract,
     evaluate_semantic_requirements,
 )
+from creator_preflight.release_evidence import AudioEvidenceState
+from creator_preflight.release_plan import build_release_plan
 from creator_preflight.release_package import DEFAULT_DELIVERY_SURFACES, evaluate_release_package
 from creator_preflight.rules import evaluate_package_rules
 from creator_preflight.transcription import (
@@ -692,6 +694,12 @@ class PreflightScanner:
             else ScanCompleteness.COMPLETE
         )
         repair_plan = build_repair_plan(findings)
+        audio_evidence = AudioEvidenceState()
+        release_plan = build_release_plan(
+            contract=contract_evaluation,
+            repair_plan=repair_plan,
+            audio_evidence=audio_evidence,
+        )
         release_brief = deterministic_release_brief(
             verdict=verdict,
             completeness=completeness,
@@ -746,7 +754,9 @@ class PreflightScanner:
             claim_review=claim_summary,
             release_package=release_package_result.summary,
             release_contract=contract_evaluation,
+            audio_evidence=audio_evidence,
             repair_plan=repair_plan,
+            release_plan=release_plan,
             release_brief=release_brief,
             scan_duration_seconds=perf_counter() - started_at,
         )

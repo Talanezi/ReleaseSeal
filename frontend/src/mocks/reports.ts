@@ -215,6 +215,11 @@ export const needsReviewReport: PreflightReport = {
     not_evaluated_count: 0,
     runtime_seconds: 0,
   },
+  audio_evidence: {
+    status: "NOT_NEEDED", reason: "No local audio evidence recovery was requested.",
+    artifact_sha256: null, engine: null, model: null, transcript_character_count: 0,
+    transcript_truncated: false, candidates: [], confirmations: [], runtime_seconds: 0,
+  },
   repair_plan: {
     proposals: findings.map((finding, index) => {
       const repairable = finding.code === "VIDEO_BLACK_SEGMENT";
@@ -243,6 +248,10 @@ export const needsReviewReport: PreflightReport = {
     safe_count: 0,
     preview_required_count: 1,
     human_only_count: 4,
+  },
+  release_plan: {
+    items: [], blocking_requirement_count: 0, safe_automation_count: 0,
+    confirm_evidence_count: 0, human_review_count: 0, informational_count: 0,
   },
   release_brief: {
     source: "deterministic",

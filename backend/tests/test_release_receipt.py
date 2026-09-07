@@ -6,9 +6,12 @@ from pathlib import Path
 import pytest
 
 from creator_preflight.config import PreflightConfig
+from creator_preflight.captions import SpeechSegment
 from creator_preflight.engine import PreflightScanner
 from creator_preflight.models import PublishingPackage
-from creator_preflight.release_contract import MaxDuration, ReleaseContract, ReleaseContractEvaluation
+from creator_preflight.release_contract import MaxDuration, ReleaseContract, ReleaseContractEvaluation, RequiredExactToken
+from creator_preflight.release_evidence import confirm_machine_candidate, file_sha256, recover_machine_evidence
+from creator_preflight.release_report_updates import with_contract_evidence
 from creator_preflight.release_receipt import (
     RECEIPT_ADAPTER,
     ReceiptVerificationStatus,
@@ -154,6 +157,37 @@ def test_contract_requirement_result_edit_invalidates_receipt(video_with_audio: 
     payload = _receipt(video_with_audio, report, config).model_dump(mode="json")
     payload["package"]["contract"]["deterministic_results"][0]["status"] = "PASS"
     assert ReceiptVerifier().verify(payload, video_path=video_with_audio).status is ReceiptVerificationStatus.INVALID_RECEIPT
+
+
+def test_receipt_records_human_confirmed_audio_evidence(video_with_audio: Path, ready_report) -> None:
+    _, config = ready_report
+    contract = ReleaseContract(requirements=[RequiredExactToken(
+        id="promo", type="REQUIRED_EXACT_TOKEN", instruction="Say SAVE25", value="SAVE25",
+    )])
+    report = PreflightScanner(config=config).scan(
+        video_with_audio,
+        PublishingPackage(title="Exact title", description="Exact description", release_contract=contract),
+    )
+    artifact_sha = file_sha256(video_with_audio)
+    state, evaluation = recover_machine_evidence(
+        artifact_path=video_with_audio, artifact_sha256=artifact_sha, contract=contract,
+        current_evaluation=report.release_contract,
+        segments=[SpeechSegment(.25, .75, "SAVE25")], model="tiny.en",
+        maximum_candidates_per_requirement=3, maximum_transcript_characters=20_000,
+    )
+    state, evaluation = confirm_machine_candidate(
+        evaluation=evaluation, state=state, candidate_id=state.candidates[0].candidate_id,
+        artifact_sha256=artifact_sha, confirmed_at=CONTROLLED_TIME,
+    )
+    report = with_contract_evidence(report, evaluation=evaluation, audio_evidence=state)
+    assert report.verdict.value == "READY"
+    assert report.scan_completeness.value == "COMPLETE"
+    receipt = _receipt(video_with_audio, report, config)
+    recorded = receipt.package.contract.deterministic_results[0]
+    assert recorded.evidence_source.value == "HUMAN_CONFIRMED_AUDIO_EVIDENCE"
+    assert recorded.audio_evidence.artifact_sha256 == artifact_sha
+    assert recorded.audio_evidence.start_seconds == .25
+    assert recorded.audio_evidence.confirmed_at == CONTROLLED_TIME
 
 
 @pytest.mark.parametrize("path,value", [("verdict", "BLOCKED"), ("deterministic_results.contract_failed", 9)])

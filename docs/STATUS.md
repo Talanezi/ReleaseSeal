@@ -2,11 +2,18 @@
 
 ## Current milestone
 
-Milestone 30 — Automated Thumbnail Delivery Assurance.
+Milestone 31 — Automatic Evidence Recovery + Verified Release Autopilot.
 
-Status: Complete on 2026-09-07. No live provider call was required.
+Status: Complete on 2026-09-07. No provider or network call was made.
 
 ## Completed
+
+- Milestone 31 adds explicit provenance for supplied captions, publishing metadata, media measurements, local machine transcripts, and human-confirmed audio evidence. Optional post-scan recovery reuses the local-only faster-whisper adapter and existing upload/origin/capacity controls; it is bounded to four hours, three candidates per requirement, and 20,000 retained transcript characters.
+- Machine transcript candidates are artifact-, requirement-, proposition-, and source-range-bound and can only request review. A missing match never proves absence. Explicit backend confirmation can establish only bounded presence: required presence may pass, on-time presence may pass, forbidden presence may fail, and a late occurrence remains review-only because it cannot prove no earlier occurrence.
+- Backend-only contract reevaluation updates report truth without rerunning unrelated media or Gemini work. Changed artifacts, requirements, ranges, or propositions reject stale confirmations; repaired scans intentionally require fresh evidence. Confirmed evidence is included in JSON/Markdown/CSV handoffs and the existing receipt contract-result binding without changing receipt canonicalization.
+- The backend-owned Release Plan categorizes blocking requirements, existing safe repairs, evidence to confirm, human review, and informational gaps. “Run safe fixes” is only presentation over already approved SAFE `REMOVE_RANGE` proposals; preview/approval, repair, repaired re-scan, deterministic regression verification, and exact shipping-artifact receipt rules remain mandatory.
+- M31 affected backend regression coverage passed 202 tests with one upstream Starlette TestClient warning; the final Release Plan correction passed its 41-test API/evidence subset. The complete frontend suite passed 88 tests, followed by a green 64-test affected UI rerun. TypeScript and the two-entry Vite production build passed with 1,835 modules, Python compile passed, and `git diff --check` passed.
+- Median local application-layer measurements over seven runs were 2.132916ms for candidate matching across 600 already-produced transcript segments, 0.025282ms for one evidence confirmation reevaluation, and 0.021267ms for Release Plan construction. No real local-model smoke test was run, so M31 makes no ASR latency claim.
 
 - Milestone 30 adds an isolated, deterministic thumbnail-assurance service behind the validated M27 Release Package boundary. It uses one bounded FFmpeg RGB decode, independently implemented text-like geometry/gradient analysis, conservative fragment consolidation and abstention, measured delivered cap-height across the four existing delivery surfaces, advisory estimated local contrast, exact duration-badge/safe-edge intersection geometry, and advisory downscale/detail retention. It adds no OCR, model weights, face detection, saliency, provider call, randomness, accessibility certification, CTR/virality claim, or combined quality score.
 - Assurance evidence is explicitly `MEASURED`, `ADVISORY`, or `NOT_EVALUATED`. Confident small text, weak estimated contrast, chrome collision, and edge risk may produce review-only findings; they never create a deterministic block. Malformed or absent thumbnails remain owned by M27 and do not run M30 analysis. Report schema 1.11 carries the strict assurance report through the existing result and JSON/Markdown/CSV handoff paths without changing Release Contract or receipt semantics.

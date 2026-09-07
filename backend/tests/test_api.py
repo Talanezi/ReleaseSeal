@@ -13,11 +13,13 @@ from creator_preflight import api as api_module
 from creator_preflight.detectors import DetectorExecutionError
 from creator_preflight.config import PreflightConfig
 from creator_preflight.ai_review import GeminiVideoReviewer
+from creator_preflight.captions import SpeechSegment
 from creator_preflight.engine import PreflightScanner
 from creator_preflight.models import PublishingPackage
 from creator_preflight.repair_models import RepairOperation
 from creator_preflight.repairs import FFmpegRepairEngine
 from creator_preflight.release_contract import MaxDuration, ReleaseContract, RequiredExactToken
+from creator_preflight.transcription import TranscriptionUnavailableError
 
 client = TestClient(app)
 
@@ -87,7 +89,7 @@ def test_unified_api_scan_returns_preflight_report(video_with_audio: Path) -> No
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["schema_version"] == "1.11"
+    assert payload["schema_version"] == "1.12"
     assert payload["review_mode"] == "local"
     assert payload["scan_completeness"] == "COMPLETE"
     assert payload["ai_review"]["status"] == "disabled"
@@ -134,6 +136,116 @@ def test_extract_contract_route_returns_validated_contract(monkeypatch) -> None:
     assert response.json()["requirements"][0]["value"] == "SAVE25"
 
 
+def test_audio_evidence_recovery_and_confirmation_use_real_multipart_boundary(
+    monkeypatch, video_with_audio: Path,
+) -> None:
+    contract = ReleaseContract(requirements=[RequiredExactToken(
+        id="promo", type="REQUIRED_EXACT_TOKEN", instruction="Say SAVE25", value="SAVE25",
+    )])
+    with video_with_audio.open("rb") as media_file:
+        scan = client.post(
+            "/api/v1/preflight/scan",
+            files={"file": ("release.mp4", media_file, "video/mp4")},
+            data={"title": "Release", "release_contract_json": contract.model_dump_json()},
+        )
+    assert scan.status_code == 200
+    assert scan.json()["release_contract"]["results"][0]["status"] == "NOT_EVALUATED"
+
+    class FakeTranscriber:
+        def transcribe(self, media_path, config):
+            assert Path(media_path).suffix == ".mp4"
+            assert config.local_files_only is True
+            return [SpeechSegment(.25, .75, "Use SAVE25 today")]
+
+    monkeypatch.setattr(api_module, "WhisperTranscriber", FakeTranscriber)
+    with video_with_audio.open("rb") as media_file:
+        recovered = client.post(
+            "/api/v1/release-contracts/recover-audio-evidence",
+            files={"file": ("release.mp4", media_file, "video/mp4")},
+            data={"report_json": json.dumps(scan.json())},
+        )
+    assert recovered.status_code == 200
+    recovered_json = recovered.json()
+    assert recovered_json["release_contract"]["results"][0]["status"] == "NEEDS_REVIEW"
+    assert recovered_json["release_contract"]["results"][0]["evidence_source"] == "LOCAL_MACHINE_TRANSCRIPT"
+    assert recovered_json["critical_count"] == scan.json()["critical_count"]
+    assert recovered_json["release_contract"]["failed_count"] == 0
+    candidate = recovered_json["audio_evidence"]["candidates"][0]
+    assert candidate["artifact_sha256"] == recovered_json["audio_evidence"]["artifact_sha256"]
+    assert recovered_json["release_plan"]["confirm_evidence_count"] == 1
+
+    with video_with_audio.open("rb") as media_file:
+        confirmed = client.post(
+            "/api/v1/release-contracts/confirm-audio-evidence",
+            files={"file": ("release.mp4", media_file, "video/mp4")},
+            data={"report_json": json.dumps(recovered_json), "candidate_id": candidate["candidate_id"]},
+        )
+    assert confirmed.status_code == 200
+    confirmed_json = confirmed.json()
+    result = confirmed_json["release_contract"]["results"][0]
+    assert result["status"] == "PASS"
+    assert result["evidence_source"] == "HUMAN_CONFIRMED_AUDIO_EVIDENCE"
+    assert result["audio_evidence"]["artifact_sha256"] == candidate["artifact_sha256"]
+    assert confirmed_json["audio_evidence"]["confirmations"][0]["confirmed_value"] == "SAVE25"
+    assert confirmed_json["release_plan"]["confirm_evidence_count"] == 0
+
+
+def test_audio_confirmation_rejects_changed_artifact(monkeypatch, video_with_audio: Path) -> None:
+    contract = ReleaseContract(requirements=[RequiredExactToken(
+        id="promo", type="REQUIRED_EXACT_TOKEN", instruction="Say SAVE25", value="SAVE25",
+    )])
+    report = PreflightScanner(config=PreflightConfig()).scan(
+        video_with_audio, PublishingPackage(title="Release", release_contract=contract)
+    )
+
+    class FakeTranscriber:
+        def transcribe(self, media_path, config):
+            return [SpeechSegment(.25, .75, "SAVE25")]
+
+    monkeypatch.setattr(api_module, "WhisperTranscriber", FakeTranscriber)
+    with video_with_audio.open("rb") as media_file:
+        recovered = client.post(
+            "/api/v1/release-contracts/recover-audio-evidence",
+            files={"file": ("release.mp4", media_file, "video/mp4")},
+            data={"report_json": report.model_dump_json()},
+        ).json()
+    changed = bytearray(video_with_audio.read_bytes())
+    changed[-1] ^= 1
+    response = client.post(
+        "/api/v1/release-contracts/confirm-audio-evidence",
+        files={"file": ("release.mp4", bytes(changed), "video/mp4")},
+        data={"report_json": json.dumps(recovered), "candidate_id": recovered["audio_evidence"]["candidates"][0]["candidate_id"]},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "audio_evidence_invalid"
+
+
+def test_audio_evidence_model_unavailable_is_not_a_content_failure(monkeypatch, video_with_audio: Path) -> None:
+    contract = ReleaseContract(requirements=[RequiredExactToken(
+        id="promo", type="REQUIRED_EXACT_TOKEN", instruction="Say SAVE25", value="SAVE25",
+    )])
+    report = PreflightScanner(config=PreflightConfig()).scan(
+        video_with_audio, PublishingPackage(title="Release", release_contract=contract)
+    )
+
+    class UnavailableTranscriber:
+        def transcribe(self, media_path, config):
+            raise TranscriptionUnavailableError("transcription_model_unavailable", "No local model is installed.")
+
+    monkeypatch.setattr(api_module, "WhisperTranscriber", UnavailableTranscriber)
+    with video_with_audio.open("rb") as media_file:
+        response = client.post(
+            "/api/v1/release-contracts/recover-audio-evidence",
+            files={"file": ("release.mp4", media_file, "video/mp4")},
+            data={"report_json": report.model_dump_json()},
+        )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["audio_evidence"]["status"] == "UNAVAILABLE"
+    assert payload["release_contract"]["results"][0]["status"] == "NOT_EVALUATED"
+    assert payload["critical_count"] == report.critical_count
+
+
 def test_final_export_receipt_route_hashes_exact_uploaded_package(video_with_audio: Path) -> None:
     config = PreflightConfig()
     config.rules.video.minimum_width = 160
@@ -172,7 +284,7 @@ def test_unified_api_anomaly_report_matches_real_frontend_contract(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["schema_version"] == "1.11"
+    assert payload["schema_version"] == "1.12"
     assert payload["ai_review"]["status"] == "disabled"
     assert payload["verdict"] == "NEEDS_REVIEW"
     assert payload["media"]["width"] == 1280
@@ -718,6 +830,8 @@ def test_verify_repair_rescans_and_returns_typed_report(api_anomaly_video: Path,
     assert payload["integrity"]["passed"] is True
     assert payload["repaired_preflight_report"]["review_mode"] == "local"
     assert payload["repaired_preflight_report"]["release_contract"]["passed_count"] == 1
+    assert payload["repaired_preflight_report"]["audio_evidence"]["confirmations"] == []
+    assert payload["repaired_preflight_report"]["audio_evidence"]["artifact_sha256"] is None
     assert any(item["original_finding"]["code"] == "VIDEO_BLACK_SEGMENT" for item in payload["resolved"])
     assert payload["unexpected_changes"] == []
     assert payload["review_reel_available"] is True

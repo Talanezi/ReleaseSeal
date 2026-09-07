@@ -11,6 +11,7 @@ from functools import partial
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
 from threading import Lock
+from time import perf_counter
 
 import anyio
 from fastapi import FastAPI, File, Form, Request, UploadFile
@@ -39,6 +40,13 @@ from creator_preflight.progress import ScanProgress, ScanProgressStage, ScanProg
 from creator_preflight.repair_models import RepairOperation, RepairOperationBatch
 from creator_preflight.release_contract import MAX_BRIEF_CHARACTERS, ReleaseContract
 from creator_preflight.release_contract_extraction import GeminiReleaseContractExtractor
+from creator_preflight.release_evidence import (
+    confirm_machine_candidate,
+    file_sha256,
+    recover_machine_evidence,
+    unavailable_evidence_state,
+)
+from creator_preflight.release_report_updates import with_contract_evidence
 from creator_preflight.release_receipt import (
     FinalExportReceipt,
     HumanDispositionRecord,
@@ -57,6 +65,7 @@ from creator_preflight.revision_semantic import (
 )
 from creator_preflight.revision_semantic_models import RevisionSemanticReviewReport
 from creator_preflight.thumbnails import ThumbnailValidationError
+from creator_preflight.transcription import TranscriptionUnavailableError, WhisperTranscriber
 from creator_preflight.verification import transform_caption_file, verify_repair
 from creator_preflight.verification_models import ReviewReelManifest, VerificationReport
 
@@ -89,6 +98,10 @@ class ReleaseContractInputError(Exception):
 
 class ReleaseReceiptInputError(Exception):
     message = "The release receipt inputs could not be validated."
+
+
+class AudioEvidenceInputError(Exception):
+    message = "The local audio evidence request could not be validated."
 
 
 class _ProcessScanCapacity:
@@ -184,6 +197,12 @@ async def release_receipt_input_error_handler(request: Request, exc: ReleaseRece
     return _error_response(400, "release_receipt_invalid", exc.message)
 
 
+@app.exception_handler(AudioEvidenceInputError)
+async def audio_evidence_input_error_handler(request: Request, exc: AudioEvidenceInputError) -> JSONResponse:
+    del request
+    return _error_response(400, "audio_evidence_invalid", exc.message)
+
+
 @app.exception_handler(RepairError)
 async def repair_error_handler(request: Request, exc: RepairError) -> JSONResponse:
     del request
@@ -254,6 +273,11 @@ async def capabilities() -> PreflightCapabilities:
         ),
         transcription_dependency_available=_module_available("faster_whisper"),
         transcription_enabled=config.transcription.enabled,
+        local_evidence_recovery_available=(
+            local_available
+            and config.transcription.evidence_recovery_enabled
+            and _module_available("faster_whisper")
+        ),
         supported_review_modes=[ReviewMode.FULL, ReviewMode.LOCAL],
         maximum_video_upload_size_bytes=config.api.maximum_video_upload_size_bytes,
         full_review_unavailable_reasons=reasons,
@@ -276,6 +300,129 @@ async def extract_release_contract(request: Request, brief: str = Form(...)) -> 
         )
     finally:
         _scan_capacity.release()
+
+
+@app.post("/api/v1/release-contracts/recover-audio-evidence", response_model=PreflightReport)
+async def recover_release_audio_evidence(
+    request: Request,
+    file: UploadFile = File(...),
+    report_json: str = Form(...),
+) -> PreflightReport:
+    """Recover advisory candidates from local ASR without changing contract truth silently."""
+
+    config, _ = _api_config()
+    try:
+        _require_allowed_origin(request, config)
+    except RequestOriginError:
+        await file.close()
+        raise
+    try:
+        report = PreflightReport.model_validate_json(report_json)
+    except (ValidationError, ValueError, TypeError) as exc:
+        await file.close()
+        raise AudioEvidenceInputError() from exc
+    if not _scan_capacity.acquire(config.api.maximum_concurrent_scans):
+        await file.close()
+        raise ScanBusyError()
+    started = perf_counter()
+    try:
+        with TemporaryDirectory(prefix="creator-preflight-evidence-") as temporary_directory:
+            path = _media_temp_path(temporary_directory, file.filename)
+            await _copy_upload(file, path, config.api.maximum_video_upload_size_bytes)
+            if path.stat().st_size != report.media.file_size_bytes:
+                raise AudioEvidenceInputError()
+            artifact_sha = await anyio.to_thread.run_sync(partial(file_sha256, path))
+            if not config.transcription.evidence_recovery_enabled or not report.media.has_audio:
+                state = unavailable_evidence_state(
+                    artifact_sha256=artifact_sha,
+                    code="audio_evidence_unavailable",
+                    message="Local audio evidence recovery is unavailable for this artifact.",
+                    runtime_seconds=perf_counter() - started,
+                )
+                return with_contract_evidence(report, evaluation=report.release_contract, audio_evidence=state)
+            if (
+                report.media.duration_seconds is not None
+                and report.media.duration_seconds > config.transcription.maximum_evidence_duration_seconds
+            ):
+                state = unavailable_evidence_state(
+                    artifact_sha256=artifact_sha,
+                    code="audio_evidence_duration_limit",
+                    message="This video exceeds the configured local evidence-recovery duration limit.",
+                    runtime_seconds=perf_counter() - started,
+                )
+                return with_contract_evidence(report, evaluation=report.release_contract, audio_evidence=state)
+            try:
+                segments = await anyio.to_thread.run_sync(
+                    partial(WhisperTranscriber().transcribe, path, config.transcription)
+                )
+            except TranscriptionUnavailableError as exc:
+                state = unavailable_evidence_state(
+                    artifact_sha256=artifact_sha,
+                    code=exc.code,
+                    message=exc.message,
+                    runtime_seconds=perf_counter() - started,
+                )
+                return with_contract_evidence(report, evaluation=report.release_contract, audio_evidence=state)
+            state, evaluation = recover_machine_evidence(
+                artifact_path=path,
+                artifact_sha256=artifact_sha,
+                contract=report.release_contract.contract,
+                current_evaluation=report.release_contract,
+                segments=segments,
+                model=config.transcription.model,
+                maximum_candidates_per_requirement=config.transcription.maximum_evidence_candidates_per_requirement,
+                maximum_transcript_characters=config.transcription.maximum_evidence_transcript_characters,
+                started_at=started,
+            )
+            return with_contract_evidence(report, evaluation=evaluation, audio_evidence=state)
+    finally:
+        _scan_capacity.release()
+        await file.close()
+
+
+@app.post("/api/v1/release-contracts/confirm-audio-evidence", response_model=PreflightReport)
+async def confirm_release_audio_evidence(
+    request: Request,
+    file: UploadFile = File(...),
+    report_json: str = Form(...),
+    candidate_id: str = Form(...),
+) -> PreflightReport:
+    """Confirm one exact bounded proposition and reevaluate only its requirement."""
+
+    config, _ = _api_config()
+    try:
+        _require_allowed_origin(request, config)
+    except RequestOriginError:
+        await file.close()
+        raise
+    try:
+        report = PreflightReport.model_validate_json(report_json)
+    except (ValidationError, ValueError, TypeError) as exc:
+        await file.close()
+        raise AudioEvidenceInputError() from exc
+    if not _scan_capacity.acquire(config.api.maximum_concurrent_scans):
+        await file.close()
+        raise ScanBusyError()
+    try:
+        with TemporaryDirectory(prefix="creator-preflight-confirm-evidence-") as temporary_directory:
+            path = _media_temp_path(temporary_directory, file.filename)
+            await _copy_upload(file, path, config.api.maximum_video_upload_size_bytes)
+            if path.stat().st_size != report.media.file_size_bytes:
+                raise AudioEvidenceInputError()
+            artifact_sha = await anyio.to_thread.run_sync(partial(file_sha256, path))
+            try:
+                state, evaluation = confirm_machine_candidate(
+                    evaluation=report.release_contract,
+                    state=report.audio_evidence,
+                    candidate_id=candidate_id,
+                    artifact_sha256=artifact_sha,
+                )
+            except ValueError as exc:
+                raise AudioEvidenceInputError() from exc
+            return with_contract_evidence(report, evaluation=evaluation, audio_evidence=state)
+    finally:
+        _scan_capacity.release()
+        await file.close()
 
 
 @app.post("/api/v1/release-receipts/final-export", response_model=FinalExportReceipt)

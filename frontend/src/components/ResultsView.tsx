@@ -17,8 +17,8 @@ import {
   Tag,
 } from "lucide-react";
 import type { Finding, FindingStatus, PreflightReport } from "../types/preflight";
-import { createFinalExportReceipt, errorPresentation } from "../api/preflight";
-import { RepairPanel } from "./RepairPanel";
+import { confirmAudioEvidence, createFinalExportReceipt, errorPresentation, recoverAudioEvidence } from "../api/preflight";
+import { exportReport, RepairPanel } from "./RepairPanel";
 import {
   findingCategory,
   findingTitle,
@@ -33,6 +33,8 @@ interface ResultsViewProps {
   filename?: string;
   previewUrl?: string | null;
   sourceFile?: File | null;
+  evidenceRecoveryAvailable?: boolean;
+  onReportUpdate?: (report: PreflightReport) => void;
   packageInput?: { title: string; description: string; captions?: File | null; thumbnail?: File | null; reviewMode: "full" | "local" };
 }
 
@@ -57,6 +59,8 @@ export function ResultsView({
   filename = "creator-export-final.mp4",
   previewUrl,
   sourceFile = null,
+  evidenceRecoveryAvailable = false,
+  onReportUpdate,
   packageInput,
 }: ResultsViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -167,7 +171,13 @@ export function ResultsView({
       <ReleasePackageResults report={report} thumbnail={packageInput?.thumbnail ?? null} />
 
       {report.release_contract.contract && (
-        <ReleaseRequirementsResults report={report} onSeek={seekToSeconds} />
+        <ReleaseRequirementsResults
+          report={report}
+          sourceFile={sourceFile}
+          recoveryAvailable={evidenceRecoveryAvailable}
+          onReportUpdate={onReportUpdate}
+          onSeek={seekToSeconds}
+        />
       )}
 
       {report.review_mode === "full" && <ReviewDetails report={report} />}
@@ -219,7 +229,7 @@ export function ResultsView({
         onSelectMedia={selectMedia}
         packageInput={packageInput}
       />
-      {report.repair_plan.proposals.length === 0 && (
+      {report.repair_plan.proposals.length === 0 && report.release_plan.items.length === 0 && (
         <OriginalReceiptAction report={report} sourceFile={sourceFile} packageInput={packageInput} />
       )}
 
@@ -387,23 +397,71 @@ function OriginalReceiptAction({ report, sourceFile, packageInput }: {
     } catch (reason) { setError(errorPresentation(reason).message); }
     finally { setLoading(false); }
   };
-  return <section className="release-receipt" aria-labelledby="release-receipt-heading">
+  return <>
+    <div className="report-export" aria-label="Export report">
+      <span>Export report</span>
+      {(["csv", "markdown", "json"] as const).map((format) => <button key={format} className="text-button" type="button" onClick={() => exportReport(format, report, {}, null)}>{format === "markdown" ? "Markdown" : format.toUpperCase()}</button>)}
+    </div>
+    <section className="release-receipt" aria-labelledby="release-receipt-heading">
     <div><strong id="release-receipt-heading">Release receipt</strong><span>{digest ? `Exact artifact recorded · SHA-256 ${digest.slice(0, 8)}…${digest.slice(-4)} · Verdict ${report.verdict.replace("_", " ")}` : "Bind this result to the exact artifact and release package."}</span><small>The receipt digest detects accidental modification; it is not a digital signature.</small></div>
     <button className="secondary-button" type="button" disabled={!sourceFile || loading} onClick={() => void create()}><Download aria-hidden="true" />{loading ? "Creating receipt…" : "Download release receipt"}</button>
     {error && <p role="alert">{error}</p>}
-  </section>;
+    </section>
+  </>;
 }
 
-function ReleaseRequirementsResults({ report, onSeek }: { report: PreflightReport; onSeek: (seconds: number) => void }) {
+function ReleaseRequirementsResults({ report, sourceFile, recoveryAvailable, onReportUpdate, onSeek }: {
+  report: PreflightReport;
+  sourceFile: File | null;
+  recoveryAvailable: boolean;
+  onReportUpdate?: (report: PreflightReport) => void;
+  onSeek: (seconds: number) => void;
+}) {
   const review = report.release_contract;
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
+  const recoverable = review.results.some((item) =>
+    item.reason_code === "text_evidence_unavailable" || (
+      item.status === "FAIL"
+      && item.evidence_source === "SUPPLIED_CAPTIONS"
+      && ["REQUIRED_TEXT", "REQUIRED_EXACT_TOKEN", "REQUIRED_BEFORE_TIME"].includes(item.requirement_type)
+    )
+  );
+  const recover = async () => {
+    if (!sourceFile || working) return;
+    setWorking(true); setError(null);
+    try { onReportUpdate?.(await recoverAudioEvidence(sourceFile, report)); }
+    catch (reason) { setError(errorPresentation(reason).message); }
+    finally { setWorking(false); }
+  };
+  const confirm = async (candidateId: string) => {
+    if (!sourceFile || working) return;
+    setWorking(true); setError(null);
+    try { onReportUpdate?.(await confirmAudioEvidence(sourceFile, report, candidateId)); setSelectedCandidate(null); }
+    catch (reason) { setError(errorPresentation(reason).message); }
+    finally { setWorking(false); }
+  };
   return (
     <section className="release-contract-results" aria-labelledby="release-contract-title">
       <div className="release-contract-heading">
         <div><span>Delivery gate</span><h2 id="release-contract-title">Release requirements</h2></div>
         <p><strong>{review.passed_count} of {review.results.length}</strong> passed · {review.failed_count} failed · {review.needs_review_count} need review{review.not_evaluated_count ? ` · ${review.not_evaluated_count} not evaluated` : ""}</p>
       </div>
+      {recoverable && report.audio_evidence.status === "NOT_NEEDED" && (
+        <div className="audio-evidence-recovery">
+          <div><strong>Spoken evidence is missing</strong><p>Use optional local transcription to find possible moments. Machine suggestions still require your confirmation.</p></div>
+          <button className="secondary-button" type="button" disabled={!sourceFile || !recoveryAvailable || working} onClick={() => void recover()}>{working ? "Listening locally…" : "Find audio evidence"}</button>
+          {!recoveryAvailable && <small>Local evidence recovery is unavailable because the configured faster-whisper model or dependency is not available locally.</small>}
+        </div>
+      )}
+      {report.audio_evidence.status !== "NOT_NEEDED" && <p className={`audio-evidence-state state-${report.audio_evidence.status.toLowerCase()}`}>{report.audio_evidence.reason}</p>}
+      {error && <p className="repair-error" role="alert">{error}</p>}
       <div className="release-contract-list">
-        {review.results.map((result) => (
+        {review.results.map((result) => {
+          const candidates = report.audio_evidence.candidates.filter((item) => item.requirement_id === result.requirement_id);
+          const confirmed = report.audio_evidence.confirmations.some((item) => item.requirement_id === result.requirement_id);
+          return (
           <article className={`contract-result status-${result.status.toLowerCase()}`} key={result.requirement_id}>
             <div className="contract-result-icon" aria-hidden="true">{result.status === "PASS" ? "✓" : result.status === "FAIL" ? "×" : result.status === "NEEDS_REVIEW" ? "!" : "–"}</div>
             <div>
@@ -411,17 +469,28 @@ function ReleaseRequirementsResults({ report, onSeek }: { report: PreflightRepor
               <p>{result.evidence}</p>
               <small>{result.evaluation_class === "DETERMINISTIC" ? "Deterministic" : "AI-assisted"} · {contractSourceLabel(result.evidence_source)}</small>
               {result.expected && <small>Expected: {result.expected}</small>}
+              {candidates.length > 0 && !confirmed && <div className="audio-evidence-candidates">
+                {candidates.map((candidate) => <div key={candidate.candidate_id}>
+                  <p><strong>Local transcription suggests:</strong> “{candidate.machine_text}”</p>
+                  <small>Confirmation: {candidate.proposition}</small>
+                  <div>
+                    <button className="text-button" type="button" onClick={() => { setSelectedCandidate(candidate.candidate_id); onSeek(candidate.start_seconds); }}><Clock3 aria-hidden="true" /> Review audio {formatTimecode(candidate.start_seconds)}–{formatTimecode(candidate.end_seconds)}</button>
+                    {selectedCandidate === candidate.candidate_id && <button className="secondary-button" type="button" disabled={working} onClick={() => void confirm(candidate.candidate_id)}>Confirm this evidence</button>}
+                    {selectedCandidate === candidate.candidate_id && <button className="text-button" type="button" onClick={() => setSelectedCandidate(null)}>Cancel</button>}
+                  </div>
+                </div>)}
+              </div>}
             </div>
             {result.timestamp_seconds !== null && <button className="timestamp-button" type="button" onClick={() => onSeek(result.timestamp_seconds!)}><Clock3 aria-hidden="true" /> {formatTimecode(result.timestamp_seconds)}</button>}
           </article>
-        ))}
+        );})}
       </div>
     </section>
   );
 }
 
 function contractSourceLabel(source: PreflightReport["release_contract"]["results"][number]["evidence_source"]): string {
-  return { CAPTION_TEXT: "Caption text", PUBLISHING_METADATA: "Publishing metadata", MEDIA_INSPECTION: "Media inspection", AI_SEMANTIC: "Semantic review", NONE: "No evidence available" }[source];
+  return { SUPPLIED_CAPTIONS: "Supplied captions", PUBLISHING_METADATA: "Publishing metadata", MEDIA_MEASUREMENT: "Media measurement", LOCAL_MACHINE_TRANSCRIPT: "Local transcription suggestion", HUMAN_CONFIRMED_AUDIO_EVIDENCE: "Human-confirmed audio evidence", AI_SEMANTIC: "Semantic review", NONE: "No evidence available" }[source];
 }
 
 function ClaimReviewSummaryView({ report }: { report: PreflightReport }) {

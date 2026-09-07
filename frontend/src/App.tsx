@@ -223,6 +223,8 @@ export function App() {
           filename={inputs.video?.name ?? "selected video"}
           previewUrl={previewUrl}
           sourceFile={inputs.video}
+          evidenceRecoveryAvailable={capabilities?.local_evidence_recovery_available ?? false}
+          onReportUpdate={setReport}
           packageInput={{ title: inputs.title, description: inputs.description, captions: inputs.captions, thumbnail: inputs.thumbnail, reviewMode: inputs.reviewMode }}
         />
       )}

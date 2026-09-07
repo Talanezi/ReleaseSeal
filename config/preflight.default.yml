@@ -78,6 +78,11 @@ transcription:
   speech_gap_minimum_seconds: 2.0
   boundary_tolerance_seconds: 0.3
   adjacent_gap_merge_seconds: 0.5
+  # Explicit post-scan evidence recovery remains local and never downloads a model.
+  evidence_recovery_enabled: true
+  maximum_evidence_duration_seconds: 14400
+  maximum_evidence_candidates_per_requirement: 3
+  maximum_evidence_transcript_characters: 20000
 
 # Optional server-side Gemini video review. Enabling this sends the video to
 # Google's Gemini Files API and requires GEMINI_API_KEY in the backend process.

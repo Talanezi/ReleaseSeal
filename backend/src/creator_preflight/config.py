@@ -182,6 +182,10 @@ class TranscriptionConfig(BaseModel):
     speech_gap_minimum_seconds: float = Field(default=2.0, gt=0, le=3600)
     boundary_tolerance_seconds: float = Field(default=0.3, ge=0, le=5)
     adjacent_gap_merge_seconds: float = Field(default=0.5, ge=0, le=10)
+    evidence_recovery_enabled: bool = True
+    maximum_evidence_duration_seconds: float = Field(default=14_400, gt=0, le=86_400)
+    maximum_evidence_candidates_per_requirement: int = Field(default=3, ge=1, le=5)
+    maximum_evidence_transcript_characters: int = Field(default=20_000, ge=1_000, le=100_000)
 
 
 class AIReviewConfig(BaseModel):

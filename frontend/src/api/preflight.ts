@@ -173,6 +173,34 @@ export async function extractReleaseContract(brief: string, options: { signal?: 
   return payload;
 }
 
+export async function recoverAudioEvidence(
+  video: File,
+  report: PreflightReport,
+  options: { signal?: AbortSignal } = {},
+): Promise<PreflightReport> {
+  const form = new FormData();
+  form.append("file", video, video.name);
+  form.append("report_json", JSON.stringify(report));
+  const payload = await requestJson("/api/v1/release-contracts/recover-audio-evidence", form, options.signal, "Local audio evidence could not be recovered.");
+  if (!isPreflightReport(payload)) throw new PreflightApiError("The backend returned invalid audio evidence.", { code: "invalid_response" });
+  return payload;
+}
+
+export async function confirmAudioEvidence(
+  video: File,
+  report: PreflightReport,
+  candidateId: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<PreflightReport> {
+  const form = new FormData();
+  form.append("file", video, video.name);
+  form.append("report_json", JSON.stringify(report));
+  form.append("candidate_id", candidateId);
+  const payload = await requestJson("/api/v1/release-contracts/confirm-audio-evidence", form, options.signal, "Audio evidence could not be confirmed.");
+  if (!isPreflightReport(payload)) throw new PreflightApiError("The backend returned an invalid confirmation result.", { code: "invalid_response" });
+  return payload;
+}
+
 export async function createFinalExportReceipt(input: FinalExportReceiptInput, options: { signal?: AbortSignal } = {}): Promise<FinalExportReceipt> {
   const form = new FormData();
   form.append("file", input.originalVideo, input.originalVideo.name);
@@ -546,7 +574,9 @@ function isPreflightReport(value: unknown): value is PreflightReport {
     && isClaimReviewSummary(value.claim_review)
     && isReleasePackageSummary(value.release_package)
     && isReleaseContractEvaluation(value.release_contract)
+    && isAudioEvidenceState(value.audio_evidence)
     && isRepairPlan(value.repair_plan)
+    && isReleasePlan(value.release_plan)
     && isReleaseBrief(value.release_brief)
     && isNonnegativeNumber(value.scan_duration_seconds);
 }
@@ -647,13 +677,59 @@ function isReleaseContractEvaluation(value: unknown): boolean {
       && (item.evaluation_class === "DETERMINISTIC" || item.evaluation_class === "SEMANTIC")
       && (item.status === "PASS" || item.status === "FAIL" || item.status === "NEEDS_REVIEW" || item.status === "NOT_EVALUATED")
       && typeof item.evidence === "string" && (item.timestamp_seconds === null || isNonnegativeNumber(item.timestamp_seconds))
-      && (item.evidence_source === "CAPTION_TEXT" || item.evidence_source === "PUBLISHING_METADATA" || item.evidence_source === "MEDIA_INSPECTION" || item.evidence_source === "AI_SEMANTIC" || item.evidence_source === "NONE")
+      && (item.evidence_source === "SUPPLIED_CAPTIONS" || item.evidence_source === "PUBLISHING_METADATA" || item.evidence_source === "MEDIA_MEASUREMENT" || item.evidence_source === "LOCAL_MACHINE_TRANSCRIPT" || item.evidence_source === "HUMAN_CONFIRMED_AUDIO_EVIDENCE" || item.evidence_source === "AI_SEMANTIC" || item.evidence_source === "NONE")
       && (item.expected === null || typeof item.expected === "string")
       && (item.confidence === null || (isNonnegativeNumber(item.confidence) && item.confidence <= 1))
-      && (item.reason_code === null || typeof item.reason_code === "string"))
+      && (item.reason_code === null || typeof item.reason_code === "string")
+      && (item.audio_evidence === null || isContractAudioEvidence(item.audio_evidence)))
     && isNonnegativeNumber(value.passed_count) && isNonnegativeNumber(value.failed_count)
     && isNonnegativeNumber(value.needs_review_count) && isNonnegativeNumber(value.not_evaluated_count)
     && isNonnegativeNumber(value.runtime_seconds);
+}
+
+function isContractAudioEvidence(value: unknown): boolean {
+  return isRecord(value) && isSha256(value.artifact_sha256)
+    && isNonnegativeNumber(value.start_seconds) && isNonnegativeNumber(value.end_seconds) && value.end_seconds > value.start_seconds
+    && typeof value.proposition === "string"
+    && (value.machine_text === null || typeof value.machine_text === "string")
+    && (value.transcription_engine === null || typeof value.transcription_engine === "string")
+    && (value.transcription_model === null || typeof value.transcription_model === "string")
+    && (value.confirmation_id === null || typeof value.confirmation_id === "string")
+    && (value.confirmed_at === null || typeof value.confirmed_at === "string");
+}
+
+function isAudioEvidenceState(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const candidate = (item: unknown) => isRecord(item) && typeof item.candidate_id === "string"
+    && isSha256(item.artifact_sha256) && typeof item.requirement_id === "string" && isSha256(item.requirement_sha256)
+    && typeof item.requirement_type === "string" && typeof item.proposition === "string" && typeof item.expected_value === "string"
+    && isNonnegativeNumber(item.start_seconds) && isNonnegativeNumber(item.end_seconds) && item.end_seconds > item.start_seconds
+    && typeof item.machine_text === "string" && (item.confidence === null || isNonnegativeNumber(item.confidence))
+    && item.engine === "faster-whisper" && typeof item.model === "string" && item.evidence_source === "LOCAL_MACHINE_TRANSCRIPT";
+  const confirmation = (item: unknown) => isRecord(item) && typeof item.confirmation_id === "string"
+    && isSha256(item.artifact_sha256) && typeof item.requirement_id === "string" && isSha256(item.requirement_sha256)
+    && typeof item.requirement_type === "string" && typeof item.proposition === "string" && typeof item.confirmed_value === "string"
+    && isNonnegativeNumber(item.start_seconds) && isNonnegativeNumber(item.end_seconds) && item.end_seconds > item.start_seconds
+    && typeof item.confirmed_at === "string" && item.evidence_source === "HUMAN_CONFIRMED_AUDIO_EVIDENCE";
+  return (value.status === "NOT_NEEDED" || value.status === "COMPLETED" || value.status === "UNAVAILABLE")
+    && typeof value.reason === "string" && (value.artifact_sha256 === null || isSha256(value.artifact_sha256))
+    && (value.engine === null || typeof value.engine === "string") && (value.model === null || typeof value.model === "string")
+    && isNonnegativeNumber(value.transcript_character_count) && typeof value.transcript_truncated === "boolean"
+    && Array.isArray(value.candidates) && value.candidates.every(candidate)
+    && Array.isArray(value.confirmations) && value.confirmations.every(confirmation)
+    && isNonnegativeNumber(value.runtime_seconds);
+}
+
+function isReleasePlan(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const categories = ["BLOCKING_REQUIREMENT", "SAFE_AUTOMATION", "CONFIRM_EVIDENCE", "HUMAN_REVIEW", "INFORMATIONAL"];
+  return Array.isArray(value.items) && value.items.every((item) => isRecord(item)
+    && typeof item.item_id === "string" && categories.includes(String(item.category)) && typeof item.title === "string"
+    && (item.reference_id === null || typeof item.reference_id === "string")
+    && (item.timestamp_seconds === null || isNonnegativeNumber(item.timestamp_seconds)))
+    && isNonnegativeNumber(value.blocking_requirement_count) && isNonnegativeNumber(value.safe_automation_count)
+    && isNonnegativeNumber(value.confirm_evidence_count) && isNonnegativeNumber(value.human_review_count)
+    && isNonnegativeNumber(value.informational_count);
 }
 
 function isScanProgress(value: unknown): value is ScanProgress {
@@ -773,6 +849,7 @@ function isPreflightCapabilities(value: unknown): value is PreflightCapabilities
     && typeof value.revision_semantic_review_available === "boolean"
     && typeof value.transcription_dependency_available === "boolean"
     && typeof value.transcription_enabled === "boolean"
+    && typeof value.local_evidence_recovery_available === "boolean"
     && Array.isArray(value.supported_review_modes)
     && value.supported_review_modes.every((mode) => mode === "full" || mode === "local")
     && isNonnegativeNumber(value.maximum_video_upload_size_bytes)

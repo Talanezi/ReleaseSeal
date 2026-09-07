@@ -56,7 +56,7 @@ def test_deterministic_requirement_matrix_and_evidence_sources():
     result = evaluate(requirements, cues=cues)
     assert [row.status for row in result.results] == [ContractStatus.PASS] * 4 + [ContractStatus.FAIL] + [ContractStatus.PASS] * 7
     assert result.results[3].timestamp_seconds == 5
-    assert result.results[0].evidence_source.value == "CAPTION_TEXT"
+    assert result.results[0].evidence_source.value == "SUPPLIED_CAPTIONS"
     assert result.runtime_seconds < .1
 
 

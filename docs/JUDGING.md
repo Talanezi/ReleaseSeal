@@ -18,6 +18,7 @@ Start at `/proof/` for a backend-free inspection path. The page links every clai
 | Artifact-bound release evidence | Exact-video/package mutation matrix plus CLI verification | `release_receipt.py`, receipt API routes, Final Export/Revision receipt downloads | Receipt digest detects stale modification; it is not a signature or legal attestation |
 | Whole delivery package | One compact result for video, authentic thumbnail, captions, publishing text, chapters, and requirements | `release_package.py`, Final Export package summary and delivery preview | Thumbnail review is bounded file/geometry analysis, not a creative-quality score |
 | Automated thumbnail delivery assurance | Provider-free pixel analysis measures confident text-like regions at delivered sizes, estimated contrast, modeled chrome/edge overlap, and structural detail retention | `thumbnail_assurance.py`, `test_thumbnail_assurance.py`, Delivery Preview overlays | Heuristic interpretation is advisory, abstains on uncertain/textless images, and never predicts CTR or blocks release |
+| Spoken-requirement evidence recovery | Optional local ASR finds bounded candidate moments; explicit listening/confirmation upgrades only an artifact-bound presence fact | `release_evidence.py`, recovery/confirmation API tests, Release Plan UI | Machine text never passes, fails, or blocks by itself; absence is never inferred from a miss |
 
 ## Creativity
 
@@ -54,6 +55,7 @@ Boundary: this is a local, single-user release candidate, not a hosted collabora
 - Final Export puts black, silence, caption, package, and contract evidence at source timecodes.
 - Repair approval never overwrites the original and the corrected output is rechecked before presentation.
 - Release Contract catches delivery obligations that technical QC cannot, demonstrated by SAVE25 versus actual caption evidence SAVE20.
+- When captions are absent or omit a required positive phrase, local evidence recovery reduces manual hunting while preserving source, model, source time, and artifact identity. Human confirmation—not ASR—changes deterministic contract truth.
 - Revision shows whether requested regions physically changed and preserves unmentioned changes for review.
 - The package/receipt path connects what was inspected to the exact artifact intended to ship.
 

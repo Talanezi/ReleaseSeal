@@ -8,6 +8,7 @@ Two workflows are first-class:
 
 - **Final Export — Review one finished video before it ships.** Deterministic media, package, and caption checks can be extended with optional content review. Findings are timestamped and seekable; supported removals are previewed, approved, rendered to a new file, and rechecked for regressions.
 - **Release package — Check the whole delivery together.** Video, supplied thumbnail, captions, publishing text, chapters, and release requirements are summarized from validated scan state. Supplied thumbnails receive bounded decode, dimension, aspect, size, and approximate delivery-surface geometry checks, plus provider-free pixel analysis for confident text-like regions, delivered height, estimated local contrast, chrome/edge overlap, and detail retention.
+- **Evidence recovery — Find spoken evidence without overstating it.** When required text cannot be established from supplied captions, optional local `faster-whisper` transcription can suggest bounded source-video moments. Machine suggestions remain review-only until the user listens and confirms the exact proposition against the exact artifact.
 - **Revision — Compare a previous cut with the revised cut.** A local deterministic map aligns the two timelines through removals and insertions, correlates timestamped notes, and surfaces additional changes. Optional semantic review sends only bounded evidence clips for eligible requests.
 - **Release receipts — Record exactly what was checked.** Completed Final Export and Revision results can produce backend-owned JSON receipts bound to the exact media and package with SHA-256 identities and a canonical content digest.
 
@@ -123,6 +124,10 @@ export GEMINI_API_KEY="your-server-side-key"
 
 The key stays server-side. Full Review may upload the selected video and thumbnail; Revision semantic review uploads only bounded evidence clips. Release requirements can always be entered manually without Gemini; **Extract requirements** uses Gemini only to structure explicit text from the pasted brief, and the backend—not the model—evaluates deterministic obligations. Network access and provider availability are required only for explicitly requested AI work.
 
+If valid supplied captions do not establish a required spoken phrase—or no caption text is available—**Find audio evidence** can use the optional local `faster-whisper` adapter. The model must already exist locally: `local_files_only` prevents an implicit download. Candidate text and canonical source intervals are bounded and labeled as local machine transcription; they cannot pass, fail, or block a requirement on their own. After listening to the exact source region, a user may confirm only the displayed presence proposition. Confirmed required presence can pass that requirement, confirmed forbidden presence can fail it, and an occurrence after a deadline cannot prove that no earlier occurrence exists. Confirmations are SHA-256 bound to the current video and are invalid for a changed or repaired artifact.
+
+The compact **Release plan** orders existing trusted next steps as blocking requirements, approved safe repairs, evidence to confirm, human review, and informational items. **Run safe fixes** still uses only approved `REMOVE_RANGE` proposals and preserves preview, explicit approval, repaired-export scan, and regression verification. A release receipt is created for the selected shipping artifact; repaired outputs require completed verification first.
+
 Thumbnail delivery preview uses the actual supplied image and the inspected video duration across a small set of approximate YouTube presentation boxes. These models can change as platform UI changes. The isolated deterministic thumbnail-assurance pass decodes a bounded 320px analysis plane through FFmpeg, finds only confident text-like geometry, measures its delivered height, estimates local luminance contrast, tests modeled badge/edge intersections, and reports advisory structural-detail retention. It performs no OCR, saliency, face detection, learned inference, provider call, CTR prediction, accessibility certification, or overall quality scoring. A textless or uncertain image abstains from text-specific judgments, and heuristic results can request review but never block delivery. Release Contract remains authoritative for stakeholder obligations such as requiring a thumbnail.
 
 ## Release receipts
@@ -146,7 +151,7 @@ CLI and deterministic demo:
 ./scripts/run_demo.sh
 ```
 
-Optional local caption speech coverage uses `./backend[transcription]`; transcription remains disabled and model download remains blocked by default.
+Optional local caption speech coverage and contract evidence recovery use `./backend[transcription]`; general speech-gap checking remains disabled by default, evidence recovery is explicit, and model download remains blocked by default.
 
 ## Evidence and tests
 

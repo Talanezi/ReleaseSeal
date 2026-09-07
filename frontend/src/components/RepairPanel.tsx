@@ -56,7 +56,6 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
   useEffect(() => () => requestRef.current?.abort(), []);
 
   useEffect(() => {
-    setHumanDispositions({});
     setReceipt(null);
   }, [report]);
 
@@ -88,12 +87,15 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
   };
   const approvedSignature = approvedOperations.map((operation) => `${operation.start_seconds}:${operation.end_seconds}`).join("|");
   const hasUnappliedApprovals = approvedOperations.length > 0 && approvedSignature !== appliedSignature;
+  const approvedAreSafe = report.repair_plan.proposals
+    .filter((proposal) => approvedIds.has(proposal.proposal_id))
+    .every((proposal) => proposal.repairability === "SAFE");
   const orderedProposals = useMemo(() => report.repair_plan.proposals
     .filter((proposal) => showAccepted || humanDispositions[proposal.proposal_id] !== "ACCEPTED_INTENTIONAL")
     .sort((left, right) => proposalRank(left, humanDispositions) - proposalRank(right, humanDispositions)),
   [humanDispositions, report.repair_plan.proposals, showAccepted]);
 
-  if (!report.repair_plan.proposals.length) return null;
+  if (!report.repair_plan.proposals.length && !report.release_plan.items.length) return null;
 
   const openPreview = async (proposal: RepairProposal) => {
     if (!sourceFile || !proposal.operation) return;
@@ -248,10 +250,12 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
         </div>
         {hasUnappliedApprovals && (
           <button className="primary-button" type="button" disabled={applying || !sourceFile} onClick={() => void applyApproved()}>
-            <Scissors aria-hidden="true" /> {applying ? "Rendering repaired video…" : `Apply ${approvedOperations.length} approved ${plural(approvedOperations.length, "repair")}`}
+            <Scissors aria-hidden="true" /> {applying ? "Rendering repaired video…" : approvedAreSafe ? "Run safe fixes" : `Apply ${approvedOperations.length} approved ${plural(approvedOperations.length, "repair")}`}
           </button>
         )}
       </header>
+
+      <ReleasePlanOverview report={report} onSeek={onSeek} />
 
       {humanReview.total > 0 && (
         <section className="human-review-summary" aria-labelledby="human-review-heading">
@@ -440,6 +444,22 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
   );
 }
 
+function ReleasePlanOverview({ report, onSeek }: { report: PreflightReport; onSeek: (seconds: number) => void }) {
+  const groups = [
+    ["BLOCKING_REQUIREMENT", "Blocking requirements"], ["SAFE_AUTOMATION", "Safe fixes"],
+    ["CONFIRM_EVIDENCE", "Evidence to confirm"], ["HUMAN_REVIEW", "Human review"],
+    ["INFORMATIONAL", "Informational"],
+  ] as const;
+  return <div className="release-plan-overview">
+    <p>What Creator Preflight can safely help with next.</p>
+    <div className="release-plan-groups">{groups.map(([category, label]) => {
+      const items = report.release_plan.items.filter((item) => item.category === category);
+      if (!items.length) return null;
+      return <div key={category}><strong>{label} · {items.length}</strong><ul>{items.slice(0, 5).map((item) => <li key={item.item_id}>{item.timestamp_seconds !== null ? <button className="text-button" type="button" onClick={() => onSeek(item.timestamp_seconds!)}>{formatTimecode(item.timestamp_seconds)}</button> : null}{item.title}</li>)}</ul></div>;
+    })}</div>
+  </div>;
+}
+
 function shortDigest(value: string): string { return `${value.slice(0, 8)}…${value.slice(-4)}`; }
 
 function downloadJson(value: unknown, filename: string) {
@@ -472,7 +492,7 @@ function proposalRank(proposal: RepairProposal, dispositions: Record<string, Hum
   return 3;
 }
 
-function exportReport(format: "csv" | "markdown" | "json", report: PreflightReport, dispositions: Record<string, HumanDisposition>, verification: VerificationReport | null) {
+export function exportReport(format: "csv" | "markdown" | "json", report: PreflightReport, dispositions: Record<string, HumanDisposition>, verification: VerificationReport | null) {
   const rows = report.findings.map((finding) => {
     const proposal = report.repair_plan.proposals.find((candidate) => (
       candidate.finding_code === finding.code
@@ -499,6 +519,9 @@ function exportReport(format: "csv" | "markdown" | "json", report: PreflightRepo
     status: result.status, evaluation_class: result.evaluation_class, requirement: result.instruction,
     expected: result.expected, evidence: result.evidence, evidence_source: result.evidence_source,
     timestamp: result.timestamp_seconds === null ? null : formatTimecode(result.timestamp_seconds),
+    evidence_end: result.audio_evidence ? formatTimecode(result.audio_evidence.end_seconds) : null,
+    proposition: result.audio_evidence?.proposition ?? null,
+    artifact_sha256: result.audio_evidence?.artifact_sha256 ?? null,
     gate_effect: result.status === "FAIL" && result.evaluation_class === "DETERMINISTIC" ? "BLOCKED" : result.status === "NEEDS_REVIEW" ? "NEEDS_REVIEW" : "NONE",
   }));
   const packageRows = Object.entries(report.release_package).filter(([key, value]) => key === "video" || key === "thumbnail" || key === "captions" || key === "title" || key === "description" || key === "chapters" || key === "release_contract").map(([name, value]) => ({ name, ...(value as { state: string; detail: string }) }));
@@ -512,9 +535,9 @@ function exportReport(format: "csv" | "markdown" | "json", report: PreflightRepo
       detail: `${Math.round(surface.detail_retention_ratio * 100)}% structural detail retained${surface.unreadable_text_area_share === null ? "; text size not evaluated" : `; ${Math.round(surface.unreadable_text_area_share * 100)}% detected text-like area below the delivered-height floor`}`,
     })),
   ] : [];
-  const content = format === "json" ? JSON.stringify({ verdict: report.verdict, completeness: report.scan_completeness, release_package: report.release_package, release_contract: { ...report.release_contract, gate_effects: contractRows.map(({ requirement, gate_effect }) => ({ requirement, gate_effect })) }, findings: rows }, null, 2)
-    : format === "markdown" ? ["# Review report", "", `Status: ${report.verdict}`, "", "## Release package", "", "| Component | State | Detail |", "| --- | --- | --- |", ...[...packageRows, ...thumbnailRows, ...assuranceRows].map((row) => `| ${row.name.replaceAll("_", " ")} | ${row.state} | ${escapeCell(row.detail)} |`), "", ...(contractRows.length ? ["## Release requirements", "", "| Status | Gate effect | Class | Requirement | Evidence |", "| --- | --- | --- | --- | --- |", ...contractRows.map((row) => `| ${row.status} | ${row.gate_effect} | ${row.evaluation_class} | ${escapeCell(row.requirement)} | ${escapeCell(row.evidence)} |`), ""] : []), "## Findings", "", "| Status | Start | Finding | Decision |", "| --- | --- | --- | --- |", ...rows.map((row) => `| ${row.status} | ${row.start_timecode ?? "Global"} | ${escapeCell(row.title)} | ${row.human_decision ?? ""} |`)].join("\n")
-    : ["row_type,status,class_or_severity,category_or_source,start,end,title,evidence,suggested_action,repair_state,human_decision,verification_state,gate_effect", ...[...packageRows, ...thumbnailRows, ...assuranceRows].map((row) => ["package", row.state, "", row.name, "", "", row.name.replaceAll("_", " "), row.detail, "", "", "", "", ""].map(csvCell).join(",")), ...contractRows.map((row) => ["contract", row.status, row.evaluation_class, row.evidence_source, row.timestamp ?? "", "", row.requirement, row.evidence, "", "", "", "", row.gate_effect].map(csvCell).join(",")), ...rows.map((row) => ["finding", row.status, row.severity, row.category, row.start_timecode ?? "", row.end_timecode ?? "", row.title, row.evidence, row.suggested_action ?? "", row.repair_state, row.human_decision ?? "", row.verification_state ?? "", ""].map(csvCell).join(","))].join("\n");
+  const content = format === "json" ? JSON.stringify({ verdict: report.verdict, completeness: report.scan_completeness, release_package: report.release_package, release_contract: { ...report.release_contract, gate_effects: contractRows.map(({ requirement, gate_effect }) => ({ requirement, gate_effect })) }, audio_evidence: report.audio_evidence, release_plan: report.release_plan, findings: rows }, null, 2)
+    : format === "markdown" ? ["# Review report", "", `Status: ${report.verdict}`, "", "## Release package", "", "| Component | State | Detail |", "| --- | --- | --- |", ...[...packageRows, ...thumbnailRows, ...assuranceRows].map((row) => `| ${row.name.replaceAll("_", " ")} | ${row.state} | ${escapeCell(row.detail)} |`), "", ...(contractRows.length ? ["## Release requirements", "", "| Status | Gate effect | Class | Source | Requirement | Evidence |", "| --- | --- | --- | --- | --- | --- |", ...contractRows.map((row) => `| ${row.status} | ${row.gate_effect} | ${row.evaluation_class} | ${row.evidence_source.replaceAll("_", " ")} | ${escapeCell(row.requirement)} | ${escapeCell(row.evidence)} |`), ""] : []), ...(report.audio_evidence.confirmations.length ? ["## Human-confirmed audio evidence", "", ...report.audio_evidence.confirmations.map((item) => `- ${escapeCell(item.proposition)} ${formatTimecode(item.start_seconds)}–${formatTimecode(item.end_seconds)} · artifact ${item.artifact_sha256}`), ""] : []), "## Findings", "", "| Status | Start | Finding | Decision |", "| --- | --- | --- | --- |", ...rows.map((row) => `| ${row.status} | ${row.start_timecode ?? "Global"} | ${escapeCell(row.title)} | ${row.human_decision ?? ""} |`)].join("\n")
+    : ["row_type,status,class_or_severity,category_or_source,start,end,title,evidence,suggested_action,repair_state,human_decision,verification_state,gate_effect", ...[...packageRows, ...thumbnailRows, ...assuranceRows].map((row) => ["package", row.state, "", row.name, "", "", row.name.replaceAll("_", " "), row.detail, "", "", "", "", ""].map(csvCell).join(",")), ...contractRows.map((row) => ["contract", row.status, row.evaluation_class, row.evidence_source, row.timestamp ?? "", row.evidence_end ?? "", row.requirement, row.proposition ? `${row.evidence} Proposition: ${row.proposition}; artifact ${row.artifact_sha256}` : row.evidence, "", "", "", "", row.gate_effect].map(csvCell).join(",")), ...rows.map((row) => ["finding", row.status, row.severity, row.category, row.start_timecode ?? "", row.end_timecode ?? "", row.title, row.evidence, row.suggested_action ?? "", row.repair_state, row.human_decision ?? "", row.verification_state ?? "", ""].map(csvCell).join(","))].join("\n");
   downloadText(`creator-preflight-report.${format === "markdown" ? "md" : format}`, content, format === "json" ? "application/json" : "text/plain");
 }
 

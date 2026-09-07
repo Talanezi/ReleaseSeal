@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import difflib
 import re
+from datetime import datetime
 from enum import Enum
 from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, Any, Literal
@@ -43,11 +44,45 @@ class ContractStatus(str, Enum):
 
 
 class EvidenceSource(str, Enum):
-    CAPTION_TEXT = "CAPTION_TEXT"
+    SUPPLIED_CAPTIONS = "SUPPLIED_CAPTIONS"
     PUBLISHING_METADATA = "PUBLISHING_METADATA"
-    MEDIA_INSPECTION = "MEDIA_INSPECTION"
+    MEDIA_MEASUREMENT = "MEDIA_MEASUREMENT"
+    LOCAL_MACHINE_TRANSCRIPT = "LOCAL_MACHINE_TRANSCRIPT"
+    HUMAN_CONFIRMED_AUDIO_EVIDENCE = "HUMAN_CONFIRMED_AUDIO_EVIDENCE"
     AI_SEMANTIC = "AI_SEMANTIC"
     NONE = "NONE"
+    # Read-only compatibility for canonical M25-M30 proof/receipt artifacts.
+    LEGACY_CAPTION_TEXT = "CAPTION_TEXT"
+    LEGACY_MEDIA_INSPECTION = "MEDIA_INSPECTION"
+
+
+class ContractAudioEvidence(BaseModel):
+    """Bounded audio evidence attached to one exact artifact and proposition."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    start_seconds: float = Field(ge=0, allow_inf_nan=False)
+    end_seconds: float = Field(gt=0, allow_inf_nan=False)
+    proposition: str = Field(min_length=1, max_length=700)
+    machine_text: str | None = Field(default=None, max_length=500)
+    transcription_engine: str | None = Field(default=None, max_length=100)
+    transcription_model: str | None = Field(default=None, max_length=200)
+    confirmation_id: str | None = Field(default=None, pattern=r"^confirm-[0-9a-f]{16}$")
+    confirmed_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def valid_audio_evidence(self) -> "ContractAudioEvidence":
+        if self.end_seconds <= self.start_seconds:
+            raise ValueError("audio evidence must contain a positive source interval")
+        if self.confirmed_at is not None and (
+            self.confirmed_at.tzinfo is None or self.confirmed_at.utcoffset() is None
+        ):
+            raise ValueError("audio evidence confirmation time must include a timezone")
+        confirmed = self.confirmation_id is not None or self.confirmed_at is not None
+        if confirmed and not (self.confirmation_id and self.confirmed_at):
+            raise ValueError("confirmed audio evidence requires both id and timestamp")
+        return self
 
 
 class _Requirement(BaseModel):
@@ -185,7 +220,7 @@ class ContractRequirementResult(BaseModel):
     timestamp_seconds: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     confidence: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
     reason_code: str | None = None
-
+    audio_evidence: ContractAudioEvidence | None = None
 
 class ReleaseContractEvaluation(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -262,7 +297,11 @@ def contract_findings(evaluation: ReleaseContractEvaluation) -> list[Any]:
             severity=FindingSeverity.ERROR if blocking else FindingSeverity.WARNING,
             status=FindingStatus.BLOCKED if blocking else FindingStatus.NEEDS_REVIEW,
             message=item.evidence,
-            source="release_contract.deterministic" if blocking else "release_contract.semantic",
+            source=(
+                "release_contract.deterministic" if blocking else
+                "release_contract.semantic" if item.evaluation_class is EvaluationClass.SEMANTIC else
+                "release_contract.evidence"
+            ),
             timestamp_start_seconds=item.timestamp_seconds,
             details={"title": item.instruction, "requirement_id": item.requirement_id, "requirement_type": item.requirement_type},
             suggestion="Review the release requirement before delivery.",
@@ -372,19 +411,19 @@ def _evaluate(item, package, media, cues, caption_summary, caption_findings):
         if media.duration_seconds is None:
             return ContractRequirementResult(**base, status=ContractStatus.NOT_EVALUATED, expected=f"At most {item.maximum_seconds:g} seconds", evidence="Decoded duration is unavailable.", evidence_source=EvidenceSource.NONE, reason_code="media_evidence_unavailable")
         ok = media.duration_seconds <= item.maximum_seconds
-        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=f"At most {item.maximum_seconds:g} seconds", evidence=f"Decoded duration is {media.duration_seconds:g} seconds.", evidence_source=EvidenceSource.MEDIA_INSPECTION)
+        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=f"At most {item.maximum_seconds:g} seconds", evidence=f"Decoded duration is {media.duration_seconds:g} seconds.", evidence_source=EvidenceSource.MEDIA_MEASUREMENT)
     if item.type == "MIN_RESOLUTION":
         if media.width is None or media.height is None:
             return ContractRequirementResult(**base, status=ContractStatus.NOT_EVALUATED, expected=f"At least {item.minimum_width}×{item.minimum_height}", evidence="Video dimensions are unavailable.", evidence_source=EvidenceSource.NONE, reason_code="media_evidence_unavailable")
         ok = media.width >= item.minimum_width and media.height >= item.minimum_height
-        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=f"At least {item.minimum_width}×{item.minimum_height}", evidence=f"Inspected resolution is {media.width}×{media.height}.", evidence_source=EvidenceSource.MEDIA_INSPECTION)
+        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=f"At least {item.minimum_width}×{item.minimum_height}", evidence=f"Inspected resolution is {media.width}×{media.height}.", evidence_source=EvidenceSource.MEDIA_MEASUREMENT)
     if item.type == "ASPECT_RATIO":
         actual = media.width / media.height if media.width and media.height else None
         if actual is None:
             return ContractRequirementResult(**base, status=ContractStatus.NOT_EVALUATED, expected=f"{item.width_ratio}:{item.height_ratio}", evidence="Video dimensions are unavailable.", evidence_source=EvidenceSource.NONE, reason_code="media_evidence_unavailable")
         target = item.width_ratio / item.height_ratio
         ok = actual is not None and abs(actual - target) / target <= item.tolerance
-        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=f"{item.width_ratio}:{item.height_ratio}", evidence=f"Inspected frame is {media.width}×{media.height}." if actual else "Video dimensions are unavailable.", evidence_source=EvidenceSource.MEDIA_INSPECTION)
+        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=f"{item.width_ratio}:{item.height_ratio}", evidence=f"Inspected frame is {media.width}×{media.height}." if actual else "Video dimensions are unavailable.", evidence_source=EvidenceSource.MEDIA_MEASUREMENT)
     if item.type == "CAPTIONS_REQUIRED":
         invalid_codes = {
             "CAPTION_PARSE_ERROR", "CAPTION_EMPTY", "CAPTION_TIMING_INVALID",
@@ -393,7 +432,7 @@ def _evaluate(item, package, media, cues, caption_summary, caption_findings):
         }
         invalid = any(finding.code in invalid_codes for finding in caption_findings)
         ok = caption_summary is not None and caption_summary.cue_count > 0 and not invalid
-        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected="Valid supported captions", evidence="Valid caption cues were supplied." if ok else "Valid supported captions were not supplied.", evidence_source=EvidenceSource.CAPTION_TEXT if ok else EvidenceSource.NONE)
+        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected="Valid supported captions", evidence="Valid caption cues were supplied." if ok else "Valid supported captions were not supplied.", evidence_source=EvidenceSource.SUPPLIED_CAPTIONS if ok else EvidenceSource.NONE)
     if item.type == "THUMBNAIL_REQUIRED":
         ok = package.thumbnail_path is not None
         return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected="Thumbnail supplied", evidence="A thumbnail was supplied." if ok else "A thumbnail was not supplied.", evidence_source=EvidenceSource.PUBLISHING_METADATA if ok else EvidenceSource.NONE)
@@ -409,18 +448,18 @@ def _text_result(item, cues, base):
     first = min(occurrences, default=None, key=lambda value: value[0])
     if item.type == "FORBIDDEN_TEXT":
         ok = first is None
-        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=item.value, evidence="Forbidden text was not found in supplied captions." if ok else f"Forbidden text appears in supplied captions: {first[1][:200]}", evidence_source=EvidenceSource.CAPTION_TEXT, timestamp_seconds=None if ok else first[0])
+        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=item.value, evidence="Forbidden text was not found in supplied captions." if ok else f"Forbidden text appears in supplied captions: {first[1][:200]}", evidence_source=EvidenceSource.SUPPLIED_CAPTIONS, timestamp_seconds=None if ok else first[0])
     if item.type == "REQUIRED_BEFORE_TIME":
         ok = first is not None and first[0] <= item.before_seconds
         evidence = "Required text was not found in supplied captions." if first is None else f"First caption occurrence is at {format_timecode(first[0])}; deadline is {format_timecode(item.before_seconds)}."
-        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=f"{item.value} by {format_timecode(item.before_seconds)}", evidence=evidence, evidence_source=EvidenceSource.CAPTION_TEXT, timestamp_seconds=first[0] if first else None)
+        return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=f"{item.value} by {format_timecode(item.before_seconds)}", evidence=evidence, evidence_source=EvidenceSource.SUPPLIED_CAPTIONS, timestamp_seconds=first[0] if first else None)
     ok = first is not None
     evidence = "Required evidence was found in supplied captions." if ok else "Required evidence was not found in supplied captions."
     if not ok and item.type == "REQUIRED_EXACT_TOKEN":
         nearby = _nearby_token(item.value, cues)
         if nearby:
             evidence += f" A similar token, {nearby[1]}, appears at {format_timecode(nearby[0])}; it does not satisfy the exact requirement."
-    return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=item.value, evidence=evidence, evidence_source=EvidenceSource.CAPTION_TEXT, timestamp_seconds=first[0] if first else None)
+    return ContractRequirementResult(**base, status=ContractStatus.PASS if ok else ContractStatus.FAIL, expected=item.value, evidence=evidence, evidence_source=EvidenceSource.SUPPLIED_CAPTIONS, timestamp_seconds=first[0] if first else None)
 
 
 def _phrase_present(text: str, value: str) -> bool:

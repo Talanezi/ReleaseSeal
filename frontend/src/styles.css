@@ -208,6 +208,21 @@ svg { flex: 0 0 auto; }
 .release-contract-heading h2, .contract-result h3 { margin: 0; }
 .release-contract-heading span, .contract-result small { display: block; color: var(--text-muted); }
 .release-contract-list { display: grid; }
+.audio-evidence-recovery { display: flex; align-items: center; gap: 18px; padding: 16px 22px; border-top: 1px solid var(--line); background: var(--surface-muted); }
+.audio-evidence-recovery > div { margin-right: auto; }
+.audio-evidence-recovery p, .audio-evidence-recovery small, .audio-evidence-state { margin: 3px 0 0; color: var(--text-muted); }
+.audio-evidence-recovery small { max-width: 360px; }
+.audio-evidence-state { padding: 12px 22px; border-bottom: 1px solid var(--line); }
+.audio-evidence-candidates { display: grid; gap: 8px; margin-top: 10px; }
+.audio-evidence-candidates > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-muted); }
+.audio-evidence-candidates p { margin: 0 0 6px; }
+.audio-evidence-candidates > div > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.release-plan-overview { padding: 16px 22px; border-bottom: 1px solid var(--line); }
+.release-plan-overview > p { margin: 0 0 12px; color: var(--text-muted); }
+.release-plan-groups { display: grid; gap: 12px; }
+.release-plan-groups > div { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; }
+.release-plan-groups ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.release-plan-groups li { display: flex; align-items: baseline; gap: 8px; }
 .contract-result { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 16px 22px; border-bottom: 1px solid var(--line); }
 .contract-result:last-child { border-bottom: 0; }
 .contract-result p { margin: 5px 0; }
@@ -878,6 +893,8 @@ svg { flex: 0 0 auto; }
 }
 
 @media (max-width: 560px) {
+  .audio-evidence-recovery { align-items: stretch; flex-direction: column; }
+  .release-plan-groups > div { grid-template-columns: minmax(0, 1fr); }
   .release-package-heading { align-items: flex-start; flex-direction: column; }
   .package-components, .delivery-surfaces { grid-template-columns: minmax(0, 1fr); }
   .release-contract-heading { align-items: flex-start; flex-direction: column; }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { needsReviewReport, revisionCheckReport } from "../mocks/reports";
-import { applyRepairs, assistMetadata, checkRevision, createFinalExportReceipt, createRevisionReceipt, extractReleaseContract, fetchCapabilities, PreflightApiError, previewRepair, renderReviewReel, reviewRevisionSemantics, scanPreflight, verifyRepair } from "./preflight";
+import { applyRepairs, assistMetadata, checkRevision, confirmAudioEvidence, createFinalExportReceipt, createRevisionReceipt, extractReleaseContract, fetchCapabilities, PreflightApiError, previewRepair, recoverAudioEvidence, renderReviewReel, reviewRevisionSemantics, scanPreflight, verifyRepair } from "./preflight";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -69,6 +69,24 @@ describe("preflight API client", () => {
     const result = await extractReleaseContract("Use SAVE25");
     expect(body?.get("brief")).toBe("Use SAVE25");
     expect(result.requirements[0].value).toBe("SAVE25");
+  });
+
+  it("sends typed local evidence recovery and confirmation requests", async () => {
+    const requests: Array<{ url: string; form: FormData }> = [];
+    vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
+      requests.push({ url: String(url), form: init?.body as FormData });
+      return Promise.resolve(jsonResponse(needsReviewReport));
+    }));
+    const video = new File(["video"], "release.mp4", { type: "video/mp4" });
+    await recoverAudioEvidence(video, needsReviewReport);
+    await confirmAudioEvidence(video, needsReviewReport, "audio-0123456789abcdef");
+    expect(requests.map((item) => item.url)).toEqual([
+      "/api/v1/release-contracts/recover-audio-evidence",
+      "/api/v1/release-contracts/confirm-audio-evidence",
+    ]);
+    expect((requests[0].form.get("file") as File).name).toBe("release.mp4");
+    expect(JSON.parse(String(requests[0].form.get("report_json"))).schema_version).toBe(needsReviewReport.schema_version);
+    expect(requests[1].form.get("candidate_id")).toBe("audio-0123456789abcdef");
   });
 
   it("constructs and validates the revision multipart request", async () => {
@@ -329,6 +347,7 @@ function capabilitiesFixture() {
     revision_semantic_review_available: true,
     transcription_dependency_available: true,
     transcription_enabled: false,
+    local_evidence_recovery_available: true,
     supported_review_modes: ["full", "local"],
     maximum_video_upload_size_bytes: 2_147_483_648,
     full_review_unavailable_reasons: [],

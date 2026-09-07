@@ -10,6 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 from creator_preflight.repair_models import RepairPlan
 from creator_preflight.release_models import ReleaseBrief, ReleaseBriefSource
 from creator_preflight.release_contract import ReleaseContract, ReleaseContractEvaluation
+from creator_preflight.release_evidence import AudioEvidenceState
+from creator_preflight.release_plan import ReleasePlan
 from creator_preflight.release_package import ReleasePackageSummary, empty_release_package_summary
 
 
@@ -249,7 +251,7 @@ class PreflightReport(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = "1.11"
+    schema_version: str = "1.12"
     verdict: FindingStatus
     scan_completeness: ScanCompleteness = ScanCompleteness.COMPLETE
     review_mode: ReviewMode = ReviewMode.LOCAL
@@ -270,7 +272,9 @@ class PreflightReport(BaseModel):
     claim_review: ClaimReviewSummary
     release_package: ReleasePackageSummary = Field(default_factory=empty_release_package_summary)
     release_contract: ReleaseContractEvaluation = Field(default_factory=ReleaseContractEvaluation)
+    audio_evidence: AudioEvidenceState = Field(default_factory=AudioEvidenceState)
     repair_plan: RepairPlan = Field(default_factory=RepairPlan)
+    release_plan: ReleasePlan = Field(default_factory=ReleasePlan)
     release_brief: ReleaseBrief = Field(default_factory=lambda: ReleaseBrief(
         source=ReleaseBriefSource.DETERMINISTIC,
         headline="Review complete",
@@ -314,6 +318,7 @@ class PreflightCapabilities(BaseModel):
     revision_semantic_review_available: bool
     transcription_dependency_available: bool
     transcription_enabled: bool
+    local_evidence_recovery_available: bool
     supported_review_modes: list[ReviewMode]
     maximum_video_upload_size_bytes: int = Field(gt=0)
     full_review_unavailable_reasons: list[CapabilityReason] = Field(

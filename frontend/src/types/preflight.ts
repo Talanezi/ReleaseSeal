@@ -118,6 +118,7 @@ export interface PreflightCapabilities {
   revision_semantic_review_available: boolean;
   transcription_dependency_available: boolean;
   transcription_enabled: boolean;
+  local_evidence_recovery_available: boolean;
   supported_review_modes: ReviewMode[];
   maximum_video_upload_size_bytes: number;
   full_review_unavailable_reasons: CapabilityReason[];
@@ -161,10 +162,78 @@ export interface ContractRequirementResult {
   status: ContractStatus;
   expected: string | null;
   evidence: string;
-  evidence_source: "CAPTION_TEXT" | "PUBLISHING_METADATA" | "MEDIA_INSPECTION" | "AI_SEMANTIC" | "NONE";
+  evidence_source: "SUPPLIED_CAPTIONS" | "PUBLISHING_METADATA" | "MEDIA_MEASUREMENT" | "LOCAL_MACHINE_TRANSCRIPT" | "HUMAN_CONFIRMED_AUDIO_EVIDENCE" | "AI_SEMANTIC" | "NONE";
   timestamp_seconds: number | null;
   confidence: number | null;
   reason_code: string | null;
+  audio_evidence: ContractAudioEvidence | null;
+}
+
+export interface ContractAudioEvidence {
+  artifact_sha256: string;
+  start_seconds: number;
+  end_seconds: number;
+  proposition: string;
+  machine_text: string | null;
+  transcription_engine: string | null;
+  transcription_model: string | null;
+  confirmation_id: string | null;
+  confirmed_at: string | null;
+}
+
+export interface MachineEvidenceCandidate {
+  candidate_id: string;
+  artifact_sha256: string;
+  requirement_id: string;
+  requirement_sha256: string;
+  requirement_type: "REQUIRED_TEXT" | "REQUIRED_EXACT_TOKEN" | "REQUIRED_BEFORE_TIME" | "FORBIDDEN_TEXT";
+  proposition: string;
+  expected_value: string;
+  start_seconds: number;
+  end_seconds: number;
+  machine_text: string;
+  confidence: number | null;
+  engine: "faster-whisper";
+  model: string;
+  evidence_source: "LOCAL_MACHINE_TRANSCRIPT";
+}
+
+export interface HumanAudioConfirmation {
+  confirmation_id: string;
+  artifact_sha256: string;
+  requirement_id: string;
+  requirement_sha256: string;
+  requirement_type: MachineEvidenceCandidate["requirement_type"];
+  proposition: string;
+  confirmed_value: string;
+  start_seconds: number;
+  end_seconds: number;
+  confirmed_at: string;
+  evidence_source: "HUMAN_CONFIRMED_AUDIO_EVIDENCE";
+}
+
+export interface AudioEvidenceState {
+  status: "NOT_NEEDED" | "COMPLETED" | "UNAVAILABLE";
+  reason: string;
+  artifact_sha256: string | null;
+  engine: string | null;
+  model: string | null;
+  transcript_character_count: number;
+  transcript_truncated: boolean;
+  candidates: MachineEvidenceCandidate[];
+  confirmations: HumanAudioConfirmation[];
+  runtime_seconds: number;
+}
+
+export type ReleasePlanCategory = "BLOCKING_REQUIREMENT" | "SAFE_AUTOMATION" | "CONFIRM_EVIDENCE" | "HUMAN_REVIEW" | "INFORMATIONAL";
+
+export interface ReleasePlan {
+  items: Array<{ item_id: string; category: ReleasePlanCategory; title: string; reference_id: string | null; timestamp_seconds: number | null }>;
+  blocking_requirement_count: number;
+  safe_automation_count: number;
+  confirm_evidence_count: number;
+  human_review_count: number;
+  informational_count: number;
 }
 
 export interface ReleaseContractEvaluation {
@@ -531,7 +600,9 @@ export interface PreflightReport {
   claim_review: ClaimReviewSummary;
   release_package: ReleasePackageSummary;
   release_contract: ReleaseContractEvaluation;
+  audio_evidence: AudioEvidenceState;
   repair_plan: RepairPlan;
+  release_plan: ReleasePlan;
   release_brief: ReleaseBrief;
   scan_duration_seconds: number;
 }

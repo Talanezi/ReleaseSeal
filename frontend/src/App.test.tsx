@@ -9,6 +9,7 @@ import { RevisionResultsView } from "./components/RevisionResultsView";
 import { blockedReport, needsReviewReport, readyReport, revisionCheckReport } from "./mocks/reports";
 import type { PreflightReport, ScanProgress, ThumbnailAssuranceReport, VerificationReport } from "./types/preflight";
 import { formatTimecode } from "./utils/format";
+import { useState } from "react";
 
 const createObjectURL = vi.fn(() => "blob:creator-preflight-local-preview");
 const revokeObjectURL = vi.fn();
@@ -106,15 +107,68 @@ describe("Creator Preflight frontend", () => {
   it("renders contract outcomes and seeks timestamped evidence", () => {
     const report: PreflightReport = { ...readyReport, verdict: "BLOCKED", release_contract: {
       contract: { schema_version: "1.0", name: "Sponsor delivery", requirements: [{ id: "promo", type: "REQUIRED_EXACT_TOKEN", instruction: "Use SAVE25", provenance: "manual", source_excerpt: null, evaluation_class: "DETERMINISTIC", value: "SAVE25" }] },
-      results: [{ requirement_id: "promo", requirement_type: "REQUIRED_EXACT_TOKEN", instruction: "Use SAVE25", evaluation_class: "DETERMINISTIC", status: "FAIL", expected: "SAVE25", evidence: "Required evidence was not found in supplied captions.", evidence_source: "CAPTION_TEXT", timestamp_seconds: 12, confidence: null, reason_code: null }],
+      results: [{ requirement_id: "promo", requirement_type: "REQUIRED_EXACT_TOKEN", instruction: "Use SAVE25", evaluation_class: "DETERMINISTIC", status: "FAIL", expected: "SAVE25", evidence: "Required evidence was not found in supplied captions.", evidence_source: "SUPPLIED_CAPTIONS", timestamp_seconds: 12, confidence: null, reason_code: null, audio_evidence: null }],
       passed_count: 0, failed_count: 1, needs_review_count: 0, not_evaluated_count: 0, runtime_seconds: .001,
     } };
     render(<ResultsView report={report} previewUrl="blob:video" />);
     expect(screen.getByRole("heading", { name: "Release requirements" })).toBeInTheDocument();
     expect(screen.getByText("0 of 1")).toBeInTheDocument();
-    expect(screen.getByText(/Deterministic · Caption text/)).toBeInTheDocument();
+    expect(screen.getByText(/Deterministic · Supplied captions/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /00:12.00/ }));
     expect(screen.getByTestId("preview-video")).toHaveAttribute("src", "blob:video");
+  });
+
+  it("recovers, reviews, and confirms artifact-bound local audio evidence", async () => {
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    const sha = "b".repeat(64);
+    const requirement = { id: "promo", type: "REQUIRED_EXACT_TOKEN" as const, instruction: "Use SAVE25", provenance: "manual" as const, source_excerpt: null, evaluation_class: "DETERMINISTIC" as const, value: "SAVE25" };
+    const base: PreflightReport = {
+      ...readyReport,
+      scan_completeness: "PARTIAL",
+      release_contract: {
+        contract: { schema_version: "1.0", name: null, requirements: [requirement] },
+        results: [{ requirement_id: "promo", requirement_type: "REQUIRED_EXACT_TOKEN", instruction: "Use SAVE25", evaluation_class: "DETERMINISTIC", status: "NOT_EVALUATED", expected: "SAVE25", evidence: "No supported caption text was supplied for deterministic text evaluation.", evidence_source: "NONE", timestamp_seconds: null, confidence: null, reason_code: "text_evidence_unavailable", audio_evidence: null }],
+        passed_count: 0, failed_count: 0, needs_review_count: 0, not_evaluated_count: 1, runtime_seconds: .001,
+      },
+      audio_evidence: { ...readyReport.audio_evidence },
+      release_plan: { items: [{ item_id: "requirement-promo", category: "INFORMATIONAL", title: "Use SAVE25", reference_id: "promo", timestamp_seconds: null }], blocking_requirement_count: 0, safe_automation_count: 0, confirm_evidence_count: 0, human_review_count: 0, informational_count: 1 },
+    };
+    const candidate = {
+      candidate_id: "audio-0123456789abcdef", artifact_sha256: sha, requirement_id: "promo", requirement_sha256: "c".repeat(64), requirement_type: "REQUIRED_EXACT_TOKEN" as const,
+      proposition: "This source-audio region contains “SAVE25”.", expected_value: "SAVE25", start_seconds: 12.25, end_seconds: 13.75,
+      machine_text: "Use SAVE25 today", confidence: null, engine: "faster-whisper" as const, model: "tiny.en", evidence_source: "LOCAL_MACHINE_TRANSCRIPT" as const,
+    };
+    const recovered: PreflightReport = {
+      ...base, verdict: "NEEDS_REVIEW", scan_completeness: "COMPLETE",
+      release_contract: { ...base.release_contract, results: [{ ...base.release_contract.results[0], status: "NEEDS_REVIEW", evidence: "Local transcription suggests SAVE25.", evidence_source: "LOCAL_MACHINE_TRANSCRIPT", timestamp_seconds: 12.25, reason_code: "machine_audio_evidence_candidate", audio_evidence: { artifact_sha256: sha, start_seconds: 12.25, end_seconds: 13.75, proposition: candidate.proposition, machine_text: candidate.machine_text, transcription_engine: "faster-whisper", transcription_model: "tiny.en", confirmation_id: null, confirmed_at: null } }], needs_review_count: 1, not_evaluated_count: 0 },
+      audio_evidence: { status: "COMPLETED", reason: "Local transcription suggested 1 bounded evidence candidate(s).", artifact_sha256: sha, engine: "faster-whisper", model: "tiny.en", transcript_character_count: 16, transcript_truncated: false, candidates: [candidate], confirmations: [], runtime_seconds: .01 },
+      release_plan: { items: [{ item_id: `evidence-${candidate.candidate_id}`, category: "CONFIRM_EVIDENCE", title: "Confirm audio evidence for SAVE25", reference_id: candidate.candidate_id, timestamp_seconds: 12.25 }], blocking_requirement_count: 0, safe_automation_count: 0, confirm_evidence_count: 1, human_review_count: 0, informational_count: 0 },
+    };
+    const confirmation = { confirmation_id: "confirm-0123456789abcdef", artifact_sha256: sha, requirement_id: "promo", requirement_sha256: candidate.requirement_sha256, requirement_type: candidate.requirement_type, proposition: candidate.proposition, confirmed_value: "SAVE25", start_seconds: 12.25, end_seconds: 13.75, confirmed_at: "2026-09-07T12:00:00Z", evidence_source: "HUMAN_CONFIRMED_AUDIO_EVIDENCE" as const };
+    const confirmed: PreflightReport = { ...recovered, verdict: "READY", release_contract: { ...recovered.release_contract, results: [{ ...recovered.release_contract.results[0], status: "PASS", evidence: "You confirmed SAVE25 at 00:12.25.", evidence_source: "HUMAN_CONFIRMED_AUDIO_EVIDENCE", reason_code: "human_confirmed_presence", audio_evidence: { artifact_sha256: sha, start_seconds: 12.25, end_seconds: 13.75, proposition: candidate.proposition, machine_text: null, transcription_engine: null, transcription_model: null, confirmation_id: confirmation.confirmation_id, confirmed_at: confirmation.confirmed_at } }], passed_count: 1, needs_review_count: 0 }, audio_evidence: { ...recovered.audio_evidence, confirmations: [confirmation] }, release_plan: { items: [], blocking_requirement_count: 0, safe_automation_count: 0, confirm_evidence_count: 0, human_review_count: 0, informational_count: 0 } };
+    const responses = [recovered, confirmed];
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(jsonResponse(responses.shift()!))));
+    function Harness() {
+      const [report, setReport] = useState(base);
+      return <ResultsView report={report} sourceFile={new File(["video"], "release.mp4")} previewUrl="blob:source" evidenceRecoveryAvailable onReportUpdate={setReport} />;
+    }
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Find audio evidence" }));
+    expect(await screen.findByText(/Local transcription suggests:/)).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Action queue" })).getByText("Evidence to confirm · 1")).toBeInTheDocument();
+    expect(screen.getByText(`Confirmation: ${candidate.proposition}`)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Review audio 00:12.25–00:13.75/ }));
+    expect(screen.getByTestId("preview-video")).toHaveAttribute("src", "blob:source");
+    await user.click(screen.getByRole("button", { name: "Confirm this evidence" }));
+    expect(await screen.findByText(/Human-confirmed audio evidence/)).toBeInTheDocument();
+    expect(screen.queryByText(/Local transcription suggests:/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "JSON" }));
+    const objectUrlCalls = createObjectURL.mock.calls as unknown[][];
+    const exported = objectUrlCalls.at(-1)?.[0] as Blob;
+    const exportedText = await blobText(exported);
+    expect(exportedText).toContain('"HUMAN_CONFIRMED_AUDIO_EVIDENCE"');
+    expect(exportedText).toContain(`"artifact_sha256": "${sha}"`);
   });
   it("renders one truthful release package and actual-thumbnail delivery preview", async () => {
     const user = userEvent.setup();
@@ -725,7 +779,7 @@ describe("Creator Preflight frontend", () => {
     expect(screen.getByText("Original context")).toBeInTheDocument();
     expect(screen.getByText("Proposed repair")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Approve repair" }));
-    expect(screen.getByRole("button", { name: /Apply 1 approved repair/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run safe fixes" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Remove approval" }));
     expect(screen.queryByRole("button", { name: /Apply approved/ })).not.toBeInTheDocument();
@@ -778,7 +832,7 @@ describe("Creator Preflight frontend", () => {
     await user.click(screen.getAllByRole("button", { name: "Preview repair" })[0]);
     await screen.findByTestId("repair-preview-video");
     await user.click(screen.getByRole("button", { name: "Approve repair" }));
-    await user.click(screen.getByRole("button", { name: /Apply 1 approved repair/ }));
+    await user.click(screen.getByRole("button", { name: "Run safe fixes" }));
 
     expect(await screen.findByText(/Detected on repaired scan:/)).toBeInTheDocument();
     expect(screen.getByText(/No deterministic unexpected media changes found/)).toBeInTheDocument();
@@ -1182,6 +1236,7 @@ function capabilitiesFixture(fullReviewAvailable = true) {
     revision_semantic_review_available: true,
     transcription_dependency_available: true,
     transcription_enabled: false,
+    local_evidence_recovery_available: true,
     supported_review_modes: ["full", "local"],
     maximum_video_upload_size_bytes: 2_147_483_648,
     full_review_unavailable_reasons: fullReviewAvailable ? [] : [{

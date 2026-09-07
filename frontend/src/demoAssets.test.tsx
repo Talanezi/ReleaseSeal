@@ -88,7 +88,7 @@ function capabilities() {
   return {
     ffmpeg_available: true, ffprobe_available: true, gemini_dependency_installed: false,
     gemini_api_key_configured: false, full_review_available: false, release_contract_extraction_available: false, transcription_dependency_installed: false,
-    transcription_enabled: false, supported_review_modes: ["local", "full"], maximum_video_upload_size_bytes: 2147483648,
+    transcription_enabled: false, local_evidence_recovery_available: false, supported_review_modes: ["local", "full"], maximum_video_upload_size_bytes: 2147483648,
     maximum_thumbnail_upload_size_bytes: 5242880, maximum_thumbnail_pixels: 20000000, maximum_concurrent_scans: 2,
     revision_check_available: true, revision_semantic_review_available: false,
   };
