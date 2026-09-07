@@ -1,5 +1,7 @@
 # Judge navigation
 
+For the deliberately skeptical counter-assessment—including the strongest remaining argument against the project in each rubric category—see [`LOSS_REGISTER.md`](LOSS_REGISTER.md). That register complements this evidence map; it is not a product claim or competitive scorecard.
+
 Creator Preflight is creative release assurance for two related decisions: whether one final export is ready to ship, and whether a revised cut changed where the notes expected it to.
 
 Start at `/proof/` for a backend-free inspection path. The page links every claim to typed, generated engine state and clearly discloses that the evidence is precomputed. Rebuild and self-verify it with `./scripts/build_judge_proof.sh`.

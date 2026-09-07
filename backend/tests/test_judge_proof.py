@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +16,8 @@ from creator_preflight.judge_proof import JudgeProofBundle
 ROOT = Path(__file__).resolve().parents[2]
 PROOF_ROOT = ROOT / "frontend" / "public" / "proof"
 BUNDLE_PATH = PROOF_ROOT / "judge-proof.json"
+sys.path.insert(0, str(ROOT / "scripts"))
+from build_judge_proof import verify_expected_proof  # noqa: E402
 
 
 def load_bundle() -> JudgeProofBundle:
@@ -68,8 +72,53 @@ def test_judge_proof_schema_rejects_unknown_fields_and_unsafe_paths() -> None:
     payload["unexpected"] = True
     with pytest.raises(ValidationError):
         JudgeProofBundle.model_validate(payload)
-
     payload.pop("unexpected")
     payload["final_export"]["original_video"]["relative_path"] = "../private.mp4"
     with pytest.raises(ValidationError):
         JudgeProofBundle.model_validate(payload)
+
+
+@pytest.fixture
+def isolated_proof(tmp_path: Path) -> Path:
+    root = tmp_path / "proof"
+    (root / "assets").mkdir(parents=True)
+    shutil.copy2(BUNDLE_PATH, root / "judge-proof.json")
+    for source in (PROOF_ROOT / "assets").iterdir():
+        os.link(source, root / "assets" / source.name)
+    return root
+
+
+def _isolated_bundle(root: Path) -> JudgeProofBundle:
+    return JudgeProofBundle.model_validate_json((root / "judge-proof.json").read_text(encoding="utf-8"))
+
+
+def test_judge_proof_self_check_rejects_changed_missing_and_stale_assets(isolated_proof: Path) -> None:
+    changed = isolated_proof / "assets" / "contract-control.srt"
+    changed.unlink()
+    changed.write_text("mutated", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="identity mismatch"):
+        verify_expected_proof(_isolated_bundle(isolated_proof), isolated_proof)
+
+    shutil.copy2(PROOF_ROOT / "assets" / "contract-control.srt", changed)
+    missing = isolated_proof / "assets" / "contract-control.mp4"
+    missing.unlink()
+    with pytest.raises((FileNotFoundError, RuntimeError)):
+        verify_expected_proof(_isolated_bundle(isolated_proof), isolated_proof)
+
+    os.link(PROOF_ROOT / "assets" / "contract-control.mp4", missing)
+    (isolated_proof / "assets" / "stale.tmp").write_bytes(b"stale")
+    with pytest.raises(RuntimeError, match="stale"):
+        verify_expected_proof(_isolated_bundle(isolated_proof), isolated_proof)
+
+
+def test_judge_proof_self_check_rejects_stale_json_fact(isolated_proof: Path) -> None:
+    payload = json.loads((isolated_proof / "judge-proof.json").read_text(encoding="utf-8"))
+    payload["final_export"]["verification"]["unexpected_changes"] = [{
+        "start_seconds": 30,
+        "end_seconds": 31,
+        "maximum_mean_difference": 20,
+        "sample_count": 2,
+    }]
+    bundle = JudgeProofBundle.model_validate(payload)
+    with pytest.raises(RuntimeError, match="unexpected media changes"):
+        verify_expected_proof(bundle, isolated_proof)

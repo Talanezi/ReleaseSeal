@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -115,6 +116,7 @@ def test_ffmpeg_render_removes_multiple_ranges_and_preserves_video_audio(
     tmp_path: Path,
 ) -> None:
     output = tmp_path / "repaired.mp4"
+    source_digest = hashlib.sha256(api_anomaly_video.read_bytes()).hexdigest()
     result = FFmpegRepairEngine().render(
         api_anomaly_video,
         output,
@@ -123,6 +125,7 @@ def test_ffmpeg_render_removes_multiple_ranges_and_preserves_video_audio(
     inspection = MediaInspector().inspect(output)
 
     assert api_anomaly_video.exists()
+    assert hashlib.sha256(api_anomaly_video.read_bytes()).hexdigest() == source_digest
     assert result.original_duration_seconds == pytest.approx(12, abs=0.2)
     assert result.removed_duration_seconds == pytest.approx(4, abs=0.01)
     assert result.output_duration_seconds == pytest.approx(8, abs=0.3)

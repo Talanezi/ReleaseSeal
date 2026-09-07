@@ -62,7 +62,7 @@ function Proof({ bundle }: { bundle: JudgeProofBundle }) {
         <div className="proof-two-column">
           <div className="proof-media-card">
             <video ref={originalRef} controls preload="metadata" poster={thumbUrl} src={assetUrl(final.original_video)} aria-label="Authentic Yellowstone Final Export" />
-            <div className="proof-media-meta"><strong>{final.title}</strong><span>{bundle.provenance.source_credit} · {bundle.provenance.source_type.replace("_", " ")}</span></div>
+            <div className="proof-media-meta"><strong>{final.title}</strong><span>{bundle.provenance.source_credit} · {bundle.provenance.source_type.replace("_", " ")} · attribution does not imply endorsement</span></div>
           </div>
           <div className="proof-fact-panel">
             <ProofMetric value={final.original_report.verdict.replace("_", " ")} label={`${final.original_report.scan_completeness.toLowerCase()} scan`} tone="review" />

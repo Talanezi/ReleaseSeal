@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "generator_version": "1",
   "generation_origin": "GENERATED_FROM_ENGINE",
-  "generated_at": "2026-09-07T13:12:20.399239Z",
+  "generated_at": "2026-09-07T13:21:05.411461Z",
   "provenance": {
     "source_type": "public_domain",
     "source_credit": "U.S. Geological Survey",
@@ -435,9 +435,9 @@
           ],
           "critical_region_intersections": []
         },
-        "construction_seconds": 0.00015054107643663883,
-        "thumbnail_evaluation_seconds": 0.000030041905120015144,
-        "preview_metadata_seconds": 0.00009450002107769251
+        "construction_seconds": 0.0011138329282402992,
+        "thumbnail_evaluation_seconds": 0.000028708018362522125,
+        "preview_metadata_seconds": 0.0010536250192672014
       },
       "release_contract": {
         "contract": null,
@@ -446,7 +446,7 @@
         "failed_count": 0,
         "needs_review_count": 0,
         "not_evaluated_count": 0,
-        "runtime_seconds": 2.9999064281582832e-6
+        "runtime_seconds": 1.2919772416353226e-6
       },
       "repair_plan": {
         "proposals": [
@@ -618,7 +618,7 @@
         ],
         "positive_note": null
       },
-      "scan_duration_seconds": 2.196688042022288
+      "scan_duration_seconds": 2.251581292017363
     },
     "repair_operation": {
       "operation_type": "REMOVE_RANGE",
@@ -1302,9 +1302,9 @@
             ],
             "critical_region_intersections": []
           },
-          "construction_seconds": 0.00008270901162177324,
-          "thumbnail_evaluation_seconds": 0.00002704199869185686,
-          "preview_metadata_seconds": 0.000034082913771271706
+          "construction_seconds": 0.00007816602010279894,
+          "thumbnail_evaluation_seconds": 0.000022959080524742603,
+          "preview_metadata_seconds": 0.00003541691694408655
         },
         "release_contract": {
           "contract": null,
@@ -1313,7 +1313,7 @@
           "failed_count": 0,
           "needs_review_count": 0,
           "not_evaluated_count": 0,
-          "runtime_seconds": 1.0420335456728935e-6
+          "runtime_seconds": 9.58913005888462e-7
         },
         "repair_plan": {
           "proposals": [
@@ -1459,7 +1459,7 @@
           ],
           "positive_note": null
         },
-        "scan_duration_seconds": 2.6753706249874085
+        "scan_duration_seconds": 2.749880417017266
       },
       "regression_analysis_completeness": "COMPLETE",
       "review_reel_manifest": {
@@ -1520,7 +1520,7 @@
     "receipt": {
       "receipt_schema_version": "1.0",
       "receipt_kind": "FINAL_EXPORT",
-      "created_at": "2026-09-07T13:12:20.399239Z",
+      "created_at": "2026-09-07T13:21:05.411461Z",
       "scanner_version": "0.0.0",
       "verdict": "NEEDS_REVIEW",
       "scan_completeness": "COMPLETE",
@@ -1605,7 +1605,7 @@
         "unexpected_change_count": 0,
         "unexpected_changes": []
       },
-      "receipt_content_sha256": "8f4483f7382db32f94495130cbe6d16183e1378ae3c88c51ac87a597bc598ee9"
+      "receipt_content_sha256": "d9707d077f939984852c30caafce0e567b0342a00548864dcc7881750e576d92"
     },
     "receipt_valid": {
       "status": "VALID",
@@ -1969,9 +1969,9 @@
         "thumbnail_height": null,
         "thumbnail_checks": [],
         "delivery_preview": null,
-        "construction_seconds": 0.000029792077839374542,
-        "thumbnail_evaluation_seconds": 1.6705598682165146e-7,
-        "preview_metadata_seconds": 1.6600824892520905e-7
+        "construction_seconds": 0.000031791976653039455,
+        "thumbnail_evaluation_seconds": 2.50060111284256e-7,
+        "preview_metadata_seconds": 1.25030055642128e-7
       },
       "release_contract": {
         "contract": {
@@ -2098,7 +2098,7 @@
         "failed_count": 1,
         "needs_review_count": 0,
         "not_evaluated_count": 0,
-        "runtime_seconds": 0.00026124995201826096
+        "runtime_seconds": 0.0002803340321406722
       },
       "repair_plan": {
         "proposals": [
@@ -2135,7 +2135,7 @@
         ],
         "positive_note": null
       },
-      "scan_duration_seconds": 0.24877687508706003
+      "scan_duration_seconds": 0.2505394590552896
     }
   },
   "revision": {
@@ -2294,7 +2294,7 @@
         "ambiguity_notes": [
           "Low-information, repeated, or weakly matched material reduced confidence for one or more regions."
         ],
-        "analysis_runtime_seconds": 3.385965875000693,
+        "analysis_runtime_seconds": 3.5329666669713333,
         "identical_file_fast_path": false
       },
       "revision_requests": [
@@ -2343,12 +2343,12 @@
         }
       ],
       "additional_change_count": 1,
-      "analysis_runtime_seconds": 3.3861627089791
+      "analysis_runtime_seconds": 3.5331952499691397
     },
     "receipt": {
       "receipt_schema_version": "1.0",
       "receipt_kind": "REVISION",
-      "created_at": "2026-09-07T13:12:20.399239Z",
+      "created_at": "2026-09-07T13:21:05.411461Z",
       "scanner_version": "0.0.0",
       "verdict": "NOT_APPLICABLE",
       "scan_completeness": "COMPLETE",
@@ -2402,7 +2402,7 @@
         "results": []
       },
       "human_dispositions": [],
-      "receipt_content_sha256": "f4af49a15a578f2832478d5592858374430291592e4ce3dc77e52d4590b98e49"
+      "receipt_content_sha256": "29eebd996ac73bb1f37858fb95fa3d45d93cc49a7ec24612b43986fd7d5afe6a"
     },
     "receipt_valid": {
       "status": "VALID",

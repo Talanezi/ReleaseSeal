@@ -2,11 +2,19 @@
 
 ## Current milestone
 
-Milestone 26 — Artifact-Bound Release Receipt.
+Milestone 29 — Hostile Release Freeze.
 
 Status: Complete on 2026-09-07. No live provider call was required.
 
 ## Completed
+
+- Milestone 29 hostile release audit found no scanner, repair, contract, receipt, Revision, package, or proof-engine production defect. Focused additions now explicitly protect unusual valid 17 fps/odd-dimension media, upload limits without `Content-Length`, traversal-style upload names, exact contract-deadline boundaries, conservative URL normalization, empty/local-only semantic contracts, negative repair ranges, repair source immutability, and changed/missing/stale Judge Proof evidence.
+- The public proof already attributed the Yellowstone media to the U.S. Geological Survey and identified it as public domain; the proof surface now also says explicitly that attribution does not imply endorsement. Markdown link validation found no broken repository-document links, and production-critical TODO/FIXME/HACK review found only intentional placeholder-detection fixtures/copy.
+- Milestone 29 final release gate: 364 backend tests passed with one upstream Starlette TestClient deprecation warning; all 85 frontend tests passed; TypeScript and the two-entry Vite production build passed with 1,835 modules; Python compile/import and `git diff --check` passed. `pip check` reported no broken requirements. The local `node_modules` contains harmless extraneous hoisted duplicate transitive packages, while the locked clean build/test path remains green.
+- The network-free deterministic demo reproduced its expected completed `NEEDS_REVIEW` result (15 checks passed, 5 review findings, 0 critical) in 0.818 seconds; its documented exit code 1 is the completed-review verdict rather than a runtime failure. Judge Proof rebuilt from production paths and independently self-verified in 28.105 seconds; a subsequent independent verification completed in 0.338 seconds.
+- Hostile matrix review confirmed controlled handling or existing regression coverage for empty/malformed/unsupported media, no-audio/video-only and audio-only inputs, short/black/flash/silent/static/hard-cut/re-encoded media, unusual dimensions/rates, malformed/overlapping/out-of-range captions, invalid repair ranges and ripple verification, deterministic-versus-semantic contract trust, receipt mutations/role swaps, Revision alignment and provider isolation, bounded thumbnail decoding/geometry, multipart/origin/capacity/temp cleanup, and proof provenance/hash consistency. Missing evidence remains `NOT_EVALUATED` or unavailable rather than a pass.
+- `docs/LOSS_REGISTER.md` records the remaining specialist-thumbnail, contract-evidence, autonomous-editing, and workflow-tool loss arguments plus a skeptical weighted-rubric audit. It identifies isolated thumbnail assurance as a justified M30 candidate while noting that trustworthy transcript evidence is the strongest alternative; neither capability was implemented in M29.
+- **Core freeze:** scanner contracts, the repair verifier, Release Contract trust policy, receipt canonicalization, RevisionMapper, and Judge Proof provenance are frozen after M29. Later isolated additions may use their typed boundaries, but must not casually refactor, weaken, or reinterpret them.
 
 - Milestone 26 adds strict versioned Final Export and Revision receipt models. Backend-owned construction binds exact SHA-256 media identities, byte sizes, explicit optional-asset absence, normalized publishing-text digests, configuration, deterministic results, advisory results, human dispositions, and the actual recorded verdict/completeness.
 - Final Export package fingerprints bind video, optional thumbnail/captions, title, description, and the embedded canonical Release Contract plus its deterministic and semantic evaluation rows. Repaired receipts separately bind the original and shipping repaired artifacts, approved original-timeline operations, re-scan state, and deterministic unexpected-change intervals.
