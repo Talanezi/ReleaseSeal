@@ -8,7 +8,7 @@ import sys
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT / "backend" / "src"))
 
-from creator_preflight.claim_fixture import generate_claim_review_fixture  # noqa: E402
+from releaseseal.claim_fixture import generate_claim_review_fixture  # noqa: E402
 
 
 def main() -> None:

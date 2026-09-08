@@ -2,11 +2,11 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from creator_preflight import api as api_module
-from creator_preflight.config import PreflightConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import PublishingPackage, ReviewMode
-from creator_preflight.progress import ScanProgressStage, ScanProgressState, ScanProgressStore
+from releaseseal import api as api_module
+from releaseseal.config import PreflightConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import PublishingPackage, ReviewMode
+from releaseseal.progress import ScanProgressStage, ScanProgressState, ScanProgressStore
 
 
 def test_progress_is_monotonic_and_never_finishes_early() -> None:

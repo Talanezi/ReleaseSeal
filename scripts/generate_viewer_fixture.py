@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-from creator_preflight.viewer_fixture import generate_viewer_pass_fixture
+from releaseseal.viewer_fixture import generate_viewer_pass_fixture
 
 
 def main() -> None:

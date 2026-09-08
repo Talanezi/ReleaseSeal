@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "generator_version": "1",
   "generation_origin": "GENERATED_FROM_ENGINE",
-  "generated_at": "2026-09-07T13:21:05.411461Z",
+  "generated_at": "2026-09-08T00:05:41.035218Z",
   "provenance": {
     "source_type": "public_domain",
     "source_credit": "U.S. Geological Survey",
@@ -34,7 +34,7 @@
     "title": "A creative release review",
     "description": "A creator video prepared for the release-assurance demo.",
     "original_report": {
-      "schema_version": "1.10",
+      "schema_version": "1.12",
       "verdict": "NEEDS_REVIEW",
       "scan_completeness": "COMPLETE",
       "review_mode": "local",
@@ -435,9 +435,186 @@
           ],
           "critical_region_intersections": []
         },
-        "construction_seconds": 0.0011138329282402992,
-        "thumbnail_evaluation_seconds": 0.000028708018362522125,
-        "preview_metadata_seconds": 0.0010536250192672014
+        "thumbnail_assurance": {
+          "schema_version": "1.0",
+          "evidence_class": "ADVISORY",
+          "status": "CLEAR",
+          "source_width": 1333,
+          "source_height": 750,
+          "analysis_width": 320,
+          "analysis_height": 180,
+          "confident_region_count": 2,
+          "regions": [
+            {
+              "region_id": "text-1",
+              "evidence_class": "ADVISORY",
+              "box": {
+                "x": 0.33125,
+                "y": 0.05555555555555555,
+                "width": 0.159375,
+                "height": 0.044444444444444446
+              },
+              "source_x": 442,
+              "source_y": 42,
+              "source_width": 212,
+              "source_height": 33,
+              "estimated_cap_height_pixels": 33.0,
+              "confidence": 0.92,
+              "estimated_local_contrast_ratio": 8.31,
+              "contrast_evidence_confidence": 0.92,
+              "detector": "SEGMENTATION_FALLBACK"
+            },
+            {
+              "region_id": "text-2",
+              "evidence_class": "ADVISORY",
+              "box": {
+                "x": 0.065625,
+                "y": 0.5277777777777778,
+                "width": 0.571875,
+                "height": 0.3333333333333333
+              },
+              "source_x": 87,
+              "source_y": 396,
+              "source_width": 762,
+              "source_height": 250,
+              "estimated_cap_height_pixels": 250.0,
+              "confidence": 0.92,
+              "estimated_local_contrast_ratio": 9.81,
+              "contrast_evidence_confidence": 0.92,
+              "detector": "SEGMENTATION_FALLBACK"
+            }
+          ],
+          "delivered_text": [
+            {
+              "region_id": "text-1",
+              "evidence_class": "MEASURED",
+              "surface_id": "mobile_feed",
+              "delivered_height_pixels": 4.14,
+              "status": "NEEDS_REVIEW",
+              "badge_overlap_fraction": 0.0,
+              "edge_safety": "NEAR_EDGE"
+            },
+            {
+              "region_id": "text-2",
+              "evidence_class": "MEASURED",
+              "surface_id": "mobile_feed",
+              "delivered_height_pixels": 31.33,
+              "status": "CLEAR",
+              "badge_overlap_fraction": 0.0,
+              "edge_safety": "CLEAR"
+            },
+            {
+              "region_id": "text-1",
+              "evidence_class": "MEASURED",
+              "surface_id": "desktop_grid",
+              "delivered_height_pixels": 6.07,
+              "status": "NEEDS_REVIEW",
+              "badge_overlap_fraction": 0.0,
+              "edge_safety": "CLEAR"
+            },
+            {
+              "region_id": "text-2",
+              "evidence_class": "MEASURED",
+              "surface_id": "desktop_grid",
+              "delivered_height_pixels": 46.0,
+              "status": "CLEAR",
+              "badge_overlap_fraction": 0.0,
+              "edge_safety": "CLEAR"
+            },
+            {
+              "region_id": "text-1",
+              "evidence_class": "MEASURED",
+              "surface_id": "desktop_sidebar",
+              "delivered_height_pixels": 4.14,
+              "status": "NEEDS_REVIEW",
+              "badge_overlap_fraction": 0.0,
+              "edge_safety": "NEAR_EDGE"
+            },
+            {
+              "region_id": "text-2",
+              "evidence_class": "MEASURED",
+              "surface_id": "desktop_sidebar",
+              "delivered_height_pixels": 31.33,
+              "status": "CLEAR",
+              "badge_overlap_fraction": 0.0,
+              "edge_safety": "CLEAR"
+            },
+            {
+              "region_id": "text-1",
+              "evidence_class": "MEASURED",
+              "surface_id": "tv_large",
+              "delivered_height_pixels": 7.92,
+              "status": "NEEDS_REVIEW",
+              "badge_overlap_fraction": 0.0,
+              "edge_safety": "CLEAR"
+            },
+            {
+              "region_id": "text-2",
+              "evidence_class": "MEASURED",
+              "surface_id": "tv_large",
+              "delivered_height_pixels": 60.0,
+              "status": "CLEAR",
+              "badge_overlap_fraction": 0.0,
+              "edge_safety": "CLEAR"
+            }
+          ],
+          "surfaces": [
+            {
+              "surface_id": "mobile_feed",
+              "evidence_class": "ADVISORY",
+              "label": "Mobile feed / search",
+              "display_width": 168,
+              "display_height": 94,
+              "unreadable_text_area_share": 0.0358,
+              "detail_retention_ratio": 0.7714,
+              "detail_status": "CLEAR"
+            },
+            {
+              "surface_id": "desktop_grid",
+              "evidence_class": "ADVISORY",
+              "label": "Desktop grid",
+              "display_width": 246,
+              "display_height": 138,
+              "unreadable_text_area_share": 0.0358,
+              "detail_retention_ratio": 0.8368,
+              "detail_status": "CLEAR"
+            },
+            {
+              "surface_id": "desktop_sidebar",
+              "evidence_class": "ADVISORY",
+              "label": "Desktop sidebar",
+              "display_width": 168,
+              "display_height": 94,
+              "unreadable_text_area_share": 0.0358,
+              "detail_retention_ratio": 0.7714,
+              "detail_status": "CLEAR"
+            },
+            {
+              "surface_id": "tv_large",
+              "evidence_class": "ADVISORY",
+              "label": "TV / large surface",
+              "display_width": 320,
+              "display_height": 180,
+              "unreadable_text_area_share": 0.0358,
+              "detail_retention_ratio": 1.0,
+              "detail_status": "CLEAR"
+            }
+          ],
+          "minimum_region_confidence": 0.72,
+          "minimum_delivered_text_height_pixels": 8.0,
+          "minimum_estimated_contrast_ratio": 2.5,
+          "minimum_detail_retention_ratio": 0.72,
+          "reason": "Confident text-like regions clear the configured delivery checks.",
+          "finding_codes": [],
+          "decode_seconds": 0.038401916972361505,
+          "text_detection_seconds": 0.07382758404128253,
+          "contrast_seconds": 0.001906416960991919,
+          "detail_seconds": 0.15099595894571394,
+          "total_seconds": 0.2730239159427583
+        },
+        "construction_seconds": 0.0007406249642372131,
+        "thumbnail_evaluation_seconds": 0.00003358290996402502,
+        "preview_metadata_seconds": 0.0006720829987898469
       },
       "release_contract": {
         "contract": null,
@@ -446,7 +623,19 @@
         "failed_count": 0,
         "needs_review_count": 0,
         "not_evaluated_count": 0,
-        "runtime_seconds": 1.2919772416353226e-6
+        "runtime_seconds": 1.7080456018447876e-6
+      },
+      "audio_evidence": {
+        "status": "NOT_NEEDED",
+        "reason": "No local audio evidence recovery was requested.",
+        "artifact_sha256": null,
+        "engine": null,
+        "model": null,
+        "transcript_character_count": 0,
+        "transcript_truncated": false,
+        "candidates": [],
+        "confirmations": [],
+        "runtime_seconds": 0.0
       },
       "repair_plan": {
         "proposals": [
@@ -480,7 +669,7 @@
             "proposal_id": "repair-f751a5c1b3112d5b",
             "finding_code": "AUDIO_LONG_SILENCE",
             "finding_title": "Long silent section",
-            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
             "source": "audio.silence",
             "repairability": "HUMAN_ONLY",
             "operation": null,
@@ -501,7 +690,7 @@
             "proposal_id": "repair-1bf37242ba44cc4d",
             "finding_code": "VIDEO_FREEZE_SEGMENT",
             "finding_title": "Sustained static-frame section",
-            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
             "source": "video.freeze",
             "repairability": "HUMAN_ONLY",
             "operation": null,
@@ -522,7 +711,7 @@
             "proposal_id": "repair-0d9242c684d6f96b",
             "finding_code": "VIDEO_FREEZE_SEGMENT",
             "finding_title": "Sustained static-frame section",
-            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
             "source": "video.freeze",
             "repairability": "HUMAN_ONLY",
             "operation": null,
@@ -543,7 +732,7 @@
             "proposal_id": "repair-aa1083700bac4a0a",
             "finding_code": "VIDEO_FREEZE_SEGMENT",
             "finding_title": "Sustained static-frame section",
-            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
             "source": "video.freeze",
             "repairability": "HUMAN_ONLY",
             "operation": null,
@@ -564,7 +753,7 @@
             "proposal_id": "repair-a784982de43e75b4",
             "finding_code": "VIDEO_FREEZE_SEGMENT",
             "finding_title": "Sustained static-frame section",
-            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
             "source": "video.freeze",
             "repairability": "HUMAN_ONLY",
             "operation": null,
@@ -585,7 +774,7 @@
             "proposal_id": "repair-de48928991fa37e8",
             "finding_code": "VIDEO_SHORT_BLACK_FLASH",
             "finding_title": "Brief black flash candidate",
-            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
             "source": "video.black",
             "repairability": "HUMAN_ONLY",
             "operation": null,
@@ -607,6 +796,64 @@
         "preview_required_count": 1,
         "human_only_count": 6
       },
+      "release_plan": {
+        "items": [
+          {
+            "item_id": "repair-repair-7d514dd3f4b14608",
+            "category": "HUMAN_REVIEW",
+            "title": "Sustained near-black section",
+            "reference_id": "repair-7d514dd3f4b14608",
+            "timestamp_seconds": 24.0
+          },
+          {
+            "item_id": "repair-repair-f751a5c1b3112d5b",
+            "category": "HUMAN_REVIEW",
+            "title": "Long silent section",
+            "reference_id": "repair-f751a5c1b3112d5b",
+            "timestamp_seconds": 54.019625
+          },
+          {
+            "item_id": "repair-repair-1bf37242ba44cc4d",
+            "category": "HUMAN_REVIEW",
+            "title": "Sustained static-frame section",
+            "reference_id": "repair-1bf37242ba44cc4d",
+            "timestamp_seconds": 73.333333
+          },
+          {
+            "item_id": "repair-repair-0d9242c684d6f96b",
+            "category": "HUMAN_REVIEW",
+            "title": "Sustained static-frame section",
+            "reference_id": "repair-0d9242c684d6f96b",
+            "timestamp_seconds": 94.916667
+          },
+          {
+            "item_id": "repair-repair-aa1083700bac4a0a",
+            "category": "HUMAN_REVIEW",
+            "title": "Sustained static-frame section",
+            "reference_id": "repair-aa1083700bac4a0a",
+            "timestamp_seconds": 100.0
+          },
+          {
+            "item_id": "repair-repair-a784982de43e75b4",
+            "category": "HUMAN_REVIEW",
+            "title": "Sustained static-frame section",
+            "reference_id": "repair-a784982de43e75b4",
+            "timestamp_seconds": 109.0
+          },
+          {
+            "item_id": "repair-repair-de48928991fa37e8",
+            "category": "HUMAN_REVIEW",
+            "title": "Brief black flash candidate",
+            "reference_id": "repair-de48928991fa37e8",
+            "timestamp_seconds": 174.333333
+          }
+        ],
+        "blocking_requirement_count": 0,
+        "safe_automation_count": 0,
+        "confirm_evidence_count": 0,
+        "human_review_count": 7,
+        "informational_count": 0
+      },
       "release_brief": {
         "source": "deterministic",
         "headline": "7 items need attention",
@@ -618,7 +865,7 @@
         ],
         "positive_note": null
       },
-      "scan_duration_seconds": 2.251581292017363
+      "scan_duration_seconds": 2.442138582933694
     },
     "repair_operation": {
       "operation_type": "REMOVE_RANGE",
@@ -920,7 +1167,7 @@
         "explanation": "Rendered duration, stream presence, resolution, and surviving reference intervals match the approved operation plan."
       },
       "repaired_preflight_report": {
-        "schema_version": "1.10",
+        "schema_version": "1.12",
         "verdict": "NEEDS_REVIEW",
         "scan_completeness": "COMPLETE",
         "review_mode": "local",
@@ -1302,9 +1549,186 @@
             ],
             "critical_region_intersections": []
           },
-          "construction_seconds": 0.00007816602010279894,
-          "thumbnail_evaluation_seconds": 0.000022959080524742603,
-          "preview_metadata_seconds": 0.00003541691694408655
+          "thumbnail_assurance": {
+            "schema_version": "1.0",
+            "evidence_class": "ADVISORY",
+            "status": "CLEAR",
+            "source_width": 1333,
+            "source_height": 750,
+            "analysis_width": 320,
+            "analysis_height": 180,
+            "confident_region_count": 2,
+            "regions": [
+              {
+                "region_id": "text-1",
+                "evidence_class": "ADVISORY",
+                "box": {
+                  "x": 0.33125,
+                  "y": 0.05555555555555555,
+                  "width": 0.159375,
+                  "height": 0.044444444444444446
+                },
+                "source_x": 442,
+                "source_y": 42,
+                "source_width": 212,
+                "source_height": 33,
+                "estimated_cap_height_pixels": 33.0,
+                "confidence": 0.92,
+                "estimated_local_contrast_ratio": 8.31,
+                "contrast_evidence_confidence": 0.92,
+                "detector": "SEGMENTATION_FALLBACK"
+              },
+              {
+                "region_id": "text-2",
+                "evidence_class": "ADVISORY",
+                "box": {
+                  "x": 0.065625,
+                  "y": 0.5277777777777778,
+                  "width": 0.571875,
+                  "height": 0.3333333333333333
+                },
+                "source_x": 87,
+                "source_y": 396,
+                "source_width": 762,
+                "source_height": 250,
+                "estimated_cap_height_pixels": 250.0,
+                "confidence": 0.92,
+                "estimated_local_contrast_ratio": 9.81,
+                "contrast_evidence_confidence": 0.92,
+                "detector": "SEGMENTATION_FALLBACK"
+              }
+            ],
+            "delivered_text": [
+              {
+                "region_id": "text-1",
+                "evidence_class": "MEASURED",
+                "surface_id": "mobile_feed",
+                "delivered_height_pixels": 4.14,
+                "status": "NEEDS_REVIEW",
+                "badge_overlap_fraction": 0.0,
+                "edge_safety": "NEAR_EDGE"
+              },
+              {
+                "region_id": "text-2",
+                "evidence_class": "MEASURED",
+                "surface_id": "mobile_feed",
+                "delivered_height_pixels": 31.33,
+                "status": "CLEAR",
+                "badge_overlap_fraction": 0.0,
+                "edge_safety": "CLEAR"
+              },
+              {
+                "region_id": "text-1",
+                "evidence_class": "MEASURED",
+                "surface_id": "desktop_grid",
+                "delivered_height_pixels": 6.07,
+                "status": "NEEDS_REVIEW",
+                "badge_overlap_fraction": 0.0,
+                "edge_safety": "CLEAR"
+              },
+              {
+                "region_id": "text-2",
+                "evidence_class": "MEASURED",
+                "surface_id": "desktop_grid",
+                "delivered_height_pixels": 46.0,
+                "status": "CLEAR",
+                "badge_overlap_fraction": 0.0,
+                "edge_safety": "CLEAR"
+              },
+              {
+                "region_id": "text-1",
+                "evidence_class": "MEASURED",
+                "surface_id": "desktop_sidebar",
+                "delivered_height_pixels": 4.14,
+                "status": "NEEDS_REVIEW",
+                "badge_overlap_fraction": 0.0,
+                "edge_safety": "NEAR_EDGE"
+              },
+              {
+                "region_id": "text-2",
+                "evidence_class": "MEASURED",
+                "surface_id": "desktop_sidebar",
+                "delivered_height_pixels": 31.33,
+                "status": "CLEAR",
+                "badge_overlap_fraction": 0.0,
+                "edge_safety": "CLEAR"
+              },
+              {
+                "region_id": "text-1",
+                "evidence_class": "MEASURED",
+                "surface_id": "tv_large",
+                "delivered_height_pixels": 7.92,
+                "status": "NEEDS_REVIEW",
+                "badge_overlap_fraction": 0.0,
+                "edge_safety": "CLEAR"
+              },
+              {
+                "region_id": "text-2",
+                "evidence_class": "MEASURED",
+                "surface_id": "tv_large",
+                "delivered_height_pixels": 60.0,
+                "status": "CLEAR",
+                "badge_overlap_fraction": 0.0,
+                "edge_safety": "CLEAR"
+              }
+            ],
+            "surfaces": [
+              {
+                "surface_id": "mobile_feed",
+                "evidence_class": "ADVISORY",
+                "label": "Mobile feed / search",
+                "display_width": 168,
+                "display_height": 94,
+                "unreadable_text_area_share": 0.0358,
+                "detail_retention_ratio": 0.7714,
+                "detail_status": "CLEAR"
+              },
+              {
+                "surface_id": "desktop_grid",
+                "evidence_class": "ADVISORY",
+                "label": "Desktop grid",
+                "display_width": 246,
+                "display_height": 138,
+                "unreadable_text_area_share": 0.0358,
+                "detail_retention_ratio": 0.8368,
+                "detail_status": "CLEAR"
+              },
+              {
+                "surface_id": "desktop_sidebar",
+                "evidence_class": "ADVISORY",
+                "label": "Desktop sidebar",
+                "display_width": 168,
+                "display_height": 94,
+                "unreadable_text_area_share": 0.0358,
+                "detail_retention_ratio": 0.7714,
+                "detail_status": "CLEAR"
+              },
+              {
+                "surface_id": "tv_large",
+                "evidence_class": "ADVISORY",
+                "label": "TV / large surface",
+                "display_width": 320,
+                "display_height": 180,
+                "unreadable_text_area_share": 0.0358,
+                "detail_retention_ratio": 1.0,
+                "detail_status": "CLEAR"
+              }
+            ],
+            "minimum_region_confidence": 0.72,
+            "minimum_delivered_text_height_pixels": 8.0,
+            "minimum_estimated_contrast_ratio": 2.5,
+            "minimum_detail_retention_ratio": 0.72,
+            "reason": "Confident text-like regions clear the configured delivery checks.",
+            "finding_codes": [],
+            "decode_seconds": 0.0348047079751268,
+            "text_detection_seconds": 0.07221925002522767,
+            "contrast_seconds": 0.00165666698012501,
+            "detail_seconds": 0.15209366707131267,
+            "total_seconds": 0.2685030000284314
+          },
+          "construction_seconds": 0.00010474992450326681,
+          "thumbnail_evaluation_seconds": 0.00002566596958786249,
+          "preview_metadata_seconds": 0.00003716698847711086
         },
         "release_contract": {
           "contract": null,
@@ -1313,7 +1737,19 @@
           "failed_count": 0,
           "needs_review_count": 0,
           "not_evaluated_count": 0,
-          "runtime_seconds": 9.58913005888462e-7
+          "runtime_seconds": 2.2909371182322502e-6
+        },
+        "audio_evidence": {
+          "status": "NOT_NEEDED",
+          "reason": "No local audio evidence recovery was requested.",
+          "artifact_sha256": null,
+          "engine": null,
+          "model": null,
+          "transcript_character_count": 0,
+          "transcript_truncated": false,
+          "candidates": [],
+          "confirmations": [],
+          "runtime_seconds": 0.0
         },
         "repair_plan": {
           "proposals": [
@@ -1321,7 +1757,7 @@
               "proposal_id": "repair-d582467cb09fd273",
               "finding_code": "AUDIO_LONG_SILENCE",
               "finding_title": "Long silent section",
-              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
               "source": "audio.silence",
               "repairability": "HUMAN_ONLY",
               "operation": null,
@@ -1342,7 +1778,7 @@
               "proposal_id": "repair-7b640134f1163302",
               "finding_code": "VIDEO_FREEZE_SEGMENT",
               "finding_title": "Sustained static-frame section",
-              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
               "source": "video.freeze",
               "repairability": "HUMAN_ONLY",
               "operation": null,
@@ -1363,7 +1799,7 @@
               "proposal_id": "repair-cd8990b6509c83ce",
               "finding_code": "VIDEO_FREEZE_SEGMENT",
               "finding_title": "Sustained static-frame section",
-              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
               "source": "video.freeze",
               "repairability": "HUMAN_ONLY",
               "operation": null,
@@ -1384,7 +1820,7 @@
               "proposal_id": "repair-8d0c5632340b9fbd",
               "finding_code": "VIDEO_FREEZE_SEGMENT",
               "finding_title": "Sustained static-frame section",
-              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
               "source": "video.freeze",
               "repairability": "HUMAN_ONLY",
               "operation": null,
@@ -1405,7 +1841,7 @@
               "proposal_id": "repair-76a30204446d8367",
               "finding_code": "VIDEO_FREEZE_SEGMENT",
               "finding_title": "Sustained static-frame section",
-              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
               "source": "video.freeze",
               "repairability": "HUMAN_ONLY",
               "operation": null,
@@ -1426,7 +1862,7 @@
               "proposal_id": "repair-a761ebf49092df43",
               "finding_code": "VIDEO_SHORT_BLACK_FLASH",
               "finding_title": "Brief black flash candidate",
-              "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+              "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
               "source": "video.black",
               "repairability": "HUMAN_ONLY",
               "operation": null,
@@ -1448,6 +1884,57 @@
           "preview_required_count": 0,
           "human_only_count": 6
         },
+        "release_plan": {
+          "items": [
+            {
+              "item_id": "repair-repair-d582467cb09fd273",
+              "category": "HUMAN_REVIEW",
+              "title": "Long silent section",
+              "reference_id": "repair-d582467cb09fd273",
+              "timestamp_seconds": 50.936292
+            },
+            {
+              "item_id": "repair-repair-7b640134f1163302",
+              "category": "HUMAN_REVIEW",
+              "title": "Sustained static-frame section",
+              "reference_id": "repair-7b640134f1163302",
+              "timestamp_seconds": 70.25
+            },
+            {
+              "item_id": "repair-repair-cd8990b6509c83ce",
+              "category": "HUMAN_REVIEW",
+              "title": "Sustained static-frame section",
+              "reference_id": "repair-cd8990b6509c83ce",
+              "timestamp_seconds": 91.833333
+            },
+            {
+              "item_id": "repair-repair-8d0c5632340b9fbd",
+              "category": "HUMAN_REVIEW",
+              "title": "Sustained static-frame section",
+              "reference_id": "repair-8d0c5632340b9fbd",
+              "timestamp_seconds": 96.916667
+            },
+            {
+              "item_id": "repair-repair-76a30204446d8367",
+              "category": "HUMAN_REVIEW",
+              "title": "Sustained static-frame section",
+              "reference_id": "repair-76a30204446d8367",
+              "timestamp_seconds": 105.916667
+            },
+            {
+              "item_id": "repair-repair-a761ebf49092df43",
+              "category": "HUMAN_REVIEW",
+              "title": "Brief black flash candidate",
+              "reference_id": "repair-a761ebf49092df43",
+              "timestamp_seconds": 171.25
+            }
+          ],
+          "blocking_requirement_count": 0,
+          "safe_automation_count": 0,
+          "confirm_evidence_count": 0,
+          "human_review_count": 6,
+          "informational_count": 0
+        },
         "release_brief": {
           "source": "deterministic",
           "headline": "6 items need attention",
@@ -1459,7 +1946,7 @@
           ],
           "positive_note": null
         },
-        "scan_duration_seconds": 2.749880417017266
+        "scan_duration_seconds": 2.8863610830157995
       },
       "regression_analysis_completeness": "COMPLETE",
       "review_reel_manifest": {
@@ -1520,11 +2007,11 @@
     "receipt": {
       "receipt_schema_version": "1.0",
       "receipt_kind": "FINAL_EXPORT",
-      "created_at": "2026-09-07T13:21:05.411461Z",
+      "created_at": "2026-09-08T00:05:41.035218Z",
       "scanner_version": "0.0.0",
       "verdict": "NEEDS_REVIEW",
       "scan_completeness": "COMPLETE",
-      "configuration_fingerprint_sha256": "6a7c0c00e1aefd4905015b635b6124f60ab2b075ca5f1893593f4d5ec943ceae",
+      "configuration_fingerprint_sha256": "04bc7e76ead10d8f455a22d3d7f187e60b75ac717671271c967b69b2a4f9c477",
       "deterministic_results": {
         "checks_run": 18,
         "checks_passed": 15,
@@ -1605,7 +2092,7 @@
         "unexpected_change_count": 0,
         "unexpected_changes": []
       },
-      "receipt_content_sha256": "d9707d077f939984852c30caafce0e567b0342a00548864dcc7881750e576d92"
+      "receipt_content_sha256": "de32f15ce40fbb225ca316e7289bde88cdd7ef3a91c8785c257be37a4d47cba2"
     },
     "receipt_valid": {
       "status": "VALID",
@@ -1643,7 +2130,7 @@
     "generation_origin": "GENERATED_FROM_ENGINE",
     "provenance": {
       "source_type": "generated_control",
-      "source_credit": "Creator Preflight deterministic fixture generator",
+      "source_credit": "ReleaseSeal deterministic fixture generator",
       "source_title": "SAVE20 captioned Release Contract control",
       "source_url": null,
       "source_sha256": "984ef9b9abce5efc3d33690c0b32c973241c02dac319aba2923bc9e3831df701",
@@ -1717,7 +2204,7 @@
       ]
     },
     "report": {
-      "schema_version": "1.10",
+      "schema_version": "1.12",
       "verdict": "BLOCKED",
       "scan_completeness": "COMPLETE",
       "review_mode": "local",
@@ -1969,9 +2456,10 @@
         "thumbnail_height": null,
         "thumbnail_checks": [],
         "delivery_preview": null,
-        "construction_seconds": 0.000031791976653039455,
-        "thumbnail_evaluation_seconds": 2.50060111284256e-7,
-        "preview_metadata_seconds": 1.25030055642128e-7
+        "thumbnail_assurance": null,
+        "construction_seconds": 0.00003316695801913738,
+        "thumbnail_evaluation_seconds": 2.919696271419525e-7,
+        "preview_metadata_seconds": 2.0908191800117493e-7
       },
       "release_contract": {
         "contract": {
@@ -2036,10 +2524,11 @@
             "status": "FAIL",
             "expected": "SAVE25",
             "evidence": "Required evidence was not found in supplied captions. A similar token, SAVE20, appears at 00:00.50; it does not satisfy the exact requirement.",
-            "evidence_source": "CAPTION_TEXT",
+            "evidence_source": "SUPPLIED_CAPTIONS",
             "timestamp_seconds": null,
             "confidence": null,
-            "reason_code": null
+            "reason_code": null,
+            "audio_evidence": null
           },
           {
             "requirement_id": "duration",
@@ -2049,10 +2538,11 @@
             "status": "PASS",
             "expected": "At most 10 seconds",
             "evidence": "Decoded duration is 6 seconds.",
-            "evidence_source": "MEDIA_INSPECTION",
+            "evidence_source": "MEDIA_MEASUREMENT",
             "timestamp_seconds": null,
             "confidence": null,
-            "reason_code": null
+            "reason_code": null,
+            "audio_evidence": null
           },
           {
             "requirement_id": "resolution",
@@ -2062,10 +2552,11 @@
             "status": "PASS",
             "expected": "At least 1280×720",
             "evidence": "Inspected resolution is 1280×720.",
-            "evidence_source": "MEDIA_INSPECTION",
+            "evidence_source": "MEDIA_MEASUREMENT",
             "timestamp_seconds": null,
             "confidence": null,
-            "reason_code": null
+            "reason_code": null,
+            "audio_evidence": null
           },
           {
             "requirement_id": "aspect",
@@ -2075,10 +2566,11 @@
             "status": "PASS",
             "expected": "16:9",
             "evidence": "Inspected frame is 1280×720.",
-            "evidence_source": "MEDIA_INSPECTION",
+            "evidence_source": "MEDIA_MEASUREMENT",
             "timestamp_seconds": null,
             "confidence": null,
-            "reason_code": null
+            "reason_code": null,
+            "audio_evidence": null
           },
           {
             "requirement_id": "captions",
@@ -2088,17 +2580,30 @@
             "status": "PASS",
             "expected": "Valid supported captions",
             "evidence": "Valid caption cues were supplied.",
-            "evidence_source": "CAPTION_TEXT",
+            "evidence_source": "SUPPLIED_CAPTIONS",
             "timestamp_seconds": null,
             "confidence": null,
-            "reason_code": null
+            "reason_code": null,
+            "audio_evidence": null
           }
         ],
         "passed_count": 4,
         "failed_count": 1,
         "needs_review_count": 0,
         "not_evaluated_count": 0,
-        "runtime_seconds": 0.0002803340321406722
+        "runtime_seconds": 0.0002959170378744602
+      },
+      "audio_evidence": {
+        "status": "NOT_NEEDED",
+        "reason": "No local audio evidence recovery was requested.",
+        "artifact_sha256": null,
+        "engine": null,
+        "model": null,
+        "transcript_character_count": 0,
+        "transcript_truncated": false,
+        "candidates": [],
+        "confirmations": [],
+        "runtime_seconds": 0.0
       },
       "repair_plan": {
         "proposals": [
@@ -2106,7 +2611,7 @@
             "proposal_id": "repair-0068529944a5415e",
             "finding_code": "RELEASE_CONTRACT_PROMO",
             "finding_title": "Use exact promo code SAVE25",
-            "explanation": "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+            "explanation": "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
             "source": "release_contract.deterministic",
             "repairability": "HUMAN_ONLY",
             "operation": null,
@@ -2126,6 +2631,22 @@
         "preview_required_count": 0,
         "human_only_count": 1
       },
+      "release_plan": {
+        "items": [
+          {
+            "item_id": "requirement-promo",
+            "category": "BLOCKING_REQUIREMENT",
+            "title": "Use exact promo code SAVE25",
+            "reference_id": "promo",
+            "timestamp_seconds": null
+          }
+        ],
+        "blocking_requirement_count": 1,
+        "safe_automation_count": 0,
+        "confirm_evidence_count": 0,
+        "human_review_count": 0,
+        "informational_count": 0
+      },
       "release_brief": {
         "source": "deterministic",
         "headline": "Publishing is blocked",
@@ -2135,7 +2656,7 @@
         ],
         "positive_note": null
       },
-      "scan_duration_seconds": 0.2505394590552896
+      "scan_duration_seconds": 0.23689800000283867
     }
   },
   "revision": {
@@ -2294,7 +2815,7 @@
         "ambiguity_notes": [
           "Low-information, repeated, or weakly matched material reduced confidence for one or more regions."
         ],
-        "analysis_runtime_seconds": 3.5329666669713333,
+        "analysis_runtime_seconds": 3.2238389159319922,
         "identical_file_fast_path": false
       },
       "revision_requests": [
@@ -2343,16 +2864,16 @@
         }
       ],
       "additional_change_count": 1,
-      "analysis_runtime_seconds": 3.5331952499691397
+      "analysis_runtime_seconds": 3.2240251660114154
     },
     "receipt": {
       "receipt_schema_version": "1.0",
       "receipt_kind": "REVISION",
-      "created_at": "2026-09-07T13:21:05.411461Z",
+      "created_at": "2026-09-08T00:05:41.035218Z",
       "scanner_version": "0.0.0",
       "verdict": "NOT_APPLICABLE",
       "scan_completeness": "COMPLETE",
-      "configuration_fingerprint_sha256": "6a7c0c00e1aefd4905015b635b6124f60ab2b075ca5f1893593f4d5ec943ceae",
+      "configuration_fingerprint_sha256": "04bc7e76ead10d8f455a22d3d7f187e60b75ac717671271c967b69b2a4f9c477",
       "previous_video": {
         "sha256": "20d294eb9b52571f01f5fa0f51a49475657dc1c726f6adecf94558d7a6b42389",
         "size_bytes": 9152724
@@ -2402,7 +2923,7 @@
         "results": []
       },
       "human_dispositions": [],
-      "receipt_content_sha256": "29eebd996ac73bb1f37858fb95fa3d45d93cc49a7ec24612b43986fd7d5afe6a"
+      "receipt_content_sha256": "86d63236cc132d3a5d3822b2528732fb0af5a4e0951db1281a7f609f18513aed"
     },
     "receipt_valid": {
       "status": "VALID",

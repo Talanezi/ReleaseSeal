@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from creator_preflight.config import CreatorRuleConfig
-from creator_preflight.models import MediaInspection, PublishingPackage
-from creator_preflight.rules import evaluate_package_rules, parse_chapters
+from releaseseal.config import CreatorRuleConfig
+from releaseseal.models import MediaInspection, PublishingPackage
+from releaseseal.rules import evaluate_package_rules, parse_chapters
 
 
 @pytest.fixture

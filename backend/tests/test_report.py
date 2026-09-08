@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from creator_preflight.config import PreflightConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import FindingStatus, PublishingPackage
+from releaseseal.config import PreflightConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import FindingStatus, PublishingPackage
 
 
 def _test_config() -> PreflightConfig:

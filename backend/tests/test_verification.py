@@ -3,12 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.media import MediaInspector
-from creator_preflight.models import Finding, FindingSeverity, FindingStatus, PublishingPackage
-from creator_preflight.repair_models import RepairOperation
-from creator_preflight.repairs import FFmpegRepairEngine, build_repair_plan
-from creator_preflight.verification import (
+from releaseseal.engine import PreflightScanner
+from releaseseal.media import MediaInspector
+from releaseseal.models import Finding, FindingSeverity, FindingStatus, PublishingPackage
+from releaseseal.repair_models import RepairOperation
+from releaseseal.repairs import FFmpegRepairEngine, build_repair_plan
+from releaseseal.verification import (
     TimelineTransform,
     build_review_reel_manifest,
     compare_findings,
@@ -17,8 +17,8 @@ from creator_preflight.verification import (
     transform_caption_file,
     verify_repair,
 )
-from creator_preflight.captions import CaptionCue, parse_caption_text
-from creator_preflight.verification_models import FindingComparison, FindingComparisonStatus, RepairVerificationStatus
+from releaseseal.captions import CaptionCue, parse_caption_text
+from releaseseal.verification_models import FindingComparison, FindingComparisonStatus, RepairVerificationStatus
 
 
 def _remove(start: float, end: float) -> RepairOperation:

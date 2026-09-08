@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from creator_preflight.captions import (
+from releaseseal.captions import (
     CaptionCue,
     SpeechSegment,
     caption_summary,
@@ -12,7 +12,7 @@ from creator_preflight.captions import (
     parse_caption_text,
     speech_gap_findings,
 )
-from creator_preflight.config import CaptionRuleConfig, TranscriptionConfig
+from releaseseal.config import CaptionRuleConfig, TranscriptionConfig
 
 
 def test_parse_valid_srt_with_bom_crlf_and_multiline_text() -> None:
@@ -32,7 +32,7 @@ def test_parse_valid_srt_with_bom_crlf_and_multiline_text() -> None:
 
 def test_parse_valid_webvtt_with_identifier_settings_and_hour_timestamp() -> None:
     result = parse_caption_text(
-        "WEBVTT - Creator Preflight\n\n"
+        "WEBVTT - ReleaseSeal\n\n"
         "intro\n00:00:01.000 --> 00:00:03.500 align:start\nHello\n\n"
         "01:02:03.000 --> 01:02:04.250\nHour cue\n"
     )

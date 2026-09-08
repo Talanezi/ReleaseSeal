@@ -20,6 +20,7 @@ import type {
   ReleaseContract,
   FinalExportReceipt,
   RevisionReceipt,
+  GeneratedCaptionDraft,
 } from "../types/preflight";
 import { PRODUCT_NAME } from "../brand";
 
@@ -176,13 +177,26 @@ export async function extractReleaseContract(brief: string, options: { signal?: 
 export async function recoverAudioEvidence(
   video: File,
   report: PreflightReport,
+  generatedCaptions: GeneratedCaptionDraft | null = null,
   options: { signal?: AbortSignal } = {},
 ): Promise<PreflightReport> {
   const form = new FormData();
   form.append("file", video, video.name);
   form.append("report_json", JSON.stringify(report));
+  if (generatedCaptions?.status === "COMPLETED") form.append("generated_captions_json", JSON.stringify(generatedCaptions));
   const payload = await requestJson("/api/v1/release-contracts/recover-audio-evidence", form, options.signal, "Local audio evidence could not be recovered.");
   if (!isPreflightReport(payload)) throw new PreflightApiError("The backend returned invalid audio evidence.", { code: "invalid_response" });
+  return payload;
+}
+
+export async function generateLocalCaptions(
+  video: File,
+  options: { signal?: AbortSignal } = {},
+): Promise<GeneratedCaptionDraft> {
+  const form = new FormData();
+  form.append("file", video, video.name);
+  const payload = await requestJson("/api/v1/captions/generate", form, options.signal, "Local captions could not be generated.");
+  if (!isGeneratedCaptionDraft(payload)) throw new PreflightApiError("The backend returned invalid generated captions.", { code: "invalid_response" });
   return payload;
 }
 
@@ -626,7 +640,8 @@ function isThumbnailAssuranceReport(value: unknown): boolean {
       && isNonnegativeNumber(item.source_x) && isNonnegativeNumber(item.source_y)
       && isNonnegativeNumber(item.source_width) && isNonnegativeNumber(item.source_height)
       && isNonnegativeNumber(item.estimated_cap_height_pixels) && isNonnegativeNumber(item.confidence)
-      && isNonnegativeNumber(item.estimated_local_contrast_ratio) && isNonnegativeNumber(item.contrast_evidence_confidence))
+      && isNonnegativeNumber(item.estimated_local_contrast_ratio) && isNonnegativeNumber(item.contrast_evidence_confidence)
+      && (item.detector === "PRIMARY" || item.detector === "SEGMENTATION_FALLBACK"))
     && Array.isArray(value.delivered_text) && value.delivered_text.every((item) => isRecord(item)
       && typeof item.region_id === "string" && item.evidence_class === "MEASURED" && typeof item.surface_id === "string"
       && isNonnegativeNumber(item.delivered_height_pixels) && assuranceStatus(item.status)
@@ -850,12 +865,28 @@ function isPreflightCapabilities(value: unknown): value is PreflightCapabilities
     && typeof value.transcription_dependency_available === "boolean"
     && typeof value.transcription_enabled === "boolean"
     && typeof value.local_evidence_recovery_available === "boolean"
+    && typeof value.local_caption_generation_available === "boolean"
     && Array.isArray(value.supported_review_modes)
     && value.supported_review_modes.every((mode) => mode === "full" || mode === "local")
     && isNonnegativeNumber(value.maximum_video_upload_size_bytes)
     && Array.isArray(value.full_review_unavailable_reasons)
     && value.full_review_unavailable_reasons.every((reason) => isRecord(reason)
       && typeof reason.code === "string" && typeof reason.message === "string");
+}
+
+function isGeneratedCaptionDraft(value: unknown): value is GeneratedCaptionDraft {
+  return isRecord(value)
+    && value.schema_version === "1.0"
+    && (value.status === "COMPLETED" || value.status === "UNAVAILABLE")
+    && typeof value.reason === "string" && typeof value.artifact_sha256 === "string"
+    && value.source === "LOCAL_MACHINE_TRANSCRIPT" && value.engine === "faster-whisper"
+    && typeof value.model === "string" && Array.isArray(value.cues)
+    && value.cues.every((cue) => isRecord(cue) && isNonnegativeNumber(cue.index)
+      && isNonnegativeNumber(cue.start_seconds) && isNonnegativeNumber(cue.end_seconds) && typeof cue.text === "string")
+    && isNonnegativeNumber(value.cue_count) && isNonnegativeNumber(value.covered_seconds)
+    && typeof value.srt_text === "string" && typeof value.download_filename === "string"
+    && isNonnegativeNumber(value.runtime_seconds)
+    && (value.reuse_token === null || typeof value.reuse_token === "string");
 }
 
 export function isRevisionCheckReport(value: unknown): value is RevisionCheckReport {

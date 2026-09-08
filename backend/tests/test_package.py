@@ -1,4 +1,4 @@
-from creator_preflight import __version__
+from releaseseal import __version__
 
 
 def test_package_is_importable() -> None:

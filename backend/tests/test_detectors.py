@@ -2,17 +2,17 @@ from pathlib import Path
 
 import pytest
 
-from creator_preflight.config import DetectorConfig
-from creator_preflight.detectors import (
+from releaseseal.config import DetectorConfig
+from releaseseal.detectors import (
     DetectorExecutionError,
     detect_black_segments,
     detect_freeze_segments,
     detect_long_silences,
     inspect_audio_peak,
 )
-from creator_preflight.engine import MediaAnomalyScanner
-from creator_preflight.media import MediaInspector
-from creator_preflight.models import Finding
+from releaseseal.engine import MediaAnomalyScanner
+from releaseseal.media import MediaInspector
+from releaseseal.models import Finding
 
 
 def _finding(findings: list[Finding], code: str, near: float | None = None) -> Finding:
@@ -185,12 +185,12 @@ def test_detector_missing_tool_failure_is_structured(video_with_audio: Path) -> 
         detect_black_segments(
             video_with_audio,
             DetectorConfig().black,
-            ffmpeg_binary="creator-preflight-ffmpeg-does-not-exist",
+            ffmpeg_binary="releaseseal-ffmpeg-does-not-exist",
         )
 
     assert captured.value.code == "media_tool_unavailable"
     assert captured.value.details == {
-        "tool": "creator-preflight-ffmpeg-does-not-exist"
+        "tool": "releaseseal-ffmpeg-does-not-exist"
     }
 
 

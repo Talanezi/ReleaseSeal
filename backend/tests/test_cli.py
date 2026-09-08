@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from creator_preflight.cli import main
-from creator_preflight.config import PreflightConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import PublishingPackage
-from creator_preflight.release_receipt import build_final_export_receipt
+from releaseseal.cli import main
+from releaseseal.config import PreflightConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import PublishingPackage
+from releaseseal.release_receipt import build_final_export_receipt
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def test_cli_human_ready_scan(
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "CREATOR PREFLIGHT" in captured.out
+    assert "RELEASESEAL" in captured.out
     assert "READY" in captured.out
     assert "PASS  14 checks" in captured.out
     assert captured.err == ""

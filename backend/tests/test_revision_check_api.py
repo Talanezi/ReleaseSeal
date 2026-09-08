@@ -6,14 +6,14 @@ from tempfile import TemporaryDirectory as RealTemporaryDirectory
 import pytest
 from fastapi.testclient import TestClient
 
-from creator_preflight import api as api_module
-from creator_preflight.api import app
-from creator_preflight.config import PreflightConfig
-from creator_preflight.media import MediaInspector
-from creator_preflight.revision_check import RevisionCheckService
-from creator_preflight.revision_fixture import generate_revision_source, replace_revision_picture
-from creator_preflight.revision_semantic import RevisionSemanticProviderResult
-from creator_preflight.revision_semantic_models import RevisionSemanticProviderOutput
+from releaseseal import api as api_module
+from releaseseal.api import app
+from releaseseal.config import PreflightConfig
+from releaseseal.media import MediaInspector
+from releaseseal.revision_check import RevisionCheckService
+from releaseseal.revision_fixture import generate_revision_source, replace_revision_picture
+from releaseseal.revision_semantic import RevisionSemanticProviderResult
+from releaseseal.revision_semantic_models import RevisionSemanticProviderOutput
 
 
 client = TestClient(app)

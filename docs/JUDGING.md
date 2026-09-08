@@ -2,7 +2,7 @@
 
 For the deliberately skeptical counter-assessment—including the strongest remaining argument against the project in each rubric category—see [`LOSS_REGISTER.md`](LOSS_REGISTER.md). That register complements this evidence map; it is not a product claim or competitive scorecard.
 
-Creator Preflight is creative release assurance for two related decisions: whether one final export is ready to ship, and whether a revised cut changed where the notes expected it to.
+ReleaseSeal is creative release assurance for two related decisions: whether one final export is ready to ship, and whether a revised cut changed where the notes expected it to.
 
 Start at `/proof/` for a backend-free inspection path. The page links every claim to typed, generated engine state and clearly discloses that the evidence is precomputed. Rebuild and self-verify it with `./scripts/build_judge_proof.sh`.
 
@@ -10,7 +10,7 @@ Start at `/proof/` for a backend-free inspection path. The page links every clai
 
 | Implemented capability | Evidence | Where to look | Material boundary |
 |---|---|---|---|
-| Final Export scans real media and publishing inputs | Tracked browser demo; backend detector, caption, API, and report tests | `backend/src/creator_preflight/engine.py`, `frontend/src/components/ResultsView.tsx` | Findings are evidence, not creative certainty |
+| Final Export scans real media and publishing inputs | Tracked browser demo; backend detector, caption, API, and report tests | `backend/src/releaseseal/engine.py`, `frontend/src/components/ResultsView.tsx` | Findings are evidence, not creative certainty |
 | Preview, approve, render, and verify a narrow repair | FFmpeg repair and automatic verification integration tests | `repairs.py`, `verification.py` | Only allowlisted range removal |
 | Revision maps V1/V2 physical changes and notes | Identical, re-encode, removal, insertion, replacement, audio, and multi-edit tests | `revision.py`, `revision_check.py` | Physical change does not prove intent |
 | Optional bounded semantic revision review | Fake-provider matrix plus one accepted controlled live case | `revision_evidence.py`, `revision_semantic.py` | Eligible timestamped requests only |
@@ -19,6 +19,7 @@ Start at `/proof/` for a backend-free inspection path. The page links every clai
 | Whole delivery package | One compact result for video, authentic thumbnail, captions, publishing text, chapters, and requirements | `release_package.py`, Final Export package summary and delivery preview | Thumbnail review is bounded file/geometry analysis, not a creative-quality score |
 | Automated thumbnail delivery assurance | Provider-free pixel analysis measures confident text-like regions at delivered sizes, estimated contrast, modeled chrome/edge overlap, and structural detail retention | `thumbnail_assurance.py`, `test_thumbnail_assurance.py`, Delivery Preview overlays | Heuristic interpretation is advisory, abstains on uncertain/textless images, and never predicts CTR or blocks release |
 | Spoken-requirement evidence recovery | Optional local ASR finds bounded candidate moments; explicit listening/confirmation upgrades only an artifact-bound presence fact | `release_evidence.py`, recovery/confirmation API tests, Release Plan UI | Machine text never passes, fails, or blocks by itself; absence is never inferred from a miss |
+| Local caption drafts | Explicit local generation turns timed ASR segments into previewable/downloadable SRT | `generated_captions.py`, caption API/UI tests | Drafts remain machine evidence and never masquerade as supplied captions |
 
 ## Creativity
 
@@ -44,7 +45,7 @@ Proof pointers: `/proof/` sections B–E, `test_verification.py`, `test_revision
 
 Evidence: `backend/tests/test_verification.py`, `test_revision.py`, `test_revision_check.py`, `test_revision_semantic.py`, and `.github/workflows/ci.yml`.
 
-Judge Proof itself is strict and self-verifying: Pydantic rejects unknown bundle fields and unsafe artifact paths; every referenced asset is SHA-256 checked; expected production facts are asserted; and exact receipt verification is rerun against both the correct and a temporary one-byte-mutated artifact. See `creator_preflight/judge_proof.py`, `scripts/build_judge_proof.py`, `scripts/verify_judge_proof.py`, and `test_judge_proof.py`.
+Judge Proof itself is strict and self-verifying: Pydantic rejects unknown bundle fields and unsafe artifact paths; every referenced asset is SHA-256 checked; expected production facts are asserted; and exact receipt verification is rerun against both the correct and a temporary one-byte-mutated artifact. See `releaseseal/judge_proof.py`, `scripts/build_judge_proof.py`, `scripts/verify_judge_proof.py`, and `test_judge_proof.py`.
 
 ## Real-world usefulness
 

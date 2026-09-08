@@ -15,9 +15,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend" / "src"))
 
-from creator_preflight.config import PreflightConfig  # noqa: E402
-from creator_preflight.engine import PreflightScanner  # noqa: E402
-from creator_preflight.judge_proof import (  # noqa: E402
+from releaseseal.config import PreflightConfig  # noqa: E402
+from releaseseal.engine import PreflightScanner  # noqa: E402
+from releaseseal.judge_proof import (  # noqa: E402
     ContractProof,
     FinalExportProof,
     JudgeProofBundle,
@@ -25,8 +25,8 @@ from creator_preflight.judge_proof import (  # noqa: E402
     RevisionProof,
     artifact,
 )
-from creator_preflight.models import FindingStatus, PublishingPackage, ReviewMode  # noqa: E402
-from creator_preflight.release_contract import (  # noqa: E402
+from releaseseal.models import FindingStatus, PublishingPackage, ReviewMode  # noqa: E402
+from releaseseal.release_contract import (  # noqa: E402
     AspectRatio,
     CaptionsRequired,
     MaxDuration,
@@ -34,19 +34,19 @@ from creator_preflight.release_contract import (  # noqa: E402
     ReleaseContract,
     RequiredExactToken,
 )
-from creator_preflight.release_receipt import (  # noqa: E402
+from releaseseal.release_receipt import (  # noqa: E402
     ReceiptVerificationStatus,
     ReceiptVerifier,
     build_final_export_receipt,
     build_revision_receipt,
 )
-from creator_preflight.repairs import FFmpegRepairEngine  # noqa: E402
-from creator_preflight.revision_check import RevisionCheckService  # noqa: E402
-from creator_preflight.verification import verify_repair  # noqa: E402
+from releaseseal.repairs import FFmpegRepairEngine  # noqa: E402
+from releaseseal.revision_check import RevisionCheckService  # noqa: E402
+from releaseseal.verification import verify_repair  # noqa: E402
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Build static proof evidence using Creator Preflight production services.")
+    parser = argparse.ArgumentParser(description="Build static proof evidence using ReleaseSeal production services.")
     parser.add_argument("--owner-demo", type=Path, default=ROOT / "frontend" / "public" / "demo" / "owner")
     parser.add_argument("--output", type=Path, default=ROOT / "frontend" / "public" / "proof")
     args = parser.parse_args()
@@ -109,7 +109,7 @@ def build_judge_proof(owner_demo: Path, output: Path) -> JudgeProofBundle:
     )
     verifier = ReceiptVerifier()
     receipt_valid = verifier.verify(receipt.model_dump(mode="json"), video_path=repaired, thumbnail_path=thumbnail, title=title, description=description)
-    with tempfile.TemporaryDirectory(prefix="creator-preflight-proof-mutation-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="releaseseal-proof-mutation-") as temporary:
         mutated = Path(temporary) / "mutated.mp4"
         shutil.copyfile(repaired, mutated)
         with mutated.open("r+b") as handle:
@@ -161,7 +161,7 @@ def build_judge_proof(owner_demo: Path, output: Path) -> JudgeProofBundle:
         release_contract=ContractProof(
             provenance=ProofProvenance(
                 source_type="generated_control",
-                source_credit="Creator Preflight deterministic fixture generator",
+                source_credit="ReleaseSeal deterministic fixture generator",
                 source_title="SAVE20 captioned Release Contract control",
                 source_sha256=contract_video_artifact.sha256,
             ),
@@ -181,7 +181,7 @@ def build_judge_proof(owner_demo: Path, output: Path) -> JudgeProofBundle:
 
 
 def verify_expected_proof(bundle: JudgeProofBundle, root: Path) -> None:
-    from creator_preflight.judge_proof import proof_artifacts
+    from releaseseal.judge_proof import proof_artifacts
 
     for item in proof_artifacts(bundle):
         path = root / item.relative_path

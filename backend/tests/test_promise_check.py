@@ -7,12 +7,12 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from creator_preflight.ai_review import AIReviewError
-from creator_preflight.config import AIReviewConfig, PreflightConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import FindingStatus, PublishingPackage
-from creator_preflight.media import MediaInspector
-from creator_preflight.promise_check import (
+from releaseseal.ai_review import AIReviewError
+from releaseseal.config import AIReviewConfig, PreflightConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import FindingStatus, PublishingPackage
+from releaseseal.media import MediaInspector
+from releaseseal.promise_check import (
     GeminiPromiseReviewer,
     OpeningAlignment,
     PromiseDelivery,
@@ -25,8 +25,8 @@ from creator_preflight.promise_check import (
     promise_findings,
     validate_promise_timestamps,
 )
-from creator_preflight.thumbnails import ThumbnailValidationError, inspect_thumbnail
-from creator_preflight.promise_fixture import generate_promise_fixture
+from releaseseal.thumbnails import ThumbnailValidationError, inspect_thumbnail
+from releaseseal.promise_fixture import generate_promise_fixture
 
 
 def _review(**changes) -> PromiseReviewResult:

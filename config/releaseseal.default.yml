@@ -1,0 +1,222 @@
+schema_version: 1
+
+# Milestone 2 detector thresholds. All durations are seconds. Audio level
+# values use decibels relative to full scale (dBFS); freeze noise is FFmpeg's
+# frame-difference threshold in dB. Ratio values must be greater than 0 and
+# no greater than 1.
+detectors:
+  black:
+    min_duration_seconds: 2.0
+    pixel_black_threshold: 0.10
+    picture_black_ratio: 0.98
+  # Conservative near-black flashes from roughly two frames to 350ms. Longer
+  # transitions remain neither flash candidates nor sustained-black findings.
+  short_black:
+    enabled: true
+    min_duration_seconds: 0.08
+    max_duration_seconds: 0.35
+    pixel_black_threshold: 0.10
+    picture_black_ratio: 0.98
+  silence:
+    min_duration_seconds: 2.0
+    noise_threshold_db: -50.0
+  freeze:
+    min_duration_seconds: 2.5
+    noise_threshold_db: -60.0
+  # Warn only when the decoded maximum is near full scale AND at least 5% of
+  # all decoded samples occupy FFmpeg volumedetect's top 1 dBFS histogram bin.
+  # A single 0 dBFS sample is not treated as evidence of clipping.
+  audio_peak:
+    warning_threshold_dbfs: -1.0
+    minimum_near_full_scale_sample_fraction: 0.05
+  streams:
+    expect_video: true
+    expect_audio: true
+    missing_video_severity: error
+    missing_audio_severity: warning
+
+# Creator package rules. Aspect-ratio tolerance is a relative fraction, so
+# 0.02 permits up to a 2% difference from an allowed WIDTH:HEIGHT ratio.
+rules:
+  profile_id: default
+  video:
+    minimum_width: 1280
+    minimum_height: 720
+    allowed_aspect_ratios:
+      - "16:9"
+      - "9:16"
+      - "1:1"
+    aspect_ratio_tolerance: 0.02
+    require_video: true
+    require_audio: true
+  title:
+    require: true
+    maximum_recommended_length: 100
+  description:
+    # Missing descriptions are review warnings under the default profile.
+    require: true
+    required_phrases: []
+    validate_urls: true
+  chapters:
+    require: false
+    require_first_at_zero: true
+  captions:
+    require: false
+    maximum_file_size_bytes: 5000000
+    maximum_uncovered_gap_seconds: 10.0
+    overlap_warning_threshold_seconds: 0.5
+    warn_on_empty_cues: true
+
+# Optional local faster-whisper speech/caption comparison. Disabled by
+# default. local_files_only prevents an implicit model download.
+transcription:
+  enabled: false
+  model: tiny.en
+  device: cpu
+  compute_type: int8
+  local_files_only: true
+  speech_gap_minimum_seconds: 2.0
+  boundary_tolerance_seconds: 0.3
+  adjacent_gap_merge_seconds: 0.5
+  # Explicit post-scan evidence recovery remains local and never downloads a model.
+  evidence_recovery_enabled: true
+  maximum_evidence_duration_seconds: 14400
+  maximum_evidence_candidates_per_requirement: 3
+  maximum_evidence_transcript_characters: 20000
+  maximum_generated_caption_cues: 3000
+  maximum_generated_caption_characters: 100000
+
+# Optional server-side Gemini video review. Enabling this sends the video to
+# Google's Gemini Files API and requires GEMINI_API_KEY in the backend process.
+ai_review:
+  enabled: false
+  provider: gemini
+  model: gemini-3.7-flash
+  timeout_seconds: 180.0
+  maximum_observations: 5
+  timestamp_tolerance_seconds: 1.0
+  # Opening review distinguishes relevant hooks/setups from unrelated delay.
+  # Direct-delivery time remains evidence, not an automatic timer-based warning.
+  promise_check:
+    enabled: true
+    opening_review_horizon_seconds: 30.0
+    minimum_issue_confidence: 0.70
+    maximum_thumbnail_file_size_bytes: 5000000
+    maximum_thumbnail_width: 8192
+    maximum_thumbnail_height: 8192
+    maximum_thumbnail_pixels: 16777216
+    maximum_thumbnail_decompressed_bytes: 64000000
+  # Final Viewer Pass reports only concrete internal inconsistencies with
+  # specific evidence at or above this conservative confidence threshold.
+  viewer_pass:
+    enabled: true
+    minimum_issue_confidence: 0.75
+    maximum_issues: 5
+  # Claim Review is separately opt-in. It extracts at most three important
+  # public factual claims, then verifies each separately with Google Search so
+  # citation evidence cannot be mixed across claims.
+  claim_review:
+    enabled: false
+    maximum_claims: 3
+    minimum_extraction_confidence: 0.75
+    minimum_conflict_confidence: 0.75
+  # Concise presentation-only summary. Failure falls back to deterministic copy
+  # and never changes scan truth or completeness.
+  release_brief:
+    enabled: false
+  # Explicit input-page assistance. No upload occurs until the creator asks.
+  metadata_assist:
+    enabled: true
+    visual_sample_count: 8
+    visual_sample_seconds: 4.0
+    proxy_width: 320
+    proxy_height: 180
+    proxy_timeout_seconds: 120.0
+
+# Local web/API safety limits. Browser origins are exact allowlist entries;
+# non-browser clients that send no Origin header remain supported.
+api:
+  maximum_video_upload_size_bytes: 2147483648
+  maximum_concurrent_scans: 2
+  allowed_browser_origins:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+
+# Basic thumbnail delivery checks. These are file/geometry measurements, not
+# text-legibility, saliency, or creative-quality scoring.
+release_package:
+  minimum_thumbnail_width: 1280
+  minimum_thumbnail_height: 720
+  target_thumbnail_aspect_ratio: 1.7777777777777777
+  thumbnail_aspect_ratio_tolerance: 0.02
+  # Provider-free pixel measurements. Heuristic interpretation may create a
+  # review finding, never a deterministic block.
+  thumbnail_assurance:
+    enabled: true
+    analysis_max_dimension: 320
+    minimum_region_confidence: 0.72
+    minimum_delivered_text_height_pixels: 8.0
+    minimum_estimated_contrast_ratio: 2.5
+    minimum_detail_retention_ratio: 0.72
+
+# Bounded deterministic visual comparison and short Review Reel generation
+# for ReleaseSeal-produced repaired exports.
+verification:
+  visual_sample_fps: 2.0
+  maximum_visual_samples: 1200
+  visual_mean_difference_threshold: 18.0
+  changed_pixel_difference_threshold: 24
+  changed_pixel_fraction_threshold: 0.20
+  edit_boundary_tolerance_seconds: 0.75
+  review_reel_context_seconds: 3.0
+  review_reel_maximum_segments: 12
+  review_reel_maximum_duration_seconds: 180.0
+
+# Deterministic, local media-to-media Revision Map policy. M21 exposes this as
+# a backend service primitive only; no revision-note or semantic verification.
+revision_map:
+  visual_samples_per_second: 2.0
+  maximum_visual_samples: 1200
+  descriptor_width: 17
+  descriptor_height: 9
+  strong_match_threshold: 0.12
+  plausible_match_threshold: 0.28
+  visual_changed_threshold: 0.28
+  audio_changed_threshold: 0.30
+  gap_penalty: 0.04
+  maximum_substitution_cost: 0.64
+  low_information_variance_threshold: 80.0
+  low_information_edge_threshold: 4.0
+  low_information_penalty: 0.08
+  audio_weight: 0.20
+  audio_sample_rate: 8000
+  minimum_segment_duration_seconds: 0.35
+  merge_tolerance_seconds: 0.51
+  refinement_radius_seconds: 2.0
+  refinement_samples_per_second: 6.0
+  maximum_refinement_samples: 240
+  extraction_timeout_seconds: 180.0
+  alignment_timeout_seconds: 30.0
+
+# Optional previous-cut revision notes are matched to physical Revision Map
+# regions. Notes without timecodes are retained without inventing a location.
+revision_check:
+  point_neighborhood_seconds: 3.0
+  explicit_range_tolerance_seconds: 0.25
+  maximum_notes: 100
+  maximum_notes_characters: 50000
+  maximum_note_characters: 500
+
+# Optional, explicit semantic review of short clips around detected revision regions.
+# Revision Check itself remains deterministic and does not invoke Gemini.
+revision_semantic_review:
+  enabled: true
+  maximum_requests: 5
+  maximum_parallel_requests: 2
+  context_before_seconds: 2.5
+  context_after_seconds: 2.5
+  maximum_clip_duration_seconds: 12.0
+  clip_width: 320
+  clip_height: 180
+  confidence_threshold: 0.80
+  clip_timeout_seconds: 60.0

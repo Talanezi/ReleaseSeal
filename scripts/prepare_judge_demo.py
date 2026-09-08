@@ -7,7 +7,7 @@ import sys
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT / "backend" / "src"))
 
-from creator_preflight.judge_fixture import generate_judge_demo  # noqa: E402
+from releaseseal.judge_fixture import generate_judge_demo  # noqa: E402
 
 
 def main() -> int:

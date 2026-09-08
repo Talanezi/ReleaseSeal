@@ -59,7 +59,7 @@ export function RevisionResultsView({ report, previousUrl, revisedUrl, previousF
     try {
       const next = await createRevisionReceipt({ previousVideo: previousFile, revisedVideo: revisedFile, notes, revisionCheck: report, semanticReview: semanticReport });
       setReceipt(next);
-      downloadValue(next, "creator-preflight.revision-receipt.json", "application/json");
+      downloadValue(next, "releaseseal.revision-receipt.json", "application/json");
     } catch (error) {
       setReceiptError(error instanceof Error ? error.message : "The revision receipt could not be created.");
     } finally { setReceiptLoading(false); }
@@ -222,7 +222,7 @@ function semanticStatusLabel(status: RevisionSemanticResult["status"]): string {
 function downloadReport(report: RevisionCheckReport, semantic: RevisionSemanticReviewReport | null, kind: "json" | "md") {
   const content = kind === "json" ? JSON.stringify(semantic ? { revision_check: report, semantic_review: semantic } : report, null, 2) : markdownReport(report, semantic);
   const url = URL.createObjectURL(new Blob([content], { type: kind === "json" ? "application/json" : "text/markdown" }));
-  const anchor = document.createElement("a"); anchor.href = url; anchor.download = `creator-preflight-revision-report.${kind}`; anchor.click(); URL.revokeObjectURL(url);
+  const anchor = document.createElement("a"); anchor.href = url; anchor.download = `releaseseal-revision-report.${kind}`; anchor.click(); URL.revokeObjectURL(url);
 }
 function downloadValue(value: unknown, filename: string, type: string) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type }));

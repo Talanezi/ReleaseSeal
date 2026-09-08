@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from creator_preflight.ai_review import AIReviewError, GeminiVideoReviewer, ProviderCitation
-from creator_preflight.claim_review import (
+from releaseseal.ai_review import AIReviewError, GeminiVideoReviewer, ProviderCitation
+from releaseseal.claim_review import (
     ClaimExtractionResult,
     ClaimReviewResult,
     ClaimSource,
@@ -22,12 +22,12 @@ from creator_preflight.claim_review import (
     validate_claim_extraction,
     validate_grounded_assessments,
 )
-from creator_preflight import claim_fixture
-from creator_preflight.claim_fixture import generate_claim_review_fixture
-from creator_preflight.media import MediaInspector
-from creator_preflight.config import AIReviewConfig, PreflightConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import FindingStatus, PublishingPackage
+from releaseseal import claim_fixture
+from releaseseal.claim_fixture import generate_claim_review_fixture
+from releaseseal.media import MediaInspector
+from releaseseal.config import AIReviewConfig, PreflightConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import FindingStatus, PublishingPackage
 
 
 def _claim(claim_id: str = "claim_1", **changes) -> ExtractedClaim:
@@ -241,7 +241,7 @@ def test_full_ai_scan_shares_one_upload_and_grounds_each_claim_separately(video_
 
 
 def test_out_of_duration_extraction_gets_one_bounded_correction() -> None:
-    from creator_preflight.claim_review import GeminiClaimReviewer
+    from releaseseal.claim_review import GeminiClaimReviewer
 
     class Session:
         def __init__(self):

@@ -224,6 +224,7 @@ export function App() {
           previewUrl={previewUrl}
           sourceFile={inputs.video}
           evidenceRecoveryAvailable={capabilities?.local_evidence_recovery_available ?? false}
+          captionGenerationAvailable={capabilities?.local_caption_generation_available ?? false}
           onReportUpdate={setReport}
           packageInput={{ title: inputs.title, description: inputs.description, captions: inputs.captions, thumbnail: inputs.thumbnail, reviewMode: inputs.reviewMode }}
         />

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the deterministic Creator Preflight demo video."""
+"""Generate the deterministic ReleaseSeal demo video."""
 
 from __future__ import annotations
 
@@ -10,17 +10,17 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT / "backend" / "src"))
 
-from creator_preflight.demo_fixture import generate_demo_video  # noqa: E402
+from releaseseal.demo_fixture import generate_demo_video  # noqa: E402
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Generate the 12-second deterministic Creator Preflight demo video."
+        description="Generate the 12-second deterministic ReleaseSeal demo video."
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=REPOSITORY_ROOT / "demo" / "generated" / "creator-preflight-demo.mp4",
+        default=REPOSITORY_ROOT / "demo" / "generated" / "releaseseal-demo.mp4",
     )
     args = parser.parse_args()
     try:

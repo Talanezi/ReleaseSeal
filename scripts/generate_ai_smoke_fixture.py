@@ -10,7 +10,7 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT / "backend" / "src"))
 
-from creator_preflight.ai_smoke_fixture import generate_ai_smoke_video  # noqa: E402
+from releaseseal.ai_smoke_fixture import generate_ai_smoke_video  # noqa: E402
 
 
 def main() -> int:

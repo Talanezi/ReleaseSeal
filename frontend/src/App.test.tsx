@@ -11,7 +11,7 @@ import type { PreflightReport, ScanProgress, ThumbnailAssuranceReport, Verificat
 import { formatTimecode } from "./utils/format";
 import { useState } from "react";
 
-const createObjectURL = vi.fn(() => "blob:creator-preflight-local-preview");
+const createObjectURL = vi.fn(() => "blob:releaseseal-local-preview");
 const revokeObjectURL = vi.fn();
 const NativeURL = URL;
 
@@ -25,7 +25,7 @@ function thumbnailAssuranceFixture(): ThumbnailAssuranceReport {
     schema_version: "1.0", evidence_class: "ADVISORY", status: "NEEDS_REVIEW",
     source_width: 1280, source_height: 720, analysis_width: 320, analysis_height: 180,
     confident_region_count: 1,
-    regions: [{ region_id: "text-1", evidence_class: "ADVISORY", box: { x: .76, y: .74, width: .2, height: .12 }, source_x: 973, source_y: 533, source_width: 256, source_height: 86, estimated_cap_height_pixels: 86, confidence: .88, estimated_local_contrast_ratio: 2.1, contrast_evidence_confidence: .88 }],
+    regions: [{ region_id: "text-1", evidence_class: "ADVISORY", box: { x: .76, y: .74, width: .2, height: .12 }, source_x: 973, source_y: 533, source_width: 256, source_height: 86, estimated_cap_height_pixels: 86, confidence: .88, estimated_local_contrast_ratio: 2.1, contrast_evidence_confidence: .88, detector: "PRIMARY" }],
     delivered_text: [{ region_id: "text-1", evidence_class: "MEASURED", surface_id: "mobile_feed", delivered_height_pixels: 11.23, status: "CLEAR", badge_overlap_fraction: .65, edge_safety: "INTERSECTS_UNSAFE_AREA" }],
     surfaces: [{ surface_id: "mobile_feed", evidence_class: "ADVISORY", label: "Mobile feed / search", display_width: 168, display_height: 94, unreadable_text_area_share: 0, detail_retention_ratio: .74, detail_status: "CLEAR" }],
     minimum_region_confidence: .72, minimum_delivered_text_height_pixels: 8, minimum_estimated_contrast_ratio: 2.5, minimum_detail_retention_ratio: .72,
@@ -54,7 +54,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("Creator Preflight frontend", () => {
+describe("ReleaseSeal frontend", () => {
   it("downloads a backend-owned receipt for a clean Final Export", async () => {
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     const user = userEvent.setup();
@@ -169,6 +169,43 @@ describe("Creator Preflight frontend", () => {
     const exportedText = await blobText(exported);
     expect(exportedText).toContain('"HUMAN_CONFIRMED_AUDIO_EVIDENCE"');
     expect(exportedText).toContain(`"artifact_sha256": "${sha}"`);
+  });
+
+  it("generates a machine-caption draft locally and downloads valid SRT", async () => {
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const draft = {
+      schema_version: "1.0" as const, status: "COMPLETED" as const,
+      reason: "Machine-generated captions are ready to preview and download.",
+      artifact_sha256: "a".repeat(64), source: "LOCAL_MACHINE_TRANSCRIPT" as const,
+      engine: "faster-whisper" as const, model: "tiny.en",
+      cues: [{ index: 1, start_seconds: .25, end_seconds: 1.75, text: "Yellowstone began here." }],
+      cue_count: 1, covered_seconds: 1.5,
+      srt_text: "1\n00:00:00,250 --> 00:00:01,750\nYellowstone began here.\n",
+      download_filename: "yellowstone.generated.srt", runtime_seconds: .1,
+      reuse_token: "b".repeat(64),
+    };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(jsonResponse(draft))));
+    const user = userEvent.setup();
+    render(<ResultsView report={readyReport} sourceFile={new File(["video"], "yellowstone.mp4")} captionGenerationAvailable packageInput={{ title: "Title", description: "Description", captions: null, thumbnail: null, reviewMode: "local" }} />);
+    await user.click(screen.getByRole("button", { name: "Generate captions locally" }));
+    expect(await screen.findByText(/Machine-generated captions/)).toBeInTheDocument();
+    expect(screen.getByText(/1 cues · .* covered/)).toBeInTheDocument();
+    await user.click(screen.getByText("Preview"));
+    expect(screen.getByText("Yellowstone began here.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Download SRT" }));
+    const objectUrlCalls = createObjectURL.mock.calls as unknown[][];
+    const downloaded = objectUrlCalls.at(-1)?.[0] as Blob;
+    expect(await blobText(downloaded)).toContain("00:00:00,250 --> 00:00:01,750");
+  });
+
+  it("does not promote local generation over supplied captions and disables it without audio", () => {
+    render(<ResultsView report={readyReport} sourceFile={new File(["video"], "release.mp4")} captionGenerationAvailable packageInput={{ title: "Title", description: "Description", captions: new File(["captions"], "release.srt"), thumbnail: null, reviewMode: "local" }} />);
+    expect(screen.queryByRole("button", { name: "Generate captions locally" })).not.toBeInTheDocument();
+    const silent = { ...readyReport, media: { ...readyReport.media, has_audio: false, audio_stream_count: 0 } };
+    const { unmount } = render(<ResultsView report={silent} sourceFile={new File(["video"], "silent.mp4")} captionGenerationAvailable packageInput={{ title: "Title", description: "Description", captions: null, thumbnail: null, reviewMode: "local" }} />);
+    expect(screen.getByRole("button", { name: "Generate captions locally" })).toBeDisabled();
+    expect(screen.getByText("This video has no audio track to caption.")).toBeInTheDocument();
+    unmount();
   });
   it("renders one truthful release package and actual-thumbnail delivery preview", async () => {
     const user = userEvent.setup();
@@ -334,9 +371,9 @@ describe("Creator Preflight frontend", () => {
     expect(click).toHaveBeenCalledTimes(2);
   });
 
-  it("disables Run Preflight until a video is selected", () => {
+  it("disables Check release until a video is selected", () => {
     render(<App />);
-    expect(screen.getByRole("button", { name: /run preflight/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /check release/i })).toBeDisabled();
     expect(screen.getByText(/timing, structure, and coverage checks/i)).toBeInTheDocument();
     expect(screen.queryByText(/caption contents are not inspected/i)).not.toBeInTheDocument();
   });
@@ -365,11 +402,11 @@ describe("Creator Preflight frontend", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Load demo" }));
-    expect(await screen.findByTestId("selected-video")).toHaveTextContent("creator-preflight-official-demo.mp4");
+    expect(await screen.findByTestId("selected-video")).toHaveTextContent("releaseseal-official-demo.mp4");
     expect(screen.getByLabelText("Title")).toHaveValue("Why Night Trains Are Returning to Europe");
     expect(screen.getByLabelText("Description")).toHaveValue("A concise sample description.");
-    expect(screen.getByText("creator-preflight-official-captions.srt")).toBeInTheDocument();
-    expect(screen.getByText("creator-preflight-official-thumbnail.png")).toBeInTheDocument();
+    expect(screen.getByText("releaseseal-official-captions.srt")).toBeInTheDocument();
+    expect(screen.getByText("releaseseal-official-thumbnail.png")).toBeInTheDocument();
   });
 
   it("renders real elapsed progress, stale reassurance, and task disclosure", async () => {
@@ -411,8 +448,8 @@ describe("Creator Preflight frontend", () => {
     expect(videoInput.value).toBe("");
     expect(captionInput.value).toBe("");
     expect(thumbnailInput.value).toBe("");
-    expect(revokeObjectURL).toHaveBeenCalledWith("blob:creator-preflight-local-preview");
-    expect(screen.getByRole("button", { name: /run preflight/i })).toBeDisabled();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:releaseseal-local-preview");
+    expect(screen.getByRole("button", { name: /check release/i })).toBeDisabled();
   });
 
   it("generates metadata only on request and reuses one result for title and description", async () => {
@@ -564,7 +601,7 @@ describe("Creator Preflight frontend", () => {
 
   it("seeks the local video when a timestamp action is clicked", async () => {
     const user = userEvent.setup();
-    render(<ResultsView report={needsReviewReport} previewUrl="blob:creator-preflight-test" />);
+    render(<ResultsView report={needsReviewReport} previewUrl="blob:releaseseal-test" />);
     const video = screen.getByTestId("preview-video") as HTMLVideoElement;
     fireEvent.loadedMetadata(video);
     video.currentTime = 0;
@@ -576,7 +613,7 @@ describe("Creator Preflight frontend", () => {
 
   it("seeks the local video when a timeline marker is clicked", async () => {
     const user = userEvent.setup();
-    render(<ResultsView report={needsReviewReport} previewUrl="blob:creator-preflight-test" />);
+    render(<ResultsView report={needsReviewReport} previewUrl="blob:releaseseal-test" />);
     const video = screen.getByTestId("preview-video") as HTMLVideoElement;
     video.currentTime = 0;
 
@@ -1088,10 +1125,10 @@ describe("Creator Preflight frontend", () => {
     await selectVideoAndRun(user, "unreachable.mp4");
 
     expect(await screen.findByTestId("error-state")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Creator Preflight is unavailable" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "ReleaseSeal is unavailable" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Return to new scan" }));
     expect(screen.getByTestId("selected-video")).toHaveTextContent("unreachable.mp4");
-    await user.click(screen.getByRole("button", { name: "Run Preflight" }));
+    await user.click(screen.getByRole("button", { name: "Check release" }));
     expect(await screen.findByRole("heading", { name: "Ready" })).toBeInTheDocument();
   });
 
@@ -1138,7 +1175,7 @@ describe("Creator Preflight frontend", () => {
     expect(await screen.findByRole("heading", { name: "Ready" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "video-a.mp4" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "New scan" }));
-    expect(revokeObjectURL).toHaveBeenCalledWith("blob:creator-preflight-local-preview");
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:releaseseal-local-preview");
 
     await selectVideoAndRun(user, "video-b.mp4");
     expect(await screen.findByRole("heading", { name: "Blocked" })).toBeInTheDocument();
@@ -1212,7 +1249,7 @@ describe("Creator Preflight frontend", () => {
 async function selectVideoAndRun(user: ReturnType<typeof userEvent.setup>, filename: string) {
   const video = new File(["synthetic video bytes"], filename, { type: "video/mp4" });
   await user.upload(screen.getByLabelText("Select video file"), video);
-  await user.click(screen.getByRole("button", { name: "Run Preflight" }));
+  await user.click(screen.getByRole("button", { name: "Check release" }));
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -1237,6 +1274,7 @@ function capabilitiesFixture(fullReviewAvailable = true) {
     transcription_dependency_available: true,
     transcription_enabled: false,
     local_evidence_recovery_available: true,
+    local_caption_generation_available: true,
     supported_review_modes: ["full", "local"],
     maximum_video_upload_size_bytes: 2_147_483_648,
     full_review_unavailable_reasons: fullReviewAvailable ? [] : [{
@@ -1395,7 +1433,7 @@ function repairWorkflowReport(): PreflightReport {
           proposal_id: "human-review",
           finding_code: human.code,
           finding_title: "Long silent section",
-          explanation: "Creator Preflight cannot make this edit without your judgment.",
+          explanation: "ReleaseSeal cannot make this edit without your judgment.",
           source: human.source,
           repairability: "HUMAN_ONLY",
           operation: null,

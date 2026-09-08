@@ -119,6 +119,7 @@ export interface PreflightCapabilities {
   transcription_dependency_available: boolean;
   transcription_enabled: boolean;
   local_evidence_recovery_available: boolean;
+  local_caption_generation_available: boolean;
   supported_review_modes: ReviewMode[];
   maximum_video_upload_size_bytes: number;
   full_review_unavailable_reasons: CapabilityReason[];
@@ -128,6 +129,30 @@ export type ReleaseRequirementType = "REQUIRED_TEXT" | "REQUIRED_EXACT_TOKEN" | 
   | "REQUIRED_BEFORE_TIME" | "FORBIDDEN_TEXT" | "TITLE_CONTAINS" | "DESCRIPTION_CONTAINS"
   | "DESCRIPTION_URL" | "MAX_DURATION" | "MIN_RESOLUTION" | "ASPECT_RATIO"
   | "CAPTIONS_REQUIRED" | "THUMBNAIL_REQUIRED" | "REQUIRED_TALKING_POINT" | "FORBIDDEN_CLAIM";
+
+export interface GeneratedCaptionCue {
+  index: number;
+  start_seconds: number;
+  end_seconds: number;
+  text: string;
+}
+
+export interface GeneratedCaptionDraft {
+  schema_version: "1.0";
+  status: "COMPLETED" | "UNAVAILABLE";
+  reason: string;
+  artifact_sha256: string;
+  source: "LOCAL_MACHINE_TRANSCRIPT";
+  engine: "faster-whisper";
+  model: string;
+  cues: GeneratedCaptionCue[];
+  cue_count: number;
+  covered_seconds: number;
+  srt_text: string;
+  download_filename: string;
+  runtime_seconds: number;
+  reuse_token: string | null;
+}
 export type ContractEvaluationClass = "DETERMINISTIC" | "SEMANTIC";
 export type ContractStatus = "PASS" | "FAIL" | "NEEDS_REVIEW" | "NOT_EVALUATED";
 
@@ -305,6 +330,7 @@ export interface ThumbnailTextRegion {
   confidence: number;
   estimated_local_contrast_ratio: number;
   contrast_evidence_confidence: number;
+  detector: "PRIMARY" | "SEGMENTATION_FALLBACK";
 }
 
 export interface DeliveredTextMeasurement {

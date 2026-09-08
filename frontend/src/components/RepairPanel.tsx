@@ -180,7 +180,7 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
         if (verified.review_reel_available) {
           const reel = await renderReviewReel(repaired, verified.review_reel_manifest, { signal: controller.signal });
           if (!controller.signal.aborted) {
-            const reelFile = new File([reel.blob], "creator-preflight.review-reel.mp4", { type: "video/mp4" });
+            const reelFile = new File([reel.blob], "releaseseal.review-reel.mp4", { type: "video/mp4" });
             setReviewReel(reelFile);
             onReviewReelMedia(reelFile);
           }
@@ -232,7 +232,7 @@ export function RepairPanel({ report, sourceFile, originalPreviewUrl, onSeek, on
         humanDispositions: dispositions,
       });
       setReceipt(next);
-      downloadJson(next, "creator-preflight.release-receipt.json");
+      downloadJson(next, "releaseseal.release-receipt.json");
     } catch (error) {
       setReceiptError(errorPresentation(error).message);
     } finally {
@@ -451,7 +451,7 @@ function ReleasePlanOverview({ report, onSeek }: { report: PreflightReport; onSe
     ["INFORMATIONAL", "Informational"],
   ] as const;
   return <div className="release-plan-overview">
-    <p>What Creator Preflight can safely help with next.</p>
+    <p>What ReleaseSeal can safely help with next.</p>
     <div className="release-plan-groups">{groups.map(([category, label]) => {
       const items = report.release_plan.items.filter((item) => item.category === category);
       if (!items.length) return null;
@@ -538,7 +538,7 @@ export function exportReport(format: "csv" | "markdown" | "json", report: Prefli
   const content = format === "json" ? JSON.stringify({ verdict: report.verdict, completeness: report.scan_completeness, release_package: report.release_package, release_contract: { ...report.release_contract, gate_effects: contractRows.map(({ requirement, gate_effect }) => ({ requirement, gate_effect })) }, audio_evidence: report.audio_evidence, release_plan: report.release_plan, findings: rows }, null, 2)
     : format === "markdown" ? ["# Review report", "", `Status: ${report.verdict}`, "", "## Release package", "", "| Component | State | Detail |", "| --- | --- | --- |", ...[...packageRows, ...thumbnailRows, ...assuranceRows].map((row) => `| ${row.name.replaceAll("_", " ")} | ${row.state} | ${escapeCell(row.detail)} |`), "", ...(contractRows.length ? ["## Release requirements", "", "| Status | Gate effect | Class | Source | Requirement | Evidence |", "| --- | --- | --- | --- | --- | --- |", ...contractRows.map((row) => `| ${row.status} | ${row.gate_effect} | ${row.evaluation_class} | ${row.evidence_source.replaceAll("_", " ")} | ${escapeCell(row.requirement)} | ${escapeCell(row.evidence)} |`), ""] : []), ...(report.audio_evidence.confirmations.length ? ["## Human-confirmed audio evidence", "", ...report.audio_evidence.confirmations.map((item) => `- ${escapeCell(item.proposition)} ${formatTimecode(item.start_seconds)}–${formatTimecode(item.end_seconds)} · artifact ${item.artifact_sha256}`), ""] : []), "## Findings", "", "| Status | Start | Finding | Decision |", "| --- | --- | --- | --- |", ...rows.map((row) => `| ${row.status} | ${row.start_timecode ?? "Global"} | ${escapeCell(row.title)} | ${row.human_decision ?? ""} |`)].join("\n")
     : ["row_type,status,class_or_severity,category_or_source,start,end,title,evidence,suggested_action,repair_state,human_decision,verification_state,gate_effect", ...[...packageRows, ...thumbnailRows, ...assuranceRows].map((row) => ["package", row.state, "", row.name, "", "", row.name.replaceAll("_", " "), row.detail, "", "", "", "", ""].map(csvCell).join(",")), ...contractRows.map((row) => ["contract", row.status, row.evaluation_class, row.evidence_source, row.timestamp ?? "", row.evidence_end ?? "", row.requirement, row.proposition ? `${row.evidence} Proposition: ${row.proposition}; artifact ${row.artifact_sha256}` : row.evidence, "", "", "", "", row.gate_effect].map(csvCell).join(",")), ...rows.map((row) => ["finding", row.status, row.severity, row.category, row.start_timecode ?? "", row.end_timecode ?? "", row.title, row.evidence, row.suggested_action ?? "", row.repair_state, row.human_decision ?? "", row.verification_state ?? "", ""].map(csvCell).join(","))].join("\n");
-  downloadText(`creator-preflight-report.${format === "markdown" ? "md" : format}`, content, format === "json" ? "application/json" : "text/plain");
+  downloadText(`releaseseal-report.${format === "markdown" ? "md" : format}`, content, format === "json" ? "application/json" : "text/plain");
 }
 
 function downloadText(filename: string, content: string, type: string) {

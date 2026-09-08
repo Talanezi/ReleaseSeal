@@ -6,8 +6,8 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from creator_preflight import ai_review as ai_module
-from creator_preflight.ai_review import (
+from releaseseal import ai_review as ai_module
+from releaseseal.ai_review import (
     AIObservation,
     AIObservationBatch,
     AIObservationType,
@@ -16,13 +16,13 @@ from creator_preflight.ai_review import (
     GeminiVideoReviewer,
     provider_video_mime_type,
 )
-from creator_preflight.ai_smoke_fixture import generate_ai_smoke_video
-from creator_preflight.cli import main
-from creator_preflight.config import AIReviewConfig, PreflightConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import FindingStatus, PublishingPackage
-from creator_preflight.media import MediaInspector
-from creator_preflight.promise_check import (
+from releaseseal.ai_smoke_fixture import generate_ai_smoke_video
+from releaseseal.cli import main
+from releaseseal.config import AIReviewConfig, PreflightConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import FindingStatus, PublishingPackage
+from releaseseal.media import MediaInspector
+from releaseseal.promise_check import (
     PromiseDelivery,
     PromiseProviderResult,
     PromiseReviewResult,

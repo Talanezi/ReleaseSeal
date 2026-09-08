@@ -22,8 +22,8 @@ Run the backend tests from the repository root:
 CLI usage:
 
 ```sh
-creator-preflight scan VIDEO_PATH --title "Title" --description-file description.txt
-creator-preflight scan VIDEO_PATH --title "Title" --description "Text" --json
+releaseseal scan VIDEO_PATH --title "Title" --description-file description.txt
+releaseseal scan VIDEO_PATH --title "Title" --description "Text" --json
 ```
 
 Optional scan arguments are `--captions`, `--config`, and `--json`. `--description` and `--description-file` are mutually exclusive. Exit codes are:
@@ -40,7 +40,7 @@ API endpoints:
 Run the local API from the repository root:
 
 ```sh
-.venv/bin/uvicorn creator_preflight.api:app --app-dir backend/src --reload --host 127.0.0.1 --port 8000
+.venv/bin/uvicorn releaseseal.api:app --app-dir backend/src --reload --host 127.0.0.1 --port 8000
 ```
 
 Uploaded media and caption handles are request-scoped. Media is copied into a temporary directory for scanning, then closed and removed after either a successful report or an error response.

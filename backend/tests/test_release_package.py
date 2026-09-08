@@ -1,11 +1,11 @@
-from creator_preflight.models import CaptionSummary, MediaInspection, PublishingPackage
-from creator_preflight.release_package import (
+from releaseseal.models import CaptionSummary, MediaInspection, PublishingPackage
+from releaseseal.release_package import (
     PackageComponentState,
     ThumbnailCriticalRegion,
     evaluate_release_package,
     format_duration_badge,
 )
-from creator_preflight.thumbnails import ThumbnailInfo
+from releaseseal.thumbnails import ThumbnailInfo
 
 
 def _media(duration=212.2):

@@ -1,3 +1,3 @@
 A short Field Notes video about two milestones: the Eiffel Tower opening and the Apollo 11 Moon landing.
 
-Generated locally for the Creator Preflight judge demonstration.
+Generated locally for the ReleaseSeal judge demonstration.

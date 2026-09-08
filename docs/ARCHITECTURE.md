@@ -24,9 +24,9 @@ These workflows share validation, local media tooling, safe adapters, and presen
 
 ## Current state
 
-`creator_preflight.media` validates and inspects local media; `creator_preflight.detectors` contains the independent FFmpeg checks; `creator_preflight.rules` parses creator-style chapter lines and validates video/package metadata; `creator_preflight.release_package` builds the backend-owned package summary and basic thumbnail delivery geometry from that validated state; `creator_preflight.thumbnail_assurance` adds an isolated bounded pixel-analysis report behind that package boundary; `creator_preflight.captions` parses and validates SRT/WebVTT content and performs interval coverage comparisons; `creator_preflight.ai_review` isolates optional Gemini lifecycle primitives; `creator_preflight.promise_check`, `creator_preflight.viewer_pass`, and `creator_preflight.claim_review` own independent final-export AI policies; `creator_preflight.content_sketch` builds bounded local audiovisual proxies for Metadata Assist; `creator_preflight.release_brief` and `creator_preflight.metadata_assist` own bounded presentation assistance; `creator_preflight.release_contract` owns strict obligation types, trusted-state evaluation, semantic validation, and gate findings; `creator_preflight.release_contract_extraction` structures only obligations grounded to pasted brief excerpts; `creator_preflight.repairs` owns deterministic repair planning and the allowlisted FFmpeg rendering boundary; `creator_preflight.verification` owns repaired-timeline mapping, finding comparison, integrity/regression verification, and Review Reel manifests; `creator_preflight.revision` owns application-neutral physical timeline alignment; `creator_preflight.revision_check` owns deterministic revision-note parsing and correlation; `creator_preflight.revision_evidence` owns bounded Previous/Revised evidence planning and transcoding; `creator_preflight.revision_semantic` owns the focused optional semantic reviewer protocol, Gemini implementation, hash validation, request limits, and failure isolation; and `creator_preflight.engine.PreflightScanner` coordinates one complete final-export scan.
+`releaseseal.media` validates and inspects local media; `releaseseal.detectors` contains the independent FFmpeg checks; `releaseseal.rules` parses creator-style chapter lines and validates video/package metadata; `releaseseal.release_package` builds the backend-owned package summary and basic thumbnail delivery geometry from that validated state; `releaseseal.thumbnail_assurance` adds an isolated bounded pixel-analysis report behind that package boundary; `releaseseal.captions` parses and validates SRT/WebVTT content and performs interval coverage comparisons; `releaseseal.ai_review` isolates optional Gemini lifecycle primitives; `releaseseal.promise_check`, `releaseseal.viewer_pass`, and `releaseseal.claim_review` own independent final-export AI policies; `releaseseal.content_sketch` builds bounded local audiovisual proxies for Metadata Assist; `releaseseal.release_brief` and `releaseseal.metadata_assist` own bounded presentation assistance; `releaseseal.release_contract` owns strict obligation types, trusted-state evaluation, semantic validation, and gate findings; `releaseseal.release_contract_extraction` structures only obligations grounded to pasted brief excerpts; `releaseseal.repairs` owns deterministic repair planning and the allowlisted FFmpeg rendering boundary; `releaseseal.verification` owns repaired-timeline mapping, finding comparison, integrity/regression verification, and Review Reel manifests; `releaseseal.revision` owns application-neutral physical timeline alignment; `releaseseal.revision_check` owns deterministic revision-note parsing and correlation; `releaseseal.revision_evidence` owns bounded Previous/Revised evidence planning and transcoding; `releaseseal.revision_semantic` owns the focused optional semantic reviewer protocol, Gemini implementation, hash validation, request limits, and failure isolation; and `releaseseal.engine.PreflightScanner` coordinates one complete final-export scan.
 
-The scanner reconciles redundant black-contained freeze findings, sorts final findings deterministically, records every executed check, derives counts, and computes `READY`, `NEEDS_REVIEW`, or `BLOCKED` directly from creator-content finding statuses. Report schema 1.10 separately records `COMPLETE`, `PARTIAL`, or `FAILED` scan completeness and typed execution issues, plus backend-generated release-package, repair, Release Contract, and review-summary state; provider/tool availability failures do not masquerade as content findings. Caption checks are added only when a caption file is supplied, while the speech-coverage check is added only when optional transcription is enabled and audio exists. The report contains no opaque score. Both `creator_preflight.cli` and the FastAPI unified upload endpoint call this same scanner.
+The scanner reconciles redundant black-contained freeze findings, sorts final findings deterministically, records every executed check, derives counts, and computes `READY`, `NEEDS_REVIEW`, or `BLOCKED` directly from creator-content finding statuses. Report schema 1.10 separately records `COMPLETE`, `PARTIAL`, or `FAILED` scan completeness and typed execution issues, plus backend-generated release-package, repair, Release Contract, and review-summary state; provider/tool availability failures do not masquerade as content findings. Caption checks are added only when a caption file is supplied, while the speech-coverage check is added only when optional transcription is enabled and audio exists. The report contains no opaque score. Both `releaseseal.cli` and the FastAPI unified upload endpoint call this same scanner.
 
 The M27 package evaluator never invents missing requirements: absent optional thumbnail, captions, chapters, or contract state is neutral unless an existing rule or Release Contract says otherwise. Supplied PNG/JPEG files reuse the bounded content decoder and receive minimum-resolution, relative 16:9, and file-size checks. Four centralized typed delivery surfaces provide approximate box, edge, and duration-badge geometry; preview metadata uses the probed video duration. Explicit normalized critical regions can be tested against badge/edge geometry, but no region is inferred and no OCR, saliency, learned vision, or quality score exists.
 
@@ -38,7 +38,7 @@ The frontend has a separate static Vite entry at `proof/index.html`. It fetches 
 
 ## Target shape
 
-Creator Preflight is a local, single-application system with two adapters around one Python scanning engine:
+ReleaseSeal is a local, single-application system with two adapters around one Python scanning engine:
 
 ```text
 CLI adapter ───────┐
@@ -67,7 +67,7 @@ The scanning engine owns input normalization, detector orchestration, finding no
 
 ```text
 backend/                 Python package and backend tests
-  src/creator_preflight/ Installable package namespace
+  src/releaseseal/ Installable package namespace
   tests/                 pytest suite
 frontend/                React and TypeScript client
 config/                  Versioned default configuration
@@ -77,33 +77,33 @@ scripts/                 Repository automation scripts
 
 ## Planned backend boundaries
 
-- `creator_preflight.engine`: application-neutral scan orchestration and report aggregation.
-- `creator_preflight.models`: input, configuration, finding, and report types.
-- `creator_preflight.detectors`: focused media and metadata checks that return normalized findings.
-- `creator_preflight.media`: subprocess boundary for FFmpeg and FFprobe.
-- `creator_preflight.api`: thin FastAPI adapter.
-- `creator_preflight.cli`: thin command-line adapter.
-- `creator_preflight.captions`: deterministic caption parsing, validation, coverage, and speech/caption interval comparison.
-- `creator_preflight.transcription`: optional lazy local faster-whisper adapter.
-- `creator_preflight.ai_review`: optional Gemini SDK adapter, bounded remote file lifecycle, native structured-output validation, and observation normalization boundary.
-- `creator_preflight.promise_check`: injection-resistant task prompt, typed Promise result, timestamp validation, confidence/evidence gating, and narrow editorial finding normalization.
-- `creator_preflight.viewer_pass`: injection-resistant final-viewer prompt, typed internal-consistency result, timestamp validation, conservative confidence/evidence gating, and narrow review-only finding normalization.
-- `creator_preflight.claim_review`: max-three claim extraction, one bounded corrective timestamp retry, per-claim Google Search-grounded verification, claim-specific provider-metadata citations, confidence gating, and cautious review-only conflict findings.
-- `creator_preflight.release_models` / `release_brief`: strict presentation schema, deterministic local summary, and optional text-only Full Review summary over trusted report facts.
-- `creator_preflight.metadata_assist`: explicit one-upload/one-generation title and description assistance with strict bounded output and no fabricated links.
-- `creator_preflight.claim_fixture`: small local narrated control with supported, conflicting, and subjective statements.
-- `creator_preflight.viewer_fixture`: small local narrated controls for live clean/conflict/placeholder/repetition validation.
-- `creator_preflight.thumbnails`: bounded content-based PNG/JPEG validation for optional temporary thumbnail inputs.
-- `creator_preflight.repair_models`: strict repairability, operation, proposal, batch, and plan contracts.
-- `creator_preflight.repairs`: deterministic finding-to-proposal mapping, untrusted-operation revalidation, and bounded FFmpeg preview/final rendering.
-- `creator_preflight.verification_models`: strict resolved/remaining/new, integrity, unexpected-change, reel-manifest, and overall verification contracts.
-- `creator_preflight.verification`: centralized original/repaired timeline transform, backend-owned finding comparison, bounded canonical visual sampling, and Review Reel planning.
-- `creator_preflight.revision_models`: strict, serializable media-to-media timeline correspondence contracts (`UNCHANGED`, `REMOVED`, `INSERTED`, and `CHANGED`).
-- `creator_preflight.revision`: local deterministic fingerprint extraction, monotonic alignment, bounded boundary refinement, and the application-neutral `RevisionMapper` service.
-- `creator_preflight.revision_fixture`: portable FFmpeg-only engineering fixtures for revision-map calibration; it has no network or speech-synthesis dependency.
-- `creator_preflight.revision_check_models`: strict request, additional-change, and complete Revision Check response contracts.
-- `creator_preflight.revision_check`: deterministic previous-timeline note parsing, insertion-anchor inference, and correlation of notes with `RevisionMap` change segments.
-- `creator_preflight.release_receipt`: strict Final Export/Revision receipt models, canonical serialization, package fingerprints, backend construction, streaming SHA-256 identities, and typed verification.
+- `releaseseal.engine`: application-neutral scan orchestration and report aggregation.
+- `releaseseal.models`: input, configuration, finding, and report types.
+- `releaseseal.detectors`: focused media and metadata checks that return normalized findings.
+- `releaseseal.media`: subprocess boundary for FFmpeg and FFprobe.
+- `releaseseal.api`: thin FastAPI adapter.
+- `releaseseal.cli`: thin command-line adapter.
+- `releaseseal.captions`: deterministic caption parsing, validation, coverage, and speech/caption interval comparison.
+- `releaseseal.transcription`: optional lazy local faster-whisper adapter.
+- `releaseseal.ai_review`: optional Gemini SDK adapter, bounded remote file lifecycle, native structured-output validation, and observation normalization boundary.
+- `releaseseal.promise_check`: injection-resistant task prompt, typed Promise result, timestamp validation, confidence/evidence gating, and narrow editorial finding normalization.
+- `releaseseal.viewer_pass`: injection-resistant final-viewer prompt, typed internal-consistency result, timestamp validation, conservative confidence/evidence gating, and narrow review-only finding normalization.
+- `releaseseal.claim_review`: max-three claim extraction, one bounded corrective timestamp retry, per-claim Google Search-grounded verification, claim-specific provider-metadata citations, confidence gating, and cautious review-only conflict findings.
+- `releaseseal.release_models` / `release_brief`: strict presentation schema, deterministic local summary, and optional text-only Full Review summary over trusted report facts.
+- `releaseseal.metadata_assist`: explicit one-upload/one-generation title and description assistance with strict bounded output and no fabricated links.
+- `releaseseal.claim_fixture`: small local narrated control with supported, conflicting, and subjective statements.
+- `releaseseal.viewer_fixture`: small local narrated controls for live clean/conflict/placeholder/repetition validation.
+- `releaseseal.thumbnails`: bounded content-based PNG/JPEG validation for optional temporary thumbnail inputs.
+- `releaseseal.repair_models`: strict repairability, operation, proposal, batch, and plan contracts.
+- `releaseseal.repairs`: deterministic finding-to-proposal mapping, untrusted-operation revalidation, and bounded FFmpeg preview/final rendering.
+- `releaseseal.verification_models`: strict resolved/remaining/new, integrity, unexpected-change, reel-manifest, and overall verification contracts.
+- `releaseseal.verification`: centralized original/repaired timeline transform, backend-owned finding comparison, bounded canonical visual sampling, and Review Reel planning.
+- `releaseseal.revision_models`: strict, serializable media-to-media timeline correspondence contracts (`UNCHANGED`, `REMOVED`, `INSERTED`, and `CHANGED`).
+- `releaseseal.revision`: local deterministic fingerprint extraction, monotonic alignment, bounded boundary refinement, and the application-neutral `RevisionMapper` service.
+- `releaseseal.revision_fixture`: portable FFmpeg-only engineering fixtures for revision-map calibration; it has no network or speech-synthesis dependency.
+- `releaseseal.revision_check_models`: strict request, additional-change, and complete Revision Check response contracts.
+- `releaseseal.revision_check`: deterministic previous-timeline note parsing, insertion-anchor inference, and correlation of notes with `RevisionMap` change segments.
+- `releaseseal.release_receipt`: strict Final Export/Revision receipt models, canonical serialization, package fingerprints, backend construction, streaming SHA-256 identities, and typed verification.
 
 The `engine`, `models`, `rules`, `detectors`, `media`, `api`, and `cli` boundaries now exist at the scope required through Milestone 3. Rule and detector logic do not depend on FastAPI, CLI formatting, or React. Adapters translate inputs and render results only. FFmpeg/FFprobe execution uses argument arrays rather than a shell, enforces timeouts, captures diagnostics, and converts tool failures into typed application errors.
 
@@ -117,7 +117,7 @@ Metadata Assist is intentionally separate from Full Review. The API inspects the
 
 The web client first reads `/api/v1/capabilities`, then explicitly sends `review_mode=full` or `review_mode=local` with the browser-selected video, title, description, optional captions, and optional thumbnail. Full mode deliberately enables the three Gemini tasks for that request; local mode forcibly disables them. A client-generated opaque UUID associates the existing multipart request with a bounded process-local progress record. The browser polls that record while the scanner reports only real orchestration boundaries; weighted percentages are monotonic, never reach 100 before a terminal report, and carry no invented ETA. Progress state is ephemeral and is cleared after completion or reset. Vite proxies `/api` to FastAPI during local development. The server preserves a recognized video-container suffix, confirms the container with FFprobe, and supplies an explicit bounded MIME type to Gemini. It streams uploads under a configured size limit, executes synchronous scan work in an AnyIO worker thread, bounds process-local scan concurrency, closes uploads, and removes its temporary directory after success or failure. An exact configurable Origin allowlist protects expensive browser POSTs while non-browser clients without an Origin remain supported.
 
-Configuration is loaded from YAML, validated before scanning, and passed explicitly into the engine. Defaults live in `config/preflight.default.yml`. Reports include a schema version so formats can evolve without silent ambiguity.
+Configuration is loaded from YAML, validated before scanning, and passed explicitly into the engine. Defaults live in `config/releaseseal.default.yml`. Reports include a schema version so formats can evolve without silent ambiguity.
 
 An optional Release Contract travels with the publishing package into the same scanner. Its discriminated requirement models forbid unknown fields and arbitrary rules. The evaluator reuses inspected media, parsed captions, and submitted title/description rather than probing again. Deterministic failures create blocking contract findings; semantic concerns create review-only findings, and unavailable evidence leaves typed `NOT_EVALUATED` rows plus partial completeness. Full Review batches at most five semantic requirements into one bounded text-only request over at most 20,000 caption characters inside the existing shared Gemini session, so it performs no additional video upload. Manual contracts remain fully usable without Gemini. Brief extraction is a separate explicit text-only route: provider output must validate against the same contract schema, quote an excerpt that exists in the supplied brief, and preserve literal values before it can reach the editor.
 
@@ -154,6 +154,10 @@ Full Review may use one additional text-only structured generation while the sha
 Creator-facing time references are formatted by backend/frontend canonical formatters as `MM:SS.xx` (or `H:MM:SS.xx` for hour-plus media). Numeric seconds remain in typed reports for computation and seeking, but the AI-review prompt and deterministic repair/verification copy do not expose raw floating-point timestamps. Continuity summary copy is derived only from issues that passed the Viewer trust boundary; rejected provider commentary is not promoted into the consumer report.
 
 M31 extends the Release Contract boundary with provenance-aware evidence sources: supplied captions, publishing metadata, media measurements, local machine transcription, and human-confirmed audio evidence. Local recovery is an explicit post-scan API operation. It reuses the lazy `faster-whisper` adapter with `local_files_only`, the existing upload/origin/capacity controls, a four-hour media bound, at most three candidates per requirement, and at most 20,000 retained transcript characters. Machine matches carry an exact artifact SHA-256, requirement digest, bounded source interval, engine/model identity, and a process-session HMAC identity so the untrusted client cannot alter or fabricate a candidate. They can only make an unresolved row advisory `NEEDS_REVIEW`; absence never proves a phrase absent.
+
+The optional caption-draft endpoint uses that same adapter and request safeguards. It normalizes bounded timed segments into UTF-8 SRT, previews them as machine-generated captions, and never supplies them to deterministic caption or Release Contract evaluation. A process-session HMAC binds a reusable draft to its video SHA-256, model, timestamps, and text; only that exact draft can replace a redundant transcription pass during M31 candidate recovery. A backend restart invalidates the reuse token safely.
+
+Thumbnail assurance keeps the original gradient/stroke detector as its primary path. Only after primary abstention, a second deterministic segmentation path groups high-contrast connected components by baseline, glyph geometry, spacing, and coherent opposite-polarity substrate. The fallback emits the existing advisory `TextLikeRegion` contract, caps confidence below the strict-policy ceiling, and preserves abstention on textless or structurally noisy imagery. It adds no OCR, model, provider, or relaxed primary threshold.
 
 Confirmation is another narrow backend operation over the exact source upload and candidate identity. It rejects artifact, requirement, interval, or proposition changes. A confirmation proves only presence in that interval: it may satisfy required text/token or an on-time occurrence, or deterministically fail a forbidden-text requirement. A confirmed late occurrence remains `NEEDS_REVIEW` because it cannot prove there was no earlier occurrence. Backend-owned reevaluation updates the contract row, report verdict/completeness, findings, repair plan, release plan, exports, and receipt evidence without rerunning media or provider review. Repaired scans intentionally receive the contract but not old artifact-bound confirmations.
 

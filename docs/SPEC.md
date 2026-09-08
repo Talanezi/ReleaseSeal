@@ -1,8 +1,8 @@
-# Creator Preflight Product Specification
+# ReleaseSeal Product Specification
 
 ## 1. Product goal
 
-Creator Preflight is a local-first pre-publish QA system for video creators. Given a finished video and its upload metadata, it will inspect the local media and package and return a deterministic, structured report with an overall status of `READY`, `NEEDS_REVIEW`, or `BLOCKED` and timestamped findings where applicable.
+ReleaseSeal is a local-first pre-publish QA system for video creators. Given a finished video and its upload metadata, it will inspect the local media and package and return a deterministic, structured report with an overall status of `READY`, `NEEDS_REVIEW`, or `BLOCKED` and timestamped findings where applicable.
 
 The core product must run without paid APIs, platform APIs, accounts, cloud storage, or external services. FFmpeg and FFprobe are the core media inspection tools. The CLI and web interface must use the same scanning engine so that equivalent inputs and configuration produce equivalent results.
 
@@ -65,7 +65,7 @@ P0 is the first usable, entirely local product milestone after scaffolding.
 - Add configurable checks for loudness range, integrated loudness, true peak, and extended silence.
 - Add configurable checks for aspect ratio, resolution, frame-rate consistency, and bitrate guidance.
 - Support saved local scan configuration selection without introducing accounts or a database.
-- Add an optional local `faster-whisper` transcription/caption comparison feature. It must be disabled by default, isolated behind an optional dependency, and never required by the core scan.
+- Provide optional local `faster-whisper` transcription for caption comparison, advisory evidence recovery, and explicit machine-caption draft generation. It is isolated behind an optional dependency, never required by the core scan, never downloads a model implicitly, and machine output never becomes trusted supplied-caption evidence.
 - Improve accessibility of the web report and keyboard-only workflow.
 
 ## 6. Stretch features

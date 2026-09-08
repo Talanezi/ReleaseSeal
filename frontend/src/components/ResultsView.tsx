@@ -16,8 +16,8 @@ import {
   Sparkles,
   Tag,
 } from "lucide-react";
-import type { Finding, FindingStatus, PreflightReport } from "../types/preflight";
-import { confirmAudioEvidence, createFinalExportReceipt, errorPresentation, recoverAudioEvidence } from "../api/preflight";
+import type { Finding, FindingStatus, GeneratedCaptionDraft, PreflightReport } from "../types/preflight";
+import { confirmAudioEvidence, createFinalExportReceipt, errorPresentation, generateLocalCaptions, recoverAudioEvidence } from "../api/preflight";
 import { exportReport, RepairPanel } from "./RepairPanel";
 import {
   findingCategory,
@@ -34,6 +34,7 @@ interface ResultsViewProps {
   previewUrl?: string | null;
   sourceFile?: File | null;
   evidenceRecoveryAvailable?: boolean;
+  captionGenerationAvailable?: boolean;
   onReportUpdate?: (report: PreflightReport) => void;
   packageInput?: { title: string; description: string; captions?: File | null; thumbnail?: File | null; reviewMode: "full" | "local" };
 }
@@ -60,6 +61,7 @@ export function ResultsView({
   previewUrl,
   sourceFile = null,
   evidenceRecoveryAvailable = false,
+  captionGenerationAvailable = false,
   onReportUpdate,
   packageInput,
 }: ResultsViewProps) {
@@ -70,6 +72,7 @@ export function ResultsView({
   const [repairedUrl, setRepairedUrl] = useState<string | null>(null);
   const [reviewReelUrl, setReviewReelUrl] = useState<string | null>(null);
   const [mediaMode, setMediaMode] = useState<"original" | "repaired" | "reel">("original");
+  const [generatedCaptions, setGeneratedCaptions] = useState<GeneratedCaptionDraft | null>(null);
   const categories = useMemo(
     () => Array.from(new Set(report.findings.map(findingCategory))),
     [report.findings],
@@ -170,11 +173,22 @@ export function ResultsView({
 
       <ReleasePackageResults report={report} thumbnail={packageInput?.thumbnail ?? null} />
 
+      {!packageInput?.captions && (
+        <GeneratedCaptionsAction
+          sourceFile={sourceFile}
+          hasAudio={report.media.has_audio}
+          available={captionGenerationAvailable}
+          draft={generatedCaptions}
+          onDraft={setGeneratedCaptions}
+        />
+      )}
+
       {report.release_contract.contract && (
         <ReleaseRequirementsResults
           report={report}
           sourceFile={sourceFile}
           recoveryAvailable={evidenceRecoveryAvailable}
+          generatedCaptions={generatedCaptions}
           onReportUpdate={onReportUpdate}
           onSeek={seekToSeconds}
         />
@@ -327,9 +341,9 @@ function ReleasePackageResults({ report, thumbnail }: { report: PreflightReport;
       </ul>
       {summary.thumbnail_checks.length > 0 && <div className="thumbnail-checks" aria-label="Thumbnail delivery checks">{summary.thumbnail_checks.map((check) => <p key={check.check_id} className={check.status === "PASS" ? "is-pass" : "is-review"}><strong>{check.label}</strong><span>{check.measured}</span></p>)}</div>}
       {assurance && <div className="thumbnail-assurance" aria-label="Thumbnail delivery assurance">
-        <div className="thumbnail-assurance-heading"><div><h3>Thumbnail delivery assurance</h3><p>{assurance.reason}</p></div><strong className={`assurance-${assurance.status.toLowerCase()}`}>{assurance.status === "CLEAR" ? "No delivery flags" : assurance.status === "NEEDS_REVIEW" ? "Review delivery" : "Text checks abstained"}</strong></div>
+        <div className="thumbnail-assurance-heading"><div><h3>Thumbnail delivery assurance</h3><p>{assurance.status === "NOT_EVALUATED" ? "No reliable text region was found." : assurance.reason}</p></div><strong className={`assurance-${assurance.status.toLowerCase()}`}>{assurance.status === "CLEAR" ? "No delivery flags" : assurance.status === "NEEDS_REVIEW" ? "Review delivery" : "Analysis abstained"}</strong></div>
         <div className="assurance-measurements">
-          <span><strong>{assurance.confident_region_count}</strong> confident text-like {assurance.confident_region_count === 1 ? "region" : "regions"}</span>
+          <span>{assurance.confident_region_count > 0 ? <><strong>{assurance.confident_region_count}</strong> text {assurance.confident_region_count === 1 ? "region" : "regions"} analyzed</> : "Text analysis abstained"}</span>
           {assurance.regions.map((region) => <span key={region.region_id}><strong>{region.estimated_local_contrast_ratio.toFixed(2)}:1</strong> estimated local contrast</span>)}
           {assurance.surfaces.slice(0, 2).map((surface) => <span key={surface.surface_id}><strong>{Math.round(surface.detail_retention_ratio * 100)}%</strong> detail retained · {surface.label}</span>)}
         </div>
@@ -343,10 +357,10 @@ function ReleasePackageResults({ report, thumbnail }: { report: PreflightReport;
       {thumbnailUrl && summary.delivery_preview && (
         <div className="delivery-preview" aria-label="Thumbnail delivery preview">
           <h3>Delivery preview</h3>
-          <p>Approximate platform presentations using the supplied artwork and inspected video duration.</p>
+          <p>Relative delivered-size comparison using the supplied artwork and video duration.</p>
           <div className="delivery-surfaces">
             {summary.delivery_preview.surfaces.map((surface) => (
-              <figure key={surface.surface_id}>
+              <figure key={surface.surface_id} style={{ "--delivery-width": surface.display_width } as CSSProperties}>
                 <div className={`delivery-artwork${showSafeArea ? " show-safe-area" : ""}`} style={{ aspectRatio: `${surface.display_width} / ${surface.display_height}`, "--safe-margin": `${surface.safe_margin_fraction * 100}%` } as CSSProperties}>
                   <img src={thumbnailUrl} alt="" />
                   {assurance?.regions.map((region) => {
@@ -363,6 +377,51 @@ function ReleasePackageResults({ report, thumbnail }: { report: PreflightReport;
           </div>
         </div>
       )}
+    </section>
+  );
+}
+
+function GeneratedCaptionsAction({ sourceFile, hasAudio, available, draft, onDraft }: {
+  sourceFile: File | null;
+  hasAudio: boolean;
+  available: boolean;
+  draft: GeneratedCaptionDraft | null;
+  onDraft: (draft: GeneratedCaptionDraft) => void;
+}) {
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const generate = async () => {
+    if (!sourceFile || working || !hasAudio || !available) return;
+    setWorking(true);
+    setError(null);
+    try { onDraft(await generateLocalCaptions(sourceFile)); }
+    catch (reason) { setError(errorPresentation(reason).message); }
+    finally { setWorking(false); }
+  };
+  const download = () => {
+    if (!draft?.srt_text) return;
+    const url = URL.createObjectURL(new Blob([draft.srt_text], { type: "application/x-subrip;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = draft.download_filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <section className="generated-captions" aria-labelledby="generated-captions-title">
+      <div>
+        <h2 id="generated-captions-title">Generate captions locally</h2>
+        {!draft && <p>{!hasAudio ? "This video has no audio track to caption." : !available ? "Local caption model unavailable." : "Create a timed caption draft on this device."}</p>}
+        {draft?.status === "UNAVAILABLE" && <p role="status">{draft.reason}</p>}
+        {draft?.status === "COMPLETED" && <>
+          <p><strong>Machine-generated captions</strong> · {draft.cue_count} cues · {formatDuration(draft.covered_seconds)} covered</p>
+          <details><summary>Preview</summary><ol>{draft.cues.slice(0, 50).map((cue) => <li key={cue.index}><time>{formatTimecode(cue.start_seconds)}</time> {cue.text}</li>)}</ol>{draft.cues.length > 50 && <small>Showing the first 50 cues.</small>}</details>
+        </>}
+      </div>
+      {!draft?.srt_text
+        ? <button className="secondary-button" type="button" disabled={!sourceFile || !hasAudio || !available || working} onClick={() => void generate()}>{working ? "Generating locally…" : "Generate captions locally"}</button>
+        : <button className="secondary-button" type="button" onClick={download}><Download aria-hidden="true" /> Download SRT</button>}
+      {error && <p className="repair-error" role="alert">{error}</p>}
     </section>
   );
 }
@@ -393,7 +452,7 @@ function OriginalReceiptAction({ report, sourceFile, packageInput }: {
       const receipt = await createFinalExportReceipt({ originalVideo: sourceFile, report, title: packageInput?.title ?? "", description: packageInput?.description ?? "", captions: packageInput?.captions, thumbnail: packageInput?.thumbnail });
       setDigest(receipt.package.shipping_video.sha256);
       const url = URL.createObjectURL(new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" }));
-      const anchor = document.createElement("a"); anchor.href = url; anchor.download = "creator-preflight.release-receipt.json"; anchor.click(); URL.revokeObjectURL(url);
+      const anchor = document.createElement("a"); anchor.href = url; anchor.download = "releaseseal.release-receipt.json"; anchor.click(); URL.revokeObjectURL(url);
     } catch (reason) { setError(errorPresentation(reason).message); }
     finally { setLoading(false); }
   };
@@ -410,10 +469,11 @@ function OriginalReceiptAction({ report, sourceFile, packageInput }: {
   </>;
 }
 
-function ReleaseRequirementsResults({ report, sourceFile, recoveryAvailable, onReportUpdate, onSeek }: {
+function ReleaseRequirementsResults({ report, sourceFile, recoveryAvailable, generatedCaptions, onReportUpdate, onSeek }: {
   report: PreflightReport;
   sourceFile: File | null;
   recoveryAvailable: boolean;
+  generatedCaptions: GeneratedCaptionDraft | null;
   onReportUpdate?: (report: PreflightReport) => void;
   onSeek: (seconds: number) => void;
 }) {
@@ -431,7 +491,7 @@ function ReleaseRequirementsResults({ report, sourceFile, recoveryAvailable, onR
   const recover = async () => {
     if (!sourceFile || working) return;
     setWorking(true); setError(null);
-    try { onReportUpdate?.(await recoverAudioEvidence(sourceFile, report)); }
+    try { onReportUpdate?.(await recoverAudioEvidence(sourceFile, report, generatedCaptions)); }
     catch (reason) { setError(errorPresentation(reason).message); }
     finally { setWorking(false); }
   };

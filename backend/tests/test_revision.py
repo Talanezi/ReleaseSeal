@@ -6,9 +6,9 @@ import subprocess
 import pytest
 from pydantic import ValidationError
 
-from creator_preflight import revision
-from creator_preflight.config import RevisionMapConfig
-from creator_preflight.revision import (
+from releaseseal import revision
+from releaseseal.config import RevisionMapConfig
+from releaseseal.revision import (
     AlignmentStep,
     RevisionMapError,
     RevisionMapper,
@@ -17,10 +17,10 @@ from creator_preflight.revision import (
     align_sample_sequences,
     effective_visual_sampling_rate,
 )
-from creator_preflight.revision_models import RevisionSegment, RevisionSegmentKind
-from creator_preflight.repair_models import RepairOperation
-from creator_preflight.repairs import FFmpegRepairEngine
-from creator_preflight.revision_fixture import (
+from releaseseal.revision_models import RevisionSegment, RevisionSegmentKind
+from releaseseal.repair_models import RepairOperation
+from releaseseal.repairs import FFmpegRepairEngine
+from releaseseal.revision_fixture import (
     generate_revision_source,
     insert_revision_section,
     reencode_revision,

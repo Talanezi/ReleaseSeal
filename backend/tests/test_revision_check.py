@@ -4,24 +4,24 @@ import json
 
 import pytest
 
-from creator_preflight.config import RevisionCheckConfig
-from creator_preflight.revision_check import (
+from releaseseal.config import RevisionCheckConfig
+from releaseseal.revision_check import (
     RevisionCheckError,
     RevisionCheckService,
     insertion_previous_anchor,
     parse_revision_notes,
 )
-from creator_preflight.revision_check_models import RevisionRequestStatus
-from creator_preflight.revision_models import (
+from releaseseal.revision_check_models import RevisionRequestStatus
+from releaseseal.revision_models import (
     RevisionMap,
     RevisionSamplingPolicy,
     RevisionSegment,
     RevisionSegmentKind,
     RevisionStreamSummary,
 )
-from creator_preflight.repair_models import RepairOperation
-from creator_preflight.repairs import FFmpegRepairEngine
-from creator_preflight.revision_fixture import (
+from releaseseal.repair_models import RepairOperation
+from releaseseal.repairs import FFmpegRepairEngine
+from releaseseal.revision_fixture import (
     generate_revision_source,
     insert_revision_section,
     replace_revision_picture,

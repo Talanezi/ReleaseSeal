@@ -370,7 +370,7 @@ export function ScanForm({ inputs, capabilities, capabilityError, onChange, onRu
             className="primary-button run-button"
             disabled={!canRun}
           >
-            <Play aria-hidden="true" fill="currentColor" /> Run Preflight
+            <Play aria-hidden="true" fill="currentColor" /> Check release
           </button>
           {uploadTooLarge && capabilities && (
             <p className="upload-limit-message" role="alert">

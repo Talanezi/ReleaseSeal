@@ -6,17 +6,17 @@ from pathlib import Path
 
 import pytest
 
-from creator_preflight.ai_review import AIReviewError
-from creator_preflight.config import RevisionSemanticReviewConfig
-from creator_preflight.media import MediaInspector
-from creator_preflight.revision_check import RevisionCheckService
-from creator_preflight.revision_fixture import generate_revision_source, insert_revision_section, replace_revision_picture
-from creator_preflight.revision_models import RevisionMap, RevisionSamplingPolicy, RevisionSegment, RevisionSegmentKind, RevisionStreamSummary
-from creator_preflight.ai_review import GeminiVideoReviewer
-from creator_preflight.config import AIReviewConfig
-from creator_preflight.revision_semantic import GeminiRevisionSemanticReviewer, RevisionSemanticProviderResult, RevisionSemanticReviewError, RevisionSemanticReviewService
-from creator_preflight.revision_semantic_models import RevisionSemanticProviderOutput, RevisionSemanticStatus
-from creator_preflight.revision_evidence import plan_revision_evidence, render_revision_evidence
+from releaseseal.ai_review import AIReviewError
+from releaseseal.config import RevisionSemanticReviewConfig
+from releaseseal.media import MediaInspector
+from releaseseal.revision_check import RevisionCheckService
+from releaseseal.revision_fixture import generate_revision_source, insert_revision_section, replace_revision_picture
+from releaseseal.revision_models import RevisionMap, RevisionSamplingPolicy, RevisionSegment, RevisionSegmentKind, RevisionStreamSummary
+from releaseseal.ai_review import GeminiVideoReviewer
+from releaseseal.config import AIReviewConfig
+from releaseseal.revision_semantic import GeminiRevisionSemanticReviewer, RevisionSemanticProviderResult, RevisionSemanticReviewError, RevisionSemanticReviewService
+from releaseseal.revision_semantic_models import RevisionSemanticProviderOutput, RevisionSemanticStatus
+from releaseseal.revision_evidence import plan_revision_evidence, render_revision_evidence
 
 
 def _segment(number: int, kind: RevisionSegmentKind, previous, revised) -> RevisionSegment:
@@ -127,7 +127,7 @@ def test_service_statuses_confidence_isolation_order_limit_hash_and_zero_ineligi
         plan = None
     Evidence.previous_path.write_bytes(b"bounded previous")
     Evidence.revised_path.write_bytes(b"bounded revised")
-    monkeypatch.setattr("creator_preflight.revision_semantic.render_revision_evidence", lambda *args, **kwargs: Evidence())
+    monkeypatch.setattr("releaseseal.revision_semantic.render_revision_evidence", lambda *args, **kwargs: Evidence())
     reviewer = FakeReviewer([_output("APPEARS_SATISFIED"), _output("APPEARS_UNRESOLVED"), _output("APPEARS_SATISFIED", .7), AIReviewError("ai_provider_timeout", "Timed out")])
     result = RevisionSemanticReviewService(config=RevisionSemanticReviewConfig(maximum_requests=4, maximum_parallel_requests=1), reviewer=reviewer).review(previous, revised, report)
     assert [item.request_id for item in result.results] == ["request-0001", "request-0002", "request-0003", "request-0004"]
@@ -151,7 +151,7 @@ def test_maximum_requests_marks_overflow_not_reviewed(tmp_path: Path, monkeypatc
     class Evidence:
         previous_path = tmp_path / "previous-evidence.mp4"; revised_path = tmp_path / "revised-evidence.mp4"; render_seconds = 0
     Evidence.previous_path.write_bytes(b"p clip"); Evidence.revised_path.write_bytes(b"r clip")
-    monkeypatch.setattr("creator_preflight.revision_semantic.render_revision_evidence", lambda *args, **kwargs: Evidence())
+    monkeypatch.setattr("releaseseal.revision_semantic.render_revision_evidence", lambda *args, **kwargs: Evidence())
     reviewer = FakeReviewer([_output("INCONCLUSIVE")])
     result = RevisionSemanticReviewService(config=RevisionSemanticReviewConfig(maximum_requests=1), reviewer=reviewer).review(previous, revised, report)
     assert len(reviewer.calls) == 1
@@ -173,7 +173,7 @@ def test_semantic_copy_never_exposes_evidence_clip_relative_timecodes(tmp_path: 
 
     Evidence.previous_path.write_bytes(b"bounded previous")
     Evidence.revised_path.write_bytes(b"bounded revised")
-    monkeypatch.setattr("creator_preflight.revision_semantic.render_revision_evidence", lambda *args, **kwargs: Evidence())
+    monkeypatch.setattr("releaseseal.revision_semantic.render_revision_evidence", lambda *args, **kwargs: Evidence())
     output = RevisionSemanticProviderOutput(
         status="APPEARS_SATISFIED",
         confidence=.95,

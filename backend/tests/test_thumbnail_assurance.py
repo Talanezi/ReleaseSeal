@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from creator_preflight.config import PreflightConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import PublishingPackage
-from creator_preflight.release_package import DEFAULT_DELIVERY_SURFACES
-from creator_preflight.thumbnail_assurance import (
+from releaseseal.config import PreflightConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import PublishingPackage
+from releaseseal.release_package import DEFAULT_DELIVERY_SURFACES
+from releaseseal.thumbnail_assurance import (
     AssuranceEvidenceClass,
     AssuranceStatus,
     EdgeSafetyStatus,
@@ -18,8 +18,8 @@ from creator_preflight.thumbnail_assurance import (
     ThumbnailAssuranceService,
     assurance_findings,
 )
-from creator_preflight.thumbnail_assurance_fixture import generate_thumbnail_assurance_fixtures
-from creator_preflight.thumbnails import inspect_thumbnail
+from releaseseal.thumbnail_assurance_fixture import generate_thumbnail_assurance_fixtures
+from releaseseal.thumbnails import inspect_thumbnail
 
 
 @pytest.fixture(scope="module")
@@ -86,6 +86,21 @@ def test_textless_and_busy_images_abstain_instead_of_false_text_failure(artwork:
     assert busy.status is AssuranceStatus.NOT_EVALUATED
     assert textless.confident_region_count == busy.confident_region_count == 0
     assert textless.finding_codes == busy.finding_codes == []
+
+
+def test_authentic_usgs_title_uses_conservative_segmentation_fallback() -> None:
+    thumbnail = Path(__file__).parents[2] / ".demo" / "owner" / "thumbnail.jpg"
+    if not thumbnail.exists():
+        pytest.skip("ignored authentic owner-demo thumbnail is not present")
+    report = analyze(thumbnail)
+    assert report.confident_region_count >= 1
+    assert report.confident_region_count <= 4
+    assert all(region.detector == "SEGMENTATION_FALLBACK" for region in report.regions)
+    assert any(
+        region.source_x < 200 and region.source_y < 500
+        and region.source_width > 500 and region.source_height > 100
+        for region in report.regions
+    )
 
 
 def test_detail_survival_is_advisory_and_distinguishes_compositions(artwork: dict[str, Path]) -> None:

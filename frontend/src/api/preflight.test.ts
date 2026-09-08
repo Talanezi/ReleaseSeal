@@ -348,6 +348,7 @@ function capabilitiesFixture() {
     transcription_dependency_available: true,
     transcription_enabled: false,
     local_evidence_recovery_available: true,
+    local_caption_generation_available: true,
     supported_review_modes: ["full", "local"],
     maximum_video_upload_size_bytes: 2_147_483_648,
     full_review_unavailable_reasons: [],

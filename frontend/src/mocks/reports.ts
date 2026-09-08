@@ -229,7 +229,7 @@ export const needsReviewReport: PreflightReport = {
         finding_title: String(finding.details?.title ?? finding.code),
         explanation: repairable
           ? "Remove this black interval and ripple the remaining video and audio together. Preview this pacing change first."
-          : "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+          : "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
         source: finding.source,
         repairability: repairable ? "PREVIEW_REQUIRED" as const : "HUMAN_ONLY" as const,
         operation: repairable ? {
@@ -319,7 +319,7 @@ export const blockedReport: PreflightReport = {
       proposal_id: "mock-blocked-human-only",
       finding_code: "VIDEO_HEIGHT_BELOW_MINIMUM",
       finding_title: "Video height below minimum",
-      explanation: "Creator Preflight can show this evidence, but cannot make a trustworthy edit without your judgment.",
+      explanation: "ReleaseSeal can show this evidence, but cannot make a trustworthy edit without your judgment.",
       source: "package.video",
       repairability: "HUMAN_ONLY",
       operation: null,
@@ -387,6 +387,6 @@ export const revisionCheckReport = {
 
 export const runtimeError = {
   title: "Analysis could not start",
-  message: "The local Creator Preflight instance could not access FFmpeg.",
+  message: "The local ReleaseSeal instance could not access FFmpeg.",
   detail: "Confirm FFmpeg is installed and available, then try the scan again.",
 };

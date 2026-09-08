@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from creator_preflight.media import MediaInspector
-from creator_preflight.models import Finding, FindingSeverity, FindingStatus
-from creator_preflight.repair_models import RepairOperation, RepairOperationType, Repairability
-from creator_preflight.repairs import (
+from releaseseal.media import MediaInspector
+from releaseseal.models import Finding, FindingSeverity, FindingStatus
+from releaseseal.repair_models import RepairOperation, RepairOperationType, Repairability
+from releaseseal.repairs import (
     FFmpegRepairEngine,
     RepairError,
     build_repair_plan,

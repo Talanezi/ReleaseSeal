@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from creator_preflight.models import Finding, FindingSeverity, FindingStatus
+from releaseseal.models import Finding, FindingSeverity, FindingStatus
 
 
 def test_finding_schema_accepts_valid_timestamp_range() -> None:

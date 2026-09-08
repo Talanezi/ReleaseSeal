@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from creator_preflight.captions import SpeechSegment
-from creator_preflight.config import PreflightConfig, TranscriptionConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import PublishingPackage
-from creator_preflight.transcription import TranscriptionUnavailableError
-from creator_preflight import transcription
+from releaseseal.captions import SpeechSegment
+from releaseseal.config import PreflightConfig, TranscriptionConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import PublishingPackage
+from releaseseal.transcription import TranscriptionUnavailableError
+from releaseseal import transcription
 import pytest
 
 

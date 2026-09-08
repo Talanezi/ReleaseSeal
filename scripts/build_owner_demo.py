@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend" / "src"))
 
-from creator_preflight.media import MediaInspector, MediaInspectionError, require_media_tool  # noqa: E402
+from releaseseal.media import MediaInspector, MediaInspectionError, require_media_tool  # noqa: E402
 SCHEMA_VERSION = "1.0"
 GENERATOR_VERSION = "2"
 

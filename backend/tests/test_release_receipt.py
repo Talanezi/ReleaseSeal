@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from creator_preflight.config import PreflightConfig
-from creator_preflight.captions import SpeechSegment
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import PublishingPackage
-from creator_preflight.release_contract import MaxDuration, ReleaseContract, ReleaseContractEvaluation, RequiredExactToken
-from creator_preflight.release_evidence import confirm_machine_candidate, file_sha256, recover_machine_evidence
-from creator_preflight.release_report_updates import with_contract_evidence
-from creator_preflight.release_receipt import (
+from releaseseal.config import PreflightConfig
+from releaseseal.captions import SpeechSegment
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import PublishingPackage
+from releaseseal.release_contract import MaxDuration, ReleaseContract, ReleaseContractEvaluation, RequiredExactToken
+from releaseseal.release_evidence import confirm_machine_candidate, file_sha256, recover_machine_evidence
+from releaseseal.release_report_updates import with_contract_evidence
+from releaseseal.release_receipt import (
     RECEIPT_ADAPTER,
     ReceiptVerificationStatus,
     ReceiptVerifier,
@@ -21,10 +21,10 @@ from creator_preflight.release_receipt import (
     canonical_json_bytes,
     package_fingerprint,
 )
-from creator_preflight.repair_models import RepairOperation
-from creator_preflight.revision_check import RevisionCheckService
-from creator_preflight.revision_models import RevisionMap, RevisionSamplingPolicy, RevisionSegment, RevisionStreamSummary
-from creator_preflight.verification_models import (
+from releaseseal.repair_models import RepairOperation
+from releaseseal.revision_check import RevisionCheckService
+from releaseseal.revision_models import RevisionMap, RevisionSamplingPolicy, RevisionSegment, RevisionStreamSummary
+from releaseseal.verification_models import (
     RepairIntegrityResult,
     ReviewReelManifest,
     VerificationReport,
@@ -256,5 +256,5 @@ def test_revision_receipt_binds_roles_and_notes(tmp_path: Path) -> None:
 
 def test_receipt_generation_performs_no_provider_work(video_with_audio: Path, ready_report, monkeypatch) -> None:
     report, config = ready_report
-    monkeypatch.setattr("creator_preflight.ai_review.GeminiVideoReviewer", lambda *args, **kwargs: pytest.fail("provider invoked"))
+    monkeypatch.setattr("releaseseal.ai_review.GeminiVideoReviewer", lambda *args, **kwargs: pytest.fail("provider invoked"))
     assert _receipt(video_with_audio, report, config).receipt_content_sha256

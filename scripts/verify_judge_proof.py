@@ -13,8 +13,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend" / "src"))
 
-from creator_preflight.judge_proof import JudgeProofBundle  # noqa: E402
-from creator_preflight.release_receipt import ReceiptVerificationStatus, ReceiptVerifier  # noqa: E402
+from releaseseal.judge_proof import JudgeProofBundle  # noqa: E402
+from releaseseal.release_receipt import ReceiptVerificationStatus, ReceiptVerifier  # noqa: E402
 from build_judge_proof import verify_expected_proof  # noqa: E402
 
 
@@ -33,7 +33,7 @@ def main() -> int:
         )
         if exact.status is not ReceiptVerificationStatus.VALID:
             raise RuntimeError("Exact proof artifact no longer validates against its receipt.")
-        with tempfile.TemporaryDirectory(prefix="creator-preflight-proof-check-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="releaseseal-proof-check-") as temporary:
             mutated = Path(temporary) / "mutated.mp4"
             shutil.copyfile(args.root / final.repaired_video.relative_path, mutated)
             with mutated.open("r+b") as handle:

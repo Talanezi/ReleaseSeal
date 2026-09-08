@@ -22,7 +22,7 @@ interface OwnerDemoManifest {
 
 const OWNER_ROOT = "/demo/owner";
 const OWNER_MANIFEST = `${OWNER_ROOT}/demo-manifest.json`;
-const FALLBACK_ROOT = "/demo/creator-preflight-official";
+const FALLBACK_ROOT = "/demo/releaseseal-official";
 
 export async function loadFinalExportDemo(): Promise<FinalExportDemoPackage> {
   const owner = await loadOwnerManifest();
@@ -37,9 +37,9 @@ export async function loadFinalExportDemo(): Promise<FinalExportDemoPackage> {
     };
   }
   return {
-    video: await fetchFile(`${FALLBACK_ROOT}-demo.mp4`, "creator-preflight-official-demo.mp4", "video/mp4"),
-    thumbnail: await fetchFile(`${FALLBACK_ROOT}-thumbnail.png`, "creator-preflight-official-thumbnail.png", "image/png"),
-    captions: await fetchFile(`${FALLBACK_ROOT}-captions.srt`, "creator-preflight-official-captions.srt", "application/x-subrip"),
+    video: await fetchFile(`${FALLBACK_ROOT}-demo.mp4`, "releaseseal-official-demo.mp4", "video/mp4"),
+    thumbnail: await fetchFile(`${FALLBACK_ROOT}-thumbnail.png`, "releaseseal-official-thumbnail.png", "image/png"),
+    captions: await fetchFile(`${FALLBACK_ROOT}-captions.srt`, "releaseseal-official-captions.srt", "application/x-subrip"),
     title: (await fetchText(`${FALLBACK_ROOT}-title.txt`)).trim(),
     description: (await fetchText(`${FALLBACK_ROOT}-description.txt`)).trim(),
   };

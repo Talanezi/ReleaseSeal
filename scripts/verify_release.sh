@@ -21,7 +21,7 @@ echo "[3/5] Frontend TypeScript and production build"
 
 echo "[4/5] Python compile/import sanity"
 "$PYTHON" -m compileall -q backend/src scripts
-PYTHONPATH="$ROOT/backend/src" "$PYTHON" -c 'import creator_preflight'
+PYTHONPATH="$ROOT/backend/src" "$PYTHON" -c 'import releaseseal'
 
 echo "[5/5] Patch whitespace check"
 git diff --check

@@ -88,7 +88,11 @@ svg { flex: 0 0 auto; }
 .proof-package-summary > div { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
 .proof-package-summary svg { width: 16px; color: var(--pass); }
 .proof-neutral-mark { width: 16px; color: var(--quiet); text-align: center; }
-.proof-thumb-stage { position: relative; max-width: 520px; }
+.proof-thumb-surfaces { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
+.proof-thumb-surfaces figure { width: min(100%, calc(var(--proof-delivery-width) * 1px)); margin: 0; }
+.proof-thumb-surfaces figcaption { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; font-size: 11px; }
+.proof-thumb-surfaces figcaption small { color: var(--muted); }
+.proof-thumb-stage { position: relative; width: 100%; }
 .proof-thumb-stage img { width: 100%; display: block; }
 .proof-thumb-stage span { position: absolute; right: 3%; bottom: 5%; padding: 4px 7px; color: white; border-radius: 4px; background: rgb(0 0 0 / .84); font-size: 12px; font-weight: 700; }
 .proof-thumbnail-preview p, .proof-thumbnail-preview small { color: var(--muted); font-size: 12px; line-height: 1.5; }
@@ -477,8 +481,8 @@ svg { flex: 0 0 auto; }
 .delivery-preview { margin-top: 17px; padding-top: 16px; border-top: 1px solid var(--line); }
 .delivery-preview h3 { margin: 0; font-size: 16px; }
 .delivery-preview > p { margin: 4px 0 14px; color: var(--muted); font-size: 12px; }
-.delivery-surfaces { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: start; }
-.delivery-surfaces figure { margin: 0; min-width: 0; }
+.delivery-surfaces { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+.delivery-surfaces figure { width: min(100%, calc(var(--delivery-width) * 1px)); margin: 0; min-width: 0; }
 .delivery-artwork { position: relative; overflow: hidden; width: 100%; border-radius: 7px; background: #171717; }
 .delivery-artwork img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .delivery-artwork.show-safe-area::after { content: ""; position: absolute; z-index: 4; inset: var(--safe-margin); border: 1px dashed rgba(255,255,255,.9); pointer-events: none; }
@@ -488,6 +492,14 @@ svg { flex: 0 0 auto; }
 .delivery-surfaces figcaption { display: grid; margin-top: 6px; }
 .delivery-surfaces figcaption strong { font-size: 12px; }
 .delivery-surfaces figcaption span { color: var(--muted); font-size: 10px; }
+.generated-captions { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-top: 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.generated-captions h2 { margin: 0; font-size: 17px; }
+.generated-captions p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+.generated-captions details { margin-top: 10px; font-size: 12px; }
+.generated-captions summary { cursor: pointer; font-weight: 650; }
+.generated-captions ol { max-height: 220px; margin: 9px 0 0; padding-left: 28px; overflow: auto; color: var(--muted); }
+.generated-captions time { margin-right: 6px; color: var(--text); font-variant-numeric: tabular-nums; }
+.generated-captions .repair-error { flex-basis: 100%; }
 .scan-incomplete {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -889,14 +901,15 @@ svg { flex: 0 0 auto; }
   .download-repair { justify-self: start; }
   .revision-overview { grid-template-columns: minmax(0, 1fr); align-items: start; }
   .revision-counts { max-width: 480px; }
-  .package-components, .delivery-surfaces { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .package-components { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 560px) {
   .audio-evidence-recovery { align-items: stretch; flex-direction: column; }
   .release-plan-groups > div { grid-template-columns: minmax(0, 1fr); }
   .release-package-heading { align-items: flex-start; flex-direction: column; }
-  .package-components, .delivery-surfaces { grid-template-columns: minmax(0, 1fr); }
+  .package-components { grid-template-columns: minmax(0, 1fr); }
+  .generated-captions { flex-direction: column; }
   .release-contract-heading { align-items: flex-start; flex-direction: column; }
   .contract-result { grid-template-columns: auto minmax(0, 1fr); }
   .contract-result .timestamp-button { grid-column: 2; justify-self: start; }

@@ -5,12 +5,12 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from creator_preflight.ai_review import AIReviewError, GeminiVideoReviewer
-from creator_preflight.captions import CaptionCue
-from creator_preflight.config import AIReviewConfig, PreflightConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import CaptionSummary, FindingStatus, MediaInspection, PublishingPackage, ReviewMode, ScanCompleteness
-from creator_preflight.release_contract import (
+from releaseseal.ai_review import AIReviewError, GeminiVideoReviewer
+from releaseseal.captions import CaptionCue
+from releaseseal.config import AIReviewConfig, PreflightConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import CaptionSummary, FindingStatus, MediaInspection, PublishingPackage, ReviewMode, ScanCompleteness
+from releaseseal.release_contract import (
     AspectRatio, CaptionsRequired, ThumbnailRequired, ContractStatus, DescriptionContains, DescriptionUrl,
     ForbiddenClaim, ForbiddenText, MaxDuration, MinResolution, ReleaseContract,
     RequiredBeforeTime, RequiredExactToken, RequiredTalkingPoint, RequiredText,
@@ -19,9 +19,9 @@ from creator_preflight.release_contract import (
     SemanticRequirementBatch, SemanticRequirementDecision,
     contract_findings,
 )
-from creator_preflight.release_contract_extraction import GeminiReleaseContractExtractor, validate_extracted_contract
-from creator_preflight.release_brief import deterministic_release_brief
-from creator_preflight.repairs import build_repair_plan
+from releaseseal.release_contract_extraction import GeminiReleaseContractExtractor, validate_extracted_contract
+from releaseseal.release_brief import deterministic_release_brief
+from releaseseal.repairs import build_repair_plan
 
 
 def media(duration=60, width=1920, height=1080):

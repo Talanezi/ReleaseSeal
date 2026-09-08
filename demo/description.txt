@@ -1,3 +1,3 @@
-This synthetic Creator Preflight demo contains known visual and audio events for local pre-publish review.
+This synthetic ReleaseSeal demo contains known visual and audio events for local pre-publish review.
 
 The media and captions are generated or written specifically for this repository and contain no downloaded content.

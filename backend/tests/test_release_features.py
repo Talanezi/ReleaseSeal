@@ -7,14 +7,14 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from creator_preflight import api as api_module
-from creator_preflight.ai_review import GeminiVideoReviewer
-from creator_preflight.ai_review import AIReviewError
-from creator_preflight.config import PreflightConfig
-from creator_preflight.metadata_assist import GeminiMetadataAssistant, MetadataAssistResult
-from creator_preflight.content_sketch import sketch_windows
-from creator_preflight.content_sketch import build_content_sketch
-from creator_preflight.models import (
+from releaseseal import api as api_module
+from releaseseal.ai_review import GeminiVideoReviewer
+from releaseseal.ai_review import AIReviewError
+from releaseseal.config import PreflightConfig
+from releaseseal.metadata_assist import GeminiMetadataAssistant, MetadataAssistResult
+from releaseseal.content_sketch import sketch_windows
+from releaseseal.content_sketch import build_content_sketch
+from releaseseal.models import (
     ClaimReviewStatus,
     ClaimReviewSummary,
     Finding,
@@ -26,12 +26,12 @@ from creator_preflight.models import (
     ViewerPassStatus,
     ViewerPassSummary,
 )
-from creator_preflight.media import MediaInspector
-from creator_preflight.release_brief import ai_release_brief, deterministic_release_brief
-from creator_preflight.presentation import format_timecode
-from creator_preflight.repairs import build_repair_plan
-from creator_preflight.models import PublishingPackage, ReviewMode
-from creator_preflight.engine import PreflightScanner
+from releaseseal.media import MediaInspector
+from releaseseal.release_brief import ai_release_brief, deterministic_release_brief
+from releaseseal.presentation import format_timecode
+from releaseseal.repairs import build_repair_plan
+from releaseseal.models import PublishingPackage, ReviewMode
+from releaseseal.engine import PreflightScanner
 
 
 def test_deterministic_release_brief_uses_trusted_findings() -> None:
@@ -287,7 +287,7 @@ def test_long_metadata_sketch_renders_a_small_32_second_proxy(tmp_path: Path) ->
 
 def test_tracked_official_demo_contains_small_deterministic_repair_story() -> None:
     root = Path(__file__).resolve().parents[2] / "frontend" / "public" / "demo"
-    video = root / "creator-preflight-official-demo.mp4"
+    video = root / "releaseseal-official-demo.mp4"
     assert video.stat().st_size < 5_000_000
     config = PreflightConfig()
     config.rules.video.minimum_width = 640
@@ -295,9 +295,9 @@ def test_tracked_official_demo_contains_small_deterministic_repair_story() -> No
     report = PreflightScanner(config=config).scan(
         video,
         PublishingPackage(
-            title=(root / "creator-preflight-official-title.txt").read_text(encoding="utf-8").strip(),
-            description=(root / "creator-preflight-official-description.txt").read_text(encoding="utf-8"),
-            captions_path=root / "creator-preflight-official-captions.srt",
+            title=(root / "releaseseal-official-title.txt").read_text(encoding="utf-8").strip(),
+            description=(root / "releaseseal-official-description.txt").read_text(encoding="utf-8"),
+            captions_path=root / "releaseseal-official-captions.srt",
         ),
         review_mode=ReviewMode.LOCAL,
     )

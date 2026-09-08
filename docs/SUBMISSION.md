@@ -6,7 +6,7 @@ Creation tools increasingly automate making media, but somebody still has to pro
 
 ## What it does
 
-Creator Preflight provides creative release assurance through two workflows. **Final Export** reviews one finished video, points to exact technical and editorial evidence, offers only safe allowlisted repair proposals, renders a new file after approval, and rechecks that export for regressions. **Revision** compares Previous and Revised cuts, aligns their timelines through insertions and removals, correlates revision notes, and exposes additional physical changes that were not mentioned.
+ReleaseSeal provides creative release assurance through two workflows. **Final Export** reviews one finished video, points to exact technical and editorial evidence, offers only safe allowlisted repair proposals, renders a new file after approval, and rechecks that export for regressions. **Revision** compares Previous and Revised cuts, aligns their timelines through insertions and removals, correlates revision notes, and exposes additional physical changes that were not mentioned.
 
 Local deterministic checks cover media structure, black/silence/freeze evidence, audio conditions, publishing-package rules, captions, physical version changes, repair execution, and regression comparison. Optional Gemini review interprets opening alignment, continuity evidence, selected grounded claims, and—only when requested—short revision evidence clips. Ambiguous creative decisions remain human judgments.
 

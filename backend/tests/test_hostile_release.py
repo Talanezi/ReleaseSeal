@@ -11,13 +11,13 @@ from fastapi import UploadFile
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from creator_preflight.api import UploadLimitError, _copy_upload, _media_temp_path, app
-from creator_preflight.captions import CaptionCue
-from creator_preflight.config import PreflightConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.media import MediaInspector
-from creator_preflight.models import CaptionSummary, MediaInspection, PublishingPackage
-from creator_preflight.release_contract import (
+from releaseseal.api import UploadLimitError, _copy_upload, _media_temp_path, app
+from releaseseal.captions import CaptionCue
+from releaseseal.config import PreflightConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.media import MediaInspector
+from releaseseal.models import CaptionSummary, MediaInspection, PublishingPackage
+from releaseseal.release_contract import (
     ContractStatus,
     DescriptionUrl,
     ReleaseContract,
@@ -25,7 +25,7 @@ from creator_preflight.release_contract import (
     RequiredTalkingPoint,
     evaluate_release_contract,
 )
-from creator_preflight.repairs import RepairOperation
+from releaseseal.repairs import RepairOperation
 
 
 client = TestClient(app)

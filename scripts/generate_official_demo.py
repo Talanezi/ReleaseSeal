@@ -7,7 +7,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend" / "src"))
 
-from creator_preflight.official_demo_fixture import generate_official_demo  # noqa: E402
+from releaseseal.official_demo_fixture import generate_official_demo  # noqa: E402
 
 
 def main() -> int:

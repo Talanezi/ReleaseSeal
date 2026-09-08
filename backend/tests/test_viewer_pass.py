@@ -5,12 +5,12 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from creator_preflight.ai_review import AIReviewError, GeminiVideoReviewer
-from creator_preflight.config import AIReviewConfig, PreflightConfig
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import FindingStatus, PublishingPackage
-from creator_preflight.promise_check import PromiseDelivery, PromiseReviewResult
-from creator_preflight.viewer_pass import (
+from releaseseal.ai_review import AIReviewError, GeminiVideoReviewer
+from releaseseal.config import AIReviewConfig, PreflightConfig
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import FindingStatus, PublishingPackage
+from releaseseal.promise_check import PromiseDelivery, PromiseReviewResult
+from releaseseal.viewer_pass import (
     GeminiViewerPassReviewer,
     ViewerIssue,
     ViewerPassOverallStatus,
@@ -112,7 +112,7 @@ def test_prompt_treats_media_instructions_as_untrusted_data() -> None:
 
 class StubPromiseReviewer:
     def review(self, media_path, media_duration_seconds, **kwargs):
-        from creator_preflight.promise_check import PromiseProviderResult
+        from releaseseal.promise_check import PromiseProviderResult
         return PromiseProviderResult(
             provider="gemini", model=kwargs["config"].model,
             review=PromiseReviewResult(

@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "creator-preflight"
+name = "releaseseal"
 version = "0.0.0"
 description = "Local-first pre-publish QA for video creators"
 readme = "README.md"
@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-creator-preflight = "creator_preflight.cli:main"
+releaseseal = "releaseseal.cli:main"
 
 [project.optional-dependencies]
 dev = [

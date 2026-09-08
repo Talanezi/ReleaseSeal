@@ -1,6 +1,6 @@
 # Security and privacy
 
-Creator Preflight is designed as a local, single-user application. It does not provide accounts, tenant isolation, or an internet-facing deployment security model.
+ReleaseSeal is designed as a local, single-user application. It does not provide accounts, tenant isolation, or an internet-facing deployment security model.
 
 ## Data flow
 

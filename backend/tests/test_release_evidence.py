@@ -4,9 +4,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from creator_preflight.captions import CaptionCue, SpeechSegment
-from creator_preflight.models import CaptionSummary, MediaInspection, PublishingPackage
-from creator_preflight.release_contract import (
+from releaseseal.captions import CaptionCue, SpeechSegment
+from releaseseal.models import CaptionSummary, MediaInspection, PublishingPackage
+from releaseseal.release_contract import (
     ContractStatus,
     EvidenceSource,
     ForbiddenText,
@@ -19,13 +19,13 @@ from creator_preflight.release_contract import (
     RequiredUrl,
     evaluate_release_contract,
 )
-from creator_preflight.release_evidence import (
+from releaseseal.release_evidence import (
     EvidenceRecoveryStatus,
     confirm_machine_candidate,
     recover_machine_evidence,
 )
-from creator_preflight.release_plan import ReleasePlanCategory, build_release_plan
-from creator_preflight.repair_models import RepairPlan
+from releaseseal.release_plan import ReleasePlanCategory, build_release_plan
+from releaseseal.repair_models import RepairPlan
 
 
 SHA = "a" * 64

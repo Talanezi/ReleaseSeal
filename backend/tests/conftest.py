@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from creator_preflight.demo_fixture import generate_demo_video
+from releaseseal.demo_fixture import generate_demo_video
 
 
 def _ffmpeg_executable() -> str:

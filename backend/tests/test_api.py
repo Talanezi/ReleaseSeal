@@ -8,18 +8,18 @@ import pytest
 from fastapi.testclient import TestClient
 from tempfile import TemporaryDirectory as RealTemporaryDirectory
 
-from creator_preflight.api import app
-from creator_preflight import api as api_module
-from creator_preflight.detectors import DetectorExecutionError
-from creator_preflight.config import PreflightConfig
-from creator_preflight.ai_review import GeminiVideoReviewer
-from creator_preflight.captions import SpeechSegment
-from creator_preflight.engine import PreflightScanner
-from creator_preflight.models import PublishingPackage
-from creator_preflight.repair_models import RepairOperation
-from creator_preflight.repairs import FFmpegRepairEngine
-from creator_preflight.release_contract import MaxDuration, ReleaseContract, RequiredExactToken
-from creator_preflight.transcription import TranscriptionUnavailableError
+from releaseseal.api import app
+from releaseseal import api as api_module
+from releaseseal.detectors import DetectorExecutionError
+from releaseseal.config import PreflightConfig
+from releaseseal.ai_review import GeminiVideoReviewer
+from releaseseal.captions import SpeechSegment
+from releaseseal.engine import PreflightScanner
+from releaseseal.models import PublishingPackage
+from releaseseal.repair_models import RepairOperation
+from releaseseal.repairs import FFmpegRepairEngine
+from releaseseal.release_contract import MaxDuration, ReleaseContract, RequiredExactToken
+from releaseseal.transcription import TranscriptionUnavailableError
 
 client = TestClient(app)
 
@@ -190,6 +190,92 @@ def test_audio_evidence_recovery_and_confirmation_use_real_multipart_boundary(
     assert confirmed_json["release_plan"]["confirm_evidence_count"] == 0
 
 
+def test_local_caption_generation_reuses_machine_draft_for_advisory_evidence(
+    monkeypatch, video_with_audio: Path,
+) -> None:
+    calls = 0
+
+    class FakeTranscriber:
+        def transcribe(self, media_path, config):
+            nonlocal calls
+            calls += 1
+            assert config.local_files_only is True
+            return [SpeechSegment(.25, .75, "Use SAVE25 today")]
+
+    monkeypatch.setattr(api_module, "WhisperTranscriber", FakeTranscriber)
+    with video_with_audio.open("rb") as media_file:
+        generated = client.post(
+            "/api/v1/captions/generate",
+            files={"file": ("release.mp4", media_file, "video/mp4")},
+        )
+    assert generated.status_code == 200
+    draft = generated.json()
+    assert draft["status"] == "COMPLETED"
+    assert draft["source"] == "LOCAL_MACHINE_TRANSCRIPT"
+    assert draft["download_filename"] == "release.generated.srt"
+    assert "00:00:00,250 --> 00:00:00,750" in draft["srt_text"]
+
+    contract = ReleaseContract(requirements=[RequiredExactToken(
+        id="promo", type="REQUIRED_EXACT_TOKEN", instruction="Say SAVE25", value="SAVE25",
+    )])
+    report = PreflightScanner(config=PreflightConfig()).scan(
+        video_with_audio, PublishingPackage(title="Release", release_contract=contract)
+    )
+    with video_with_audio.open("rb") as media_file:
+        recovered = client.post(
+            "/api/v1/release-contracts/recover-audio-evidence",
+            files={"file": ("release.mp4", media_file, "video/mp4")},
+            data={"report_json": report.model_dump_json(), "generated_captions_json": json.dumps(draft)},
+        )
+    assert recovered.status_code == 200
+    assert calls == 1
+    result = recovered.json()["release_contract"]["results"][0]
+    assert result["status"] == "NEEDS_REVIEW"
+    assert result["evidence_source"] == "LOCAL_MACHINE_TRANSCRIPT"
+
+
+def test_local_caption_model_unavailable_is_controlled(monkeypatch, video_with_audio: Path) -> None:
+    class UnavailableTranscriber:
+        def transcribe(self, media_path, config):
+            raise TranscriptionUnavailableError("transcription_model_unavailable", "not installed")
+
+    monkeypatch.setattr(api_module, "WhisperTranscriber", UnavailableTranscriber)
+    with video_with_audio.open("rb") as media_file:
+        response = client.post(
+            "/api/v1/captions/generate",
+            files={"file": ("release.mp4", media_file, "video/mp4")},
+        )
+    assert response.status_code == 200
+    assert response.json()["status"] == "UNAVAILABLE"
+    assert response.json()["reason"] == "Local caption model unavailable."
+
+
+def test_local_caption_generation_handles_no_audio_and_origin(
+    monkeypatch, video_without_audio: Path, video_with_audio: Path,
+) -> None:
+    class MustNotTranscribe:
+        def transcribe(self, media_path, config):
+            raise AssertionError("video without audio must not invoke transcription")
+
+    monkeypatch.setattr(api_module, "WhisperTranscriber", MustNotTranscribe)
+    with video_without_audio.open("rb") as media_file:
+        response = client.post(
+            "/api/v1/captions/generate",
+            files={"file": ("silent.mp4", media_file, "video/mp4")},
+        )
+    assert response.status_code == 200
+    assert response.json()["status"] == "UNAVAILABLE"
+    assert "no audio track" in response.json()["reason"]
+    with video_with_audio.open("rb") as media_file:
+        denied = client.post(
+            "/api/v1/captions/generate",
+            files={"file": ("release.mp4", media_file, "video/mp4")},
+            headers={"Origin": "https://evil.example"},
+        )
+    assert denied.status_code == 403
+    assert denied.json()["error"]["code"] == "request_origin_not_allowed"
+
+
 def test_audio_confirmation_rejects_changed_artifact(monkeypatch, video_with_audio: Path) -> None:
     contract = ReleaseContract(requirements=[RequiredExactToken(
         id="promo", type="REQUIRED_EXACT_TOKEN", instruction="Say SAVE25", value="SAVE25",
@@ -278,7 +364,7 @@ def test_unified_api_anomaly_report_matches_real_frontend_contract(
             files={"file": ("api-known-anomalies.mp4", media_file, "video/mp4")},
             data={
                 "title": "T" * 108,
-                "description": "A real end-to-end Creator Preflight scan.",
+                "description": "A real end-to-end ReleaseSeal scan.",
             },
         )
 
@@ -763,7 +849,7 @@ def test_api_reports_corrupt_thumbnail_as_invalid_package_content(video_with_aud
 def test_api_reports_thumbnail_above_configured_limit(
     video_with_audio: Path, monkeypatch
 ) -> None:
-    from creator_preflight.config import PreflightConfig
+    from releaseseal.config import PreflightConfig
 
     config = PreflightConfig()
     config.ai_review.promise_check.maximum_thumbnail_file_size_bytes = 4

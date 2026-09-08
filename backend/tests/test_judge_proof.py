@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from creator_preflight.judge_proof import JudgeProofBundle
+from releaseseal.judge_proof import JudgeProofBundle
 
 
 ROOT = Path(__file__).resolve().parents[2]

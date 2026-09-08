@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from creator_preflight.media import (
+from releaseseal.media import (
     MediaInspectionError,
     MediaInspector,
     check_media_tools,
@@ -103,9 +103,9 @@ def test_dependency_status_reports_ffmpeg_and_ffprobe() -> None:
 
 def test_missing_media_tool_has_structured_error() -> None:
     with pytest.raises(MediaInspectionError) as captured:
-        require_media_tool("creator-preflight-tool-that-does-not-exist")
+        require_media_tool("releaseseal-tool-that-does-not-exist")
 
     assert captured.value.code == "media_tool_unavailable"
     assert captured.value.details == {
-        "tool": "creator-preflight-tool-that-does-not-exist"
+        "tool": "releaseseal-tool-that-does-not-exist"
     }
