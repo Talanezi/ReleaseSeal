@@ -73,6 +73,7 @@ export function ResultsView({
   const [reviewReelUrl, setReviewReelUrl] = useState<string | null>(null);
   const [mediaMode, setMediaMode] = useState<"original" | "repaired" | "reel">("original");
   const [generatedCaptions, setGeneratedCaptions] = useState<GeneratedCaptionDraft | null>(null);
+  const [generatedCaptionTrackUrl, setGeneratedCaptionTrackUrl] = useState<string | null>(null);
   const categories = useMemo(
     () => Array.from(new Set(report.findings.map(findingCategory))),
     [report.findings],
@@ -97,6 +98,16 @@ export function ResultsView({
     setReviewReelUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [reviewReel]);
+
+  useEffect(() => {
+    if (generatedCaptions?.status !== "COMPLETED" || generatedCaptions.cues.length === 0 || typeof URL.createObjectURL !== "function") {
+      setGeneratedCaptionTrackUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([generatedCaptionsToWebVtt(generatedCaptions)], { type: "text/vtt;charset=utf-8" }));
+    setGeneratedCaptionTrackUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [generatedCaptions]);
 
   const activeMediaUrl = mediaMode === "repaired" ? repairedUrl : mediaMode === "reel" ? reviewReelUrl : previewUrl;
   const selectMedia = (mode: "original" | "repaired" | "reel", seconds?: number) => {
@@ -211,7 +222,19 @@ export function ResultsView({
                   videoRef.current.focus({ preventScroll: true });
                   pendingSeek.current = null;
                 }
-              }} />
+              }}>
+                {mediaMode === "original" && generatedCaptionTrackUrl && (
+                  <track
+                    data-testid="generated-caption-track"
+                    kind="captions"
+                    src={generatedCaptionTrackUrl}
+                    srcLang="en"
+                    label="Machine-generated captions"
+                    default
+                    ref={(node) => { if (node?.track) node.track.mode = "showing"; }}
+                  />
+                )}
+              </video>
             ) : (
               <div className="video-placeholder">
                 <MonitorPlay aria-hidden="true" />
@@ -410,20 +433,37 @@ function GeneratedCaptionsAction({ sourceFile, hasAudio, available, draft, onDra
   return (
     <section className="generated-captions" aria-labelledby="generated-captions-title">
       <div>
-        <h2 id="generated-captions-title">Generate captions locally</h2>
-        {!draft && <p>{!hasAudio ? "This video has no audio track to caption." : !available ? "Local caption model unavailable." : "Create a timed caption draft on this device."}</p>}
-        {draft?.status === "UNAVAILABLE" && <p role="status">{draft.reason}</p>}
+        <h2 id="generated-captions-title">Generate captions</h2>
+        {!draft && <p>{!hasAudio ? "This video has no audio track to caption." : !available ? "Caption generation unavailable." : "Create a timed caption draft from this video."}</p>}
+        {draft?.status === "UNAVAILABLE" && <p role="status">Caption generation unavailable.</p>}
         {draft?.status === "COMPLETED" && <>
           <p><strong>Machine-generated captions</strong> · {draft.cue_count} cues · {formatDuration(draft.covered_seconds)} covered</p>
           <details><summary>Preview</summary><ol>{draft.cues.slice(0, 50).map((cue) => <li key={cue.index}><time>{formatTimecode(cue.start_seconds)}</time> {cue.text}</li>)}</ol>{draft.cues.length > 50 && <small>Showing the first 50 cues.</small>}</details>
         </>}
       </div>
       {!draft?.srt_text
-        ? <button className="secondary-button" type="button" disabled={!sourceFile || !hasAudio || !available || working} onClick={() => void generate()}>{working ? "Generating locally…" : "Generate captions locally"}</button>
+        ? <button className="secondary-button" type="button" disabled={!sourceFile || !hasAudio || !available || working} onClick={() => void generate()}>{working ? "Generating captions…" : "Generate captions"}</button>
         : <button className="secondary-button" type="button" onClick={download}><Download aria-hidden="true" /> Download SRT</button>}
       {error && <p className="repair-error" role="alert">{error}</p>}
     </section>
   );
+}
+
+function generatedCaptionsToWebVtt(draft: GeneratedCaptionDraft): string {
+  const cues = draft.cues.map((cue) => {
+    const text = cue.text.replace(/\s+/g, " ").trim().replaceAll("-->", "→");
+    return `${cue.index}\n${formatWebVttTimestamp(cue.start_seconds)} --> ${formatWebVttTimestamp(cue.end_seconds)}\n${text}`;
+  });
+  return `WEBVTT\n\n${cues.join("\n\n")}\n`;
+}
+
+function formatWebVttTimestamp(seconds: number): string {
+  const milliseconds = Math.max(0, Math.round(seconds * 1000));
+  const hours = Math.floor(milliseconds / 3_600_000);
+  const minutes = Math.floor(milliseconds % 3_600_000 / 60_000);
+  const secs = Math.floor(milliseconds % 60_000 / 1000);
+  const millis = milliseconds % 1000;
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}.${millis.toString().padStart(3, "0")}`;
 }
 
 function surfaceText(assurance: NonNullable<PreflightReport["release_package"]["thumbnail_assurance"]>, surfaceId: string): string {

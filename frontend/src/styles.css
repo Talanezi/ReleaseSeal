@@ -153,9 +153,8 @@ svg { flex: 0 0 auto; }
   background: rgb(255 255 255 / 0.97);
 }
 .brand-name { font-size: 17px; font-weight: 680; letter-spacing: -0.025em; }
-.header-actions, .local-indicator, .header-action { display: flex; align-items: center; }
+.header-actions, .header-action { display: flex; align-items: center; }
 .header-actions { gap: 20px; }
-.local-indicator { gap: 6px; color: var(--quiet); font-size: 12px; }
 .local-indicator svg { width: 14px; }
 .header-action {
   min-height: 34px;
@@ -524,7 +523,7 @@ svg { flex: 0 0 auto; }
 .release-brief small svg { width: 14px; }
 .release-brief small.release-note-neutral { color: var(--quiet); }
 .release-brief small.release-note-neutral svg { fill: var(--surface-muted); }
-.review-details { margin: 0 0 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.review-details { margin: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .review-details > summary { display: flex; justify-content: space-between; gap: 16px; padding: 13px 0; cursor: pointer; color: var(--text); font-size: 14px; font-weight: 650; }
 .review-details > summary span { color: var(--quiet); font-size: 12px; font-weight: 500; }
 .review-details .ai-review-summaries { margin-bottom: 0; border-bottom: 0; }
@@ -915,7 +914,6 @@ svg { flex: 0 0 auto; }
   .contract-result .timestamp-button { grid-column: 2; justify-self: start; }
   .requirement-parameters { align-items: stretch; flex-direction: column; }
   .app-header { min-height: 56px; padding-inline: 16px; }
-  .local-indicator { display: none; }
   .page-intro h1, .processing h1, .error-surface h1 { font-size: 29px; }
   .page-intro p { font-size: 14px; }
   .page-intro { align-items: flex-start; flex-direction: column; gap: 16px; }

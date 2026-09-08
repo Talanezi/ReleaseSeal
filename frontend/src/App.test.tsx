@@ -174,39 +174,78 @@ describe("ReleaseSeal frontend", () => {
 
   it("generates a machine-caption draft locally and downloads valid SRT", async () => {
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
-    const draft = {
-      schema_version: "1.0" as const, status: "COMPLETED" as const,
-      reason: "Machine-generated captions are ready to preview and download.",
-      artifact_sha256: "a".repeat(64), source: "LOCAL_MACHINE_TRANSCRIPT" as const,
-      engine: "faster-whisper" as const, model: "tiny.en",
-      cues: [{ index: 1, start_seconds: .25, end_seconds: 1.75, text: "Yellowstone began here." }],
-      cue_count: 1, covered_seconds: 1.5,
-      srt_text: "1\n00:00:00,250 --> 00:00:01,750\nYellowstone began here.\n",
-      download_filename: "yellowstone.generated.srt", runtime_seconds: .1,
-      reuse_token: "b".repeat(64),
-    };
+    const draft = captionDraftFixture();
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(jsonResponse(draft))));
     const user = userEvent.setup();
-    render(<ResultsView report={readyReport} sourceFile={new File(["video"], "yellowstone.mp4")} captionGenerationAvailable packageInput={{ title: "Title", description: "Description", captions: null, thumbnail: null, reviewMode: "local" }} />);
-    await user.click(screen.getByRole("button", { name: "Generate captions locally" }));
+    const { unmount } = render(<ResultsView report={readyReport} previewUrl="blob:original" sourceFile={new File(["video"], "yellowstone.mp4")} captionGenerationAvailable packageInput={{ title: "Title", description: "Description", captions: null, thumbnail: null, reviewMode: "local" }} />);
+    await user.click(screen.getByRole("button", { name: "Generate captions" }));
     expect(await screen.findByText(/Machine-generated captions/)).toBeInTheDocument();
     expect(screen.getByText(/1 cues · .* covered/)).toBeInTheDocument();
+    const track = screen.getByTestId("generated-caption-track");
+    expect(track).toHaveAttribute("kind", "captions");
+    expect(track).toHaveAttribute("label", "Machine-generated captions");
+    expect(track).toHaveAttribute("default");
+    const trackBlob = (createObjectURL.mock.calls as unknown[][]).at(-1)?.[0] as Blob;
+    expect(trackBlob.type).toBe("text/vtt;charset=utf-8");
+    expect(await blobText(trackBlob)).toContain("WEBVTT\n\n1\n00:00:00.250 --> 00:00:01.750");
     await user.click(screen.getByText("Preview"));
     expect(screen.getByText("Yellowstone began here.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Download SRT" }));
     const objectUrlCalls = createObjectURL.mock.calls as unknown[][];
     const downloaded = objectUrlCalls.at(-1)?.[0] as Blob;
     expect(await blobText(downloaded)).toContain("00:00:00,250 --> 00:00:01,750");
+    unmount();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:releaseseal-local-preview");
   });
 
   it("does not promote local generation over supplied captions and disables it without audio", () => {
     render(<ResultsView report={readyReport} sourceFile={new File(["video"], "release.mp4")} captionGenerationAvailable packageInput={{ title: "Title", description: "Description", captions: new File(["captions"], "release.srt"), thumbnail: null, reviewMode: "local" }} />);
-    expect(screen.queryByRole("button", { name: "Generate captions locally" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Generate captions" })).not.toBeInTheDocument();
     const silent = { ...readyReport, media: { ...readyReport.media, has_audio: false, audio_stream_count: 0 } };
     const { unmount } = render(<ResultsView report={silent} sourceFile={new File(["video"], "silent.mp4")} captionGenerationAvailable packageInput={{ title: "Title", description: "Description", captions: null, thumbnail: null, reviewMode: "local" }} />);
-    expect(screen.getByRole("button", { name: "Generate captions locally" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Generate captions" })).toBeDisabled();
     expect(screen.getByText("This video has no audio track to caption.")).toBeInTheDocument();
     unmount();
+  });
+
+  it("uses hosted-safe copy when caption generation is unavailable", async () => {
+    const unavailable = { ...captionDraftFixture(), status: "UNAVAILABLE" as const, reason: "Local caption model unavailable.", cues: [], cue_count: 0, covered_seconds: 0, srt_text: "", reuse_token: null };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(jsonResponse(unavailable))));
+    const user = userEvent.setup();
+    render(<ResultsView report={readyReport} sourceFile={new File(["video"], "release.mp4")} captionGenerationAvailable />);
+    await user.click(screen.getByRole("button", { name: "Generate captions" }));
+    expect(await screen.findByText("Caption generation unavailable.")).toBeInTheDocument();
+    expect(screen.queryByText("Local caption model unavailable.")).not.toBeInTheDocument();
+  });
+
+  it("attaches generated captions only to Original playback", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: RequestInfo | URL) => {
+      const path = String(url);
+      if (path.endsWith("/captions/generate")) return Promise.resolve(jsonResponse(captionDraftFixture()));
+      if (path.endsWith("/repairs/verify")) return Promise.resolve(jsonResponse(verificationFixture("VERIFIED")));
+      return Promise.resolve(repairVideoResponse());
+    }));
+    const user = userEvent.setup();
+    render(<ResultsView report={repairWorkflowReport()} previewUrl="blob:original" sourceFile={new File(["video"], "original.mp4")} captionGenerationAvailable />);
+
+    await user.click(screen.getByRole("button", { name: "Generate captions" }));
+    expect(await screen.findByTestId("generated-caption-track")).toBeInTheDocument();
+    expect(screen.getByTestId("preview-video")).toHaveAttribute("data-media-mode", "original");
+
+    await user.click(screen.getAllByRole("button", { name: "Preview repair" })[0]);
+    await screen.findByTestId("repair-preview-video");
+    await user.click(screen.getByRole("button", { name: "Approve repair" }));
+    await user.click(screen.getByRole("button", { name: "Run safe fixes" }));
+    await screen.findByRole("tab", { name: "Repaired" });
+
+    await user.click(screen.getByRole("tab", { name: "Repaired" }));
+    expect(screen.queryByTestId("generated-caption-track")).not.toBeInTheDocument();
+    expect(screen.getByTestId("preview-video")).toHaveAttribute("data-media-mode", "repaired");
+    await user.click(screen.getByRole("tab", { name: "Review Reel" }));
+    expect(screen.queryByTestId("generated-caption-track")).not.toBeInTheDocument();
+    expect(screen.getByTestId("preview-video")).toHaveAttribute("data-media-mode", "reel");
+    await user.click(screen.getByRole("tab", { name: "Original" }));
+    expect(screen.getByTestId("generated-caption-track")).toBeInTheDocument();
   });
   it("renders one truthful release package and actual-thumbnail delivery preview", async () => {
     const user = userEvent.setup();
@@ -1459,6 +1498,25 @@ function repairWorkflowReport(): PreflightReport {
       preview_required_count: 1,
       human_only_count: 1,
     },
+  };
+}
+
+function captionDraftFixture() {
+  return {
+    schema_version: "1.0" as const,
+    status: "COMPLETED" as const,
+    reason: "Machine-generated captions are ready to preview and download.",
+    artifact_sha256: "a".repeat(64),
+    source: "LOCAL_MACHINE_TRANSCRIPT" as const,
+    engine: "faster-whisper" as const,
+    model: "tiny.en",
+    cues: [{ index: 1, start_seconds: .25, end_seconds: 1.75, text: "Yellowstone began here." }],
+    cue_count: 1,
+    covered_seconds: 1.5,
+    srt_text: "1\n00:00:00,250 --> 00:00:01,750\nYellowstone began here.\n",
+    download_filename: "yellowstone.generated.srt",
+    runtime_seconds: .1,
+    reuse_token: "b".repeat(64),
   };
 }
 

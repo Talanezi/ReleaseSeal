@@ -8,6 +8,8 @@ Status: Complete on 2026-09-07. No provider call was made.
 
 ## Completed
 
+- Final hosted-release UI polish removes the obsolete “Local workspace” header indicator and device-local caption wording. Generated caption cues now become a temporary native WebVTT track enabled on Original playback only; Repaired and Review Reel media never inherit original-timeline machine cues, and the track URL is revoked on cleanup. Review Details now has a distinct 24px vertical separation from the generated-caption card.
+
 - Hosted demo fallback now derives only authentic Yellowstone input paths and metadata from the checked-in Judge Proof bundle when the ignored local owner package is absent. Local owner assets remain preferred; hosted Final Export and Revision files still enter normal live API workflows, trusted captions are not invented, obsolete slideshow assets are no longer selected, and Judge Proof result evidence is unchanged.
 
 - The final deployment pass prepares the full two-entry React build for GitHub Pages under `/ReleaseSeal/`, centralizes an optional public backend origin for every application API request, and keeps local root/proxy behavior unchanged. Static demo and Judge Proof assets now inherit Vite's base path.

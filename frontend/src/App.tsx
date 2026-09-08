@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { HardDrive } from "lucide-react";
 import { checkRevision, discardScanProgress, errorPresentation, fetchCapabilities, fetchScanProgress, isAbortError, scanPreflight } from "./api/preflight";
 import { ErrorState } from "./components/ErrorState";
 import { ProcessingState } from "./components/ProcessingState";
@@ -188,12 +187,11 @@ export function App() {
     <div className="app-shell">
       <header className="app-header">
         <strong className="brand-name">{PRODUCT_NAME}</strong>
-        <div className="header-actions">
-          <span className="local-indicator"><HardDrive aria-hidden="true" /> Local workspace</span>
-          {view !== "input" && (
+        {view !== "input" && (
+          <div className="header-actions">
             <button className="header-action" type="button" onClick={reset}>{workflow === "revision" ? "New comparison" : "New scan"}</button>
-          )}
-        </div>
+          </div>
+        )}
       </header>
 
       {view === "input" && (
