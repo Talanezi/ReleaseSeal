@@ -141,6 +141,7 @@ api:
   allowed_browser_origins:
     - http://localhost:5173
     - http://127.0.0.1:5173
+    - https://talanezi.github.io
 
 # Basic thumbnail delivery checks. These are file/geometry measurements, not
 # text-legibility, saliency, or creative-quality scoring.

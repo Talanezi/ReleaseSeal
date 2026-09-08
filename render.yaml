@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: releaseseal-api
+    runtime: python
+    buildCommand: pip install './backend[ai]'
+    startCommand: uvicorn releaseseal.api:app --app-dir backend/src --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/capabilities
+    envVars:
+      - key: RELEASESEAL_CONFIG
+        value: config/releaseseal.hosted.yml
+      - key: GEMINI_API_KEY
+        sync: false

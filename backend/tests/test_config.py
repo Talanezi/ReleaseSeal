@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from releaseseal.config import (
+    APIConfig,
     AIReviewConfig,
     AudioPeakDetectorConfig,
     BlackDetectorConfig,
@@ -42,6 +43,7 @@ def test_default_detector_configuration_loads() -> None:
     assert config.api.maximum_video_upload_size_bytes == 2_147_483_648
     assert config.api.maximum_concurrent_scans == 2
     assert "http://127.0.0.1:5173" in config.api.allowed_browser_origins
+    assert "https://talanezi.github.io" in config.api.allowed_browser_origins
     assert config.rules.video.minimum_width == 1280
     assert config.rules.title.maximum_recommended_length == 100
     assert config.rules.description.validate_urls is True
@@ -51,6 +53,30 @@ def test_default_detector_configuration_loads() -> None:
     assert config.release_package.thumbnail_assurance.minimum_delivered_text_height_pixels == 8.0
     assert config.transcription.enabled is False
     assert config.transcription.local_files_only is True
+
+
+def test_hosted_configuration_uses_public_demo_resource_bounds() -> None:
+    config = load_config(REPOSITORY_ROOT / "config" / "releaseseal.hosted.yml")
+
+    assert config.api.maximum_video_upload_size_bytes == 262_144_000
+    assert config.api.maximum_concurrent_scans == 1
+    assert config.api.allowed_browser_origins == [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://talanezi.github.io",
+    ]
+    assert config.transcription.enabled is False
+    assert config.transcription.local_files_only is True
+    assert config.detectors.black.min_duration_seconds == 2.0
+
+
+@pytest.mark.parametrize(
+    "origin",
+    ["*", "talanezi.github.io", "https://talanezi.github.io/ReleaseSeal", "https://user@example.com"],
+)
+def test_browser_origins_must_be_exact_http_origins(origin: str) -> None:
+    with pytest.raises(ValidationError):
+        APIConfig(allowed_browser_origins=[origin])
 
 
 def test_detector_configuration_rejects_invalid_threshold() -> None:

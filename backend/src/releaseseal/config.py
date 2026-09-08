@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 import yaml
 from pydantic import (
@@ -282,6 +283,7 @@ class APIConfig(BaseModel):
         default_factory=lambda: [
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            "https://talanezi.github.io",
         ]
     )
 
@@ -289,8 +291,18 @@ class APIConfig(BaseModel):
     @classmethod
     def validate_allowed_origins(cls, values: list[str]) -> list[str]:
         cleaned = [value.strip().rstrip("/") for value in values]
-        if any(not value.startswith(("http://", "https://")) for value in cleaned):
-            raise ValueError("browser origins must use http:// or https://")
+        for value in cleaned:
+            parsed = urlsplit(value)
+            if (
+                parsed.scheme not in {"http", "https"}
+                or not parsed.netloc
+                or parsed.username is not None
+                or parsed.password is not None
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError("browser origins must be exact http:// or https:// origins without paths")
         return list(dict.fromkeys(cleaned))
 
 

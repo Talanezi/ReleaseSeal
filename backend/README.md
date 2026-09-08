@@ -43,6 +43,8 @@ Run the local API from the repository root:
 .venv/bin/uvicorn releaseseal.api:app --app-dir backend/src --reload --host 127.0.0.1 --port 8000
 ```
 
+For the native Render service, install `./backend[ai]`, set `RELEASESEAL_CONFIG=config/releaseseal.hosted.yml`, and start `uvicorn releaseseal.api:app --app-dir backend/src --host 0.0.0.0 --port $PORT`. The hosted profile allows only the two local development origins and `https://talanezi.github.io`, limits videos to 250 MiB, and admits one expensive scan at a time. `/api/v1/capabilities` is the health-check path. `GEMINI_API_KEY`, when used, is server-side only.
+
 Uploaded media and caption handles are request-scoped. Media is copied into a temporary directory for scanning, then closed and removed after either a successful report or an error response.
 
 Caption inspection accepts UTF-8 SRT and WebVTT content and does not trust the filename extension alone. It validates cue syntax, start/end order, media-duration bounds, file order, meaningful overlaps, empty text, and configurable long gaps. `caption_summary` reports cue count and merged timeline coverage, so overlapping cues cannot push coverage over 100%. Gaps and overlaps remain review evidence because music, silence, stills, and deliberate multi-speaker captions are legitimate.

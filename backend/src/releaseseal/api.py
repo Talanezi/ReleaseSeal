@@ -15,6 +15,7 @@ from time import perf_counter
 
 import anyio
 from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 from starlette.background import BackgroundTask
@@ -75,7 +76,26 @@ from releaseseal.transcription import TranscriptionUnavailableError, WhisperTran
 from releaseseal.verification import transform_caption_file, verify_repair
 from releaseseal.verification_models import ReviewReelManifest, VerificationReport
 
+def _load_runtime_config() -> tuple[PreflightConfig, str]:
+    config_path = os.environ.get("RELEASESEAL_CONFIG", "").strip()
+    return ((load_config(config_path), config_path) if config_path else (PreflightConfig(), "typed defaults"))
+
+
+_startup_config, _ = _load_runtime_config()
 app = FastAPI(title="ReleaseSeal", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_startup_config.api.allowed_browser_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Accept", "Content-Type"],
+    expose_headers=[
+        "Content-Disposition",
+        "X-Repair-Original-Duration",
+        "X-Repair-Output-Duration",
+        "X-Repair-Removed-Duration",
+    ],
+)
 _VIDEO_SUFFIXES = {".mp4", ".mov", ".mkv", ".webm"}
 _MAX_RELEASE_CONTRACT_JSON_CHARACTERS = 100_000
 _MAX_GENERATED_CAPTIONS_JSON_CHARACTERS = 600_000
@@ -92,7 +112,7 @@ class ScanBusyError(Exception):
 
 
 class RequestOriginError(Exception):
-    message = "This browser origin is not allowed to start a local scan."
+    message = "This browser origin is not allowed to start a scan."
 
 
 class ReviewModeError(Exception):
@@ -1258,5 +1278,4 @@ def _module_available(module: str) -> bool:
 
 
 def _api_config() -> tuple[PreflightConfig, str]:
-    config_path = os.environ.get("RELEASESEAL_CONFIG", "").strip()
-    return ((load_config(config_path), config_path) if config_path else (PreflightConfig(), "typed defaults"))
+    return _load_runtime_config()

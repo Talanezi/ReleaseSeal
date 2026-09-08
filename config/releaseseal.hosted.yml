@@ -1,0 +1,20 @@
+schema_version: 1
+
+# Public hackathon service profile. All omitted values retain typed ReleaseSeal
+# defaults; detector, repair, contract, receipt, and revision policies are unchanged.
+api:
+  # 250 MiB supports ordinary short demo exports without exposing a small Render
+  # instance to the local profile's 2 GiB upload ceiling.
+  maximum_video_upload_size_bytes: 262144000
+  maximum_concurrent_scans: 1
+  allowed_browser_origins:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+    - https://talanezi.github.io
+
+# Full Review is enabled by the explicit web review mode when the optional AI
+# dependency and server-side GEMINI_API_KEY are present. Local-only transcription
+# remains disabled and never downloads model weights implicitly.
+transcription:
+  enabled: false
+  local_files_only: true

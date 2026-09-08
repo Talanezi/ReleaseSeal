@@ -4,6 +4,7 @@ import { applyRepairs, assistMetadata, checkRevision, confirmAudioEvidence, crea
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("preflight API client", () => {
@@ -60,6 +61,19 @@ describe("preflight API client", () => {
     expect(uploadedThumbnail).toBeInstanceOf(File);
     expect((uploadedThumbnail as File).name).toBe("thumbnail.png");
     expect(report).toEqual(needsReviewReport);
+  });
+
+  it("routes application requests to the configured hosted backend", async () => {
+    let requestUrl: RequestInfo | URL | undefined;
+    vi.stubEnv("VITE_API_BASE_URL", "https://releaseseal-api.onrender.com/");
+    vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL) => {
+      requestUrl = url;
+      return Promise.resolve(jsonResponse(capabilitiesFixture()));
+    }));
+
+    await fetchCapabilities();
+
+    expect(requestUrl).toBe("https://releaseseal-api.onrender.com/api/v1/capabilities");
   });
 
   it("extracts and validates typed release requirements", async () => {

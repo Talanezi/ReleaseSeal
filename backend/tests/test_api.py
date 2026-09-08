@@ -425,6 +425,42 @@ def test_browser_origin_is_required_to_match_allowlist(video_with_audio: Path) -
     assert response.json()["error"]["code"] == "request_origin_not_allowed"
 
 
+def test_github_pages_origin_receives_narrow_cors_headers() -> None:
+    response = client.options(
+        "/api/v1/preflight/scan",
+        headers={
+            "Origin": "https://talanezi.github.io",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://talanezi.github.io"
+    assert "POST" in response.headers["access-control-allow-methods"]
+    assert "content-type" in response.headers["access-control-allow-headers"].lower()
+
+    capabilities_response = client.get(
+        "/api/v1/capabilities",
+        headers={"Origin": "https://talanezi.github.io"},
+    )
+    assert capabilities_response.status_code == 200
+    assert capabilities_response.headers["access-control-allow-origin"] == "https://talanezi.github.io"
+
+
+def test_disallowed_origin_receives_no_cors_permission() -> None:
+    response = client.options(
+        "/api/v1/preflight/scan",
+        headers={
+            "Origin": "https://malicious.example",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
 def test_streaming_video_upload_limit_is_enforced(monkeypatch) -> None:
     config = PreflightConfig()
     config.api.maximum_video_upload_size_bytes = 3

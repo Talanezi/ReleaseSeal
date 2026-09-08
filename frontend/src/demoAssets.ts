@@ -20,9 +20,10 @@ interface OwnerDemoManifest {
   };
 }
 
-const OWNER_ROOT = "/demo/owner";
+const appBase = import.meta.env.BASE_URL.replace(/\/$/, "");
+const OWNER_ROOT = `${appBase}/demo/owner`;
 const OWNER_MANIFEST = `${OWNER_ROOT}/demo-manifest.json`;
-const FALLBACK_ROOT = "/demo/releaseseal-official";
+const FALLBACK_ROOT = `${appBase}/demo/releaseseal-official`;
 
 export async function loadFinalExportDemo(): Promise<FinalExportDemoPackage> {
   const owner = await loadOwnerManifest();

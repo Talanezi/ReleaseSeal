@@ -23,6 +23,7 @@ import type {
   GeneratedCaptionDraft,
 } from "../types/preflight";
 import { PRODUCT_NAME } from "../brand";
+import { apiFetch } from "./url";
 
 export interface RevisionCheckInput {
   previousVideo: File;
@@ -122,7 +123,7 @@ export async function scanPreflight(
 
   let response: Response;
   try {
-    response = await fetch("/api/v1/preflight/scan", {
+    response = await apiFetch("/api/v1/preflight/scan", {
       method: "POST",
       body: form,
       signal: options.signal,
@@ -130,7 +131,7 @@ export async function scanPreflight(
   } catch (error) {
     if (isAbortError(error)) throw error;
     throw new PreflightApiError(
-      `Could not reach the local ${PRODUCT_NAME} backend.`,
+      `Could not reach the ${PRODUCT_NAME} backend.`,
       { code: "backend_unreachable", cause: error },
     );
   }
@@ -160,7 +161,7 @@ export async function extractReleaseContract(brief: string, options: { signal?: 
   form.append("brief", brief);
   let response: Response;
   try {
-    response = await fetch("/api/v1/release-contracts/extract", { method: "POST", body: form, signal: options.signal });
+    response = await apiFetch("/api/v1/release-contracts/extract", { method: "POST", body: form, signal: options.signal });
   } catch (error) {
     if (isAbortError(error)) throw error;
     throw new PreflightApiError("Could not reach requirement extraction.", { code: "backend_unreachable", cause: error });
@@ -256,10 +257,10 @@ export async function checkRevision(
   form.append("notes", input.notes);
   let response: Response;
   try {
-    response = await fetch("/api/v1/revisions/check", { method: "POST", body: form, signal: options.signal });
+    response = await apiFetch("/api/v1/revisions/check", { method: "POST", body: form, signal: options.signal });
   } catch (error) {
     if (isAbortError(error)) throw error;
-    throw new PreflightApiError("Could not reach the local revision service.", { code: "revision_backend_unreachable", cause: error });
+    throw new PreflightApiError("Could not reach the revision service.", { code: "revision_backend_unreachable", cause: error });
   }
   const payload = await parseJsonResponse(response);
   if (!response.ok) {
@@ -285,10 +286,10 @@ export async function reviewRevisionSemantics(
   form.append("revision_check_json", JSON.stringify(input.revisionCheck));
   let response: Response;
   try {
-    response = await fetch("/api/v1/revisions/semantic-review", { method: "POST", body: form, signal: options.signal });
+    response = await apiFetch("/api/v1/revisions/semantic-review", { method: "POST", body: form, signal: options.signal });
   } catch (error) {
     if (isAbortError(error)) throw error;
-    throw new PreflightApiError("Could not reach the local AI revision-review service.", { code: "revision_semantic_backend_unreachable", cause: error });
+    throw new PreflightApiError("Could not reach the AI revision-review service.", { code: "revision_semantic_backend_unreachable", cause: error });
   }
   const payload = await parseJsonResponse(response);
   if (!response.ok) {
@@ -304,7 +305,7 @@ export async function reviewRevisionSemantics(
 export async function createScanProgress(reviewMode: ReviewMode, options: { signal?: AbortSignal } = {}): Promise<ScanProgress> {
   const form = new FormData();
   form.append("review_mode", reviewMode);
-  const response = await fetch("/api/v1/preflight/progress", { method: "POST", body: form, signal: options.signal });
+  const response = await apiFetch("/api/v1/preflight/progress", { method: "POST", body: form, signal: options.signal });
   const payload = await parseJsonResponse(response);
   if (!response.ok || !isScanProgress(payload)) {
     throw new PreflightApiError("Live scan progress could not be started.", { code: response.ok ? "invalid_response" : "request_failed", status: response.status });
@@ -313,7 +314,7 @@ export async function createScanProgress(reviewMode: ReviewMode, options: { sign
 }
 
 export async function fetchScanProgress(progressId: string, options: { signal?: AbortSignal } = {}): Promise<ScanProgress> {
-  const response = await fetch(`/api/v1/preflight/progress/${encodeURIComponent(progressId)}`, { signal: options.signal });
+  const response = await apiFetch(`/api/v1/preflight/progress/${encodeURIComponent(progressId)}`, { signal: options.signal });
   const payload = await parseJsonResponse(response);
   if (!response.ok || !isScanProgress(payload)) {
     throw new PreflightApiError("Live scan progress is temporarily unavailable.", { code: response.ok ? "invalid_response" : "request_failed", status: response.status });
@@ -323,7 +324,7 @@ export async function fetchScanProgress(progressId: string, options: { signal?: 
 
 export async function discardScanProgress(progressId: string): Promise<void> {
   try {
-    await fetch(`/api/v1/preflight/progress/${encodeURIComponent(progressId)}`, { method: "DELETE" });
+    await apiFetch(`/api/v1/preflight/progress/${encodeURIComponent(progressId)}`, { method: "DELETE" });
   } catch {
     // Progress records are bounded and ephemeral; scan/reset must not fail on cleanup.
   }
@@ -334,7 +335,7 @@ export async function fetchCapabilities(
 ): Promise<PreflightCapabilities> {
   let response: Response;
   try {
-    response = await fetch("/api/v1/capabilities", { signal: options.signal });
+    response = await apiFetch("/api/v1/capabilities", { signal: options.signal });
   } catch (error) {
     if (isAbortError(error)) throw error;
     throw new PreflightApiError("Could not load backend capabilities.", {
@@ -361,10 +362,10 @@ export async function assistMetadata(
   if (options.captions) form.append("captions", options.captions, options.captions.name);
   let response: Response;
   try {
-    response = await fetch("/api/v1/metadata/assist", { method: "POST", body: form, signal: options.signal });
+    response = await apiFetch("/api/v1/metadata/assist", { method: "POST", body: form, signal: options.signal });
   } catch (error) {
     if (isAbortError(error)) throw error;
-    throw new PreflightApiError("AI suggestions could not reach the local backend.", { code: "backend_unreachable", cause: error });
+    throw new PreflightApiError("AI suggestions could not reach the backend.", { code: "backend_unreachable", cause: error });
   }
   const payload = await parseJsonResponse(response);
   if (!response.ok) {
@@ -410,7 +411,7 @@ export async function verifyRepair(input: VerifyRepairInput, options: { signal?:
   if (input.thumbnail) form.append("thumbnail", input.thumbnail, input.thumbnail.name);
   let response: Response;
   try {
-    response = await fetch("/api/v1/repairs/verify", { method: "POST", body: form, signal: options.signal });
+    response = await apiFetch("/api/v1/repairs/verify", { method: "POST", body: form, signal: options.signal });
   } catch (error) {
     if (isAbortError(error)) throw error;
     throw new PreflightApiError("The repaired video could not be verified.", { code: "backend_unreachable", cause: error });
@@ -479,7 +480,7 @@ export function errorPresentation(error: unknown): { title: string; message: str
       return {
         title: "This browser cannot start a scan",
         message: error.message,
-        detail: `Open ${PRODUCT_NAME} from an allowed local frontend origin.`,
+        detail: `Open ${PRODUCT_NAME} from an allowed frontend origin.`,
       };
     }
     if (error.code.startsWith("ai_")) {
@@ -521,7 +522,7 @@ export function isAbortError(error: unknown): boolean {
 async function requestJson(path: string, form: FormData, signal: AbortSignal | undefined, fallback: string): Promise<unknown> {
   let response: Response;
   try {
-    response = await fetch(path, { method: "POST", body: form, signal });
+    response = await apiFetch(path, { method: "POST", body: form, signal });
   } catch (error) {
     if (isAbortError(error)) throw error;
     throw new PreflightApiError(fallback, { code: "backend_unreachable", cause: error });
@@ -1168,7 +1169,7 @@ async function requestRepairMedia(
 ): Promise<RepairMediaResult> {
   let response: Response;
   try {
-    response = await fetch(endpoint, { method: "POST", body: form, signal });
+    response = await apiFetch(endpoint, { method: "POST", body: form, signal });
   } catch (error) {
     if (isAbortError(error)) throw error;
     throw new PreflightApiError("Could not reach the local repair service.", {

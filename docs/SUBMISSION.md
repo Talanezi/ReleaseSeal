@@ -45,7 +45,7 @@ Python, FastAPI, Pydantic, FFmpeg/FFprobe, React, TypeScript, Vite, Vitest, pyte
 
 ## Limitations
 
-Semantic review is probabilistic and bounded to eligible timestamped requests. Untimed notes are not located automatically. Arbitrary scene reordering is unsupported; static or repetitive content can reduce boundary precision. Repair Mode is deliberately limited to validated range removal. Factual review checks only selected public claims. There is no project history, collaboration, hosted deployment, or automatic publishing.
+Semantic review is probabilistic and bounded to eligible timestamped requests. Untimed notes are not located automatically. Arbitrary scene reordering is unsupported; static or repetitive content can reduce boundary precision. Repair Mode is deliberately limited to validated range removal. Factual review checks only selected public claims. The public deployment is a stateless hackathon service; there is no project history, collaboration, persistent media storage, or automatic publishing.
 
 ## Future work
 

@@ -1,7 +1,9 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
+import { baseForMode } from "./buildConfig.ts";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  base: baseForMode(mode),
   plugins: [react()],
   build: {
     rollupOptions: {
@@ -23,4 +25,4 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
   },
-});
+}));
