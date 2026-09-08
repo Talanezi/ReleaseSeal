@@ -29,6 +29,7 @@ describe("preflight API client", () => {
     const captions = new File(["WEBVTT"], "captions.vtt", { type: "text/vtt" });
     const thumbnail = new File(["png"], "thumbnail.png", { type: "image/png" });
 
+    const uploadUpdates: Array<{ percent: number | null; complete: boolean }> = [];
     const report = await scanPreflight({
       video,
       title: "Exact title",
@@ -37,7 +38,10 @@ describe("preflight API client", () => {
       thumbnail,
       reviewMode: "full",
       releaseContract: { schema_version: "1.0", name: null, requirements: [{ id: "promo", type: "REQUIRED_EXACT_TOKEN", instruction: "Use SAVE25", provenance: "manual", source_excerpt: null, evaluation_class: "DETERMINISTIC", value: "SAVE25" }] },
-    }, { progressId: "67e55044-10b1-426f-9247-bb680e5fe0c8" });
+    }, {
+      progressId: "67e55044-10b1-426f-9247-bb680e5fe0c8",
+      onUploadProgress: ({ percent, complete }) => uploadUpdates.push({ percent, complete }),
+    });
 
     expect(requestUrl).toBe("/api/v1/preflight/scan");
     expect(requestInit?.method).toBe("POST");
@@ -60,7 +64,23 @@ describe("preflight API client", () => {
     expect((uploadedCaptions as File).size).toBe(captions.size);
     expect(uploadedThumbnail).toBeInstanceOf(File);
     expect((uploadedThumbnail as File).name).toBe("thumbnail.png");
+    expect(uploadUpdates).toEqual([
+      { percent: 50, complete: false },
+      { percent: 100, complete: false },
+      { percent: 100, complete: true },
+    ]);
     expect(report).toEqual(needsReviewReport);
+  });
+
+  it("aborts the multipart upload when its AbortSignal is cancelled", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
+    const pending = scanPreflight({
+      video: new File(["video"], "video.mp4", { type: "video/mp4" }),
+      title: "Title", description: "", reviewMode: "local",
+    }, { signal: controller.signal });
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
   });
 
   it("routes application requests to the configured hosted backend", async () => {
@@ -74,6 +94,20 @@ describe("preflight API client", () => {
     await fetchCapabilities();
 
     expect(requestUrl).toBe("https://releaseseal-api.onrender.com/api/v1/capabilities");
+  });
+
+  it("routes the progress-aware scan upload to the configured hosted backend", async () => {
+    let requestUrl: RequestInfo | URL | undefined;
+    vi.stubEnv("VITE_API_BASE_URL", "https://releaseseal-api.onrender.com/");
+    vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL) => {
+      requestUrl = url;
+      return Promise.resolve(jsonResponse(needsReviewReport));
+    }));
+    await scanPreflight({
+      video: new File(["video"], "video.mp4", { type: "video/mp4" }),
+      title: "Title", description: "", reviewMode: "local",
+    });
+    expect(requestUrl).toBe("https://releaseseal-api.onrender.com/api/v1/preflight/scan");
   });
 
   it("extracts and validates typed release requirements", async () => {

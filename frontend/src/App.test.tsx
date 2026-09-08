@@ -1233,7 +1233,7 @@ describe("ReleaseSeal frontend", () => {
     expect(within(screen.getByRole("region", { name: "Findings" })).getByText("Video height below minimum")).toBeInTheDocument();
   });
 
-  it("keeps a pending real request in an honest indeterminate state", async () => {
+  it("shows upload completion as preparation while the backend request remains pending", async () => {
     vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL) => (
       String(url).endsWith("/capabilities")
         ? Promise.resolve(jsonResponse(capabilitiesFixture()))
@@ -1245,12 +1245,30 @@ describe("ReleaseSeal frontend", () => {
     await selectVideoAndRun(user, "pending.mp4");
 
     expect(await screen.findByRole("heading", { name: "Checking your video" })).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "Scan in progress" })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Upload in progress" })).toHaveAttribute("aria-valuetext", "Upload complete; preparing video");
+    expect(screen.getByText("Upload complete · Preparing video…")).toBeInTheDocument();
+    expect(screen.queryByText(/^1%$/)).not.toBeInTheDocument();
     expect(screen.getByText(/Picture and sound/)).toBeInTheDocument();
     expect(screen.queryByText("Full Review")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Preview application state")).not.toBeInTheDocument();
     expect(screen.queryByText("Inspecting media")).not.toBeInTheDocument();
     expect(screen.queryByTestId("result-state")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "New scan" }));
+    expect(screen.queryByRole("progressbar", { name: "Upload in progress" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Check release" })).toBeInTheDocument();
+  });
+
+  it("renders real upload bytes before backend scan progress, then yields to backend progress", () => {
+    const initial = { ...progressFixture(), percent: 1, stage: "receiving_media" as const, message: "Getting the video ready" };
+    const { rerender } = render(<ProcessingState filename="large.mp4" reviewMode="full" progress={initial} uploadProgress={{ loadedBytes: 107_000_000, totalBytes: 170_000_000, percent: 63, complete: false }} />);
+    expect(screen.getByRole("heading", { name: "Uploading video" })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Upload in progress" })).toHaveAttribute("aria-valuenow", "63");
+    expect(screen.getByText(/107 MB of 170 MB/)).toBeInTheDocument();
+
+    rerender(<ProcessingState filename="large.mp4" reviewMode="full" progress={{ ...initial, percent: 20, stage: "technical_checks", message: "Checking picture and sound" }} uploadProgress={{ loadedBytes: 170_000_000, totalBytes: 170_000_000, percent: 100, complete: true }} />);
+    expect(screen.getByRole("heading", { name: "Checking your video" })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Scan in progress" })).toHaveAttribute("aria-valuenow", "20");
+    expect(screen.getByText("Checking picture and sound")).toBeInTheDocument();
   });
 
   it("guides a long human-review queue to the next pending item", async () => {

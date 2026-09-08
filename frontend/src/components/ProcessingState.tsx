@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import type { ScanUploadProgress } from "../api/preflight";
 import type { ScanProgress, ScanProgressTask } from "../types/preflight";
 
 interface ProcessingStateProps {
   filename: string;
   reviewMode: "full" | "local";
   progress: ScanProgress | null;
+  uploadProgress?: ScanUploadProgress | null;
 }
 
-export function ProcessingState({ filename, reviewMode, progress }: ProcessingStateProps) {
+export function ProcessingState({ filename, reviewMode, progress, uploadProgress = null }: ProcessingStateProps) {
   const mountedAt = useRef(Date.now() / 1000);
   const [now, setNow] = useState(Date.now() / 1000);
   useEffect(() => {
@@ -18,21 +20,28 @@ export function ProcessingState({ filename, reviewMode, progress }: ProcessingSt
   const startedAt = progress?.created_at_epoch_seconds ?? mountedAt.current;
   const elapsed = Math.max(0, now - startedAt);
   const staleFor = progress ? Math.max(0, now - progress.updated_at_epoch_seconds) : elapsed;
-  const percent = progress?.percent ?? 1;
-  const message = progress?.message ?? "Getting the video ready";
+  const backendHasAdvanced = Boolean(progress && progress.stage !== "receiving_media" && progress.stage !== "preparing_media");
+  const showUpload = uploadProgress !== null && !backendHasAdvanced;
+  const uploadComplete = showUpload && uploadProgress.complete;
+  const percent = showUpload ? uploadProgress.percent : (progress?.percent ?? 1);
+  const message = uploadComplete ? "Preparing video…" : showUpload ? "Uploading video" : (progress?.message ?? "Getting the video ready");
   const tasks = progress?.tasks.length ? progress.tasks : initialTasks(reviewMode);
 
   return (
     <main className="processing page-frame" data-testid="processing-state">
       <section className="processing-surface">
-        <h1>Checking your video</h1>
+        <h1>{showUpload && !uploadComplete ? "Uploading video" : "Checking your video"}</h1>
         <p className="processing-file" title={filename}>Checking <strong>{filename}</strong></p>
         <p className="processing-lead">{message}</p>
-        <div className="processing-progress" role="progressbar" aria-label="Scan in progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
-          <span className={progress ? "is-determinate" : "is-indeterminate"} style={progress ? { width: `${percent}%` } : undefined} />
+        <div className="processing-progress" role="progressbar" aria-label={showUpload ? "Upload in progress" : "Scan in progress"} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent ?? undefined} aria-valuetext={uploadComplete ? "Upload complete; preparing video" : undefined}>
+          <span className={`${percent === null ? "is-indeterminate" : "is-determinate"} is-active`} style={percent === null ? undefined : { width: `${percent}%` }} />
         </div>
-        <p className="processing-measure"><strong>{percent}%</strong><span>·</span>{formatElapsed(elapsed)} elapsed</p>
-        <p className="processing-friendly">{friendlyLine(progress?.stage, percent)}</p>
+        <p className="processing-measure">
+          {uploadComplete ? <strong>Upload complete</strong> : percent !== null ? <strong>{percent}%</strong> : <strong>Uploading…</strong>}
+          {showUpload && !uploadComplete && uploadProgress.totalBytes !== null && <><span>·</span>{formatBytes(uploadProgress.loadedBytes)} of {formatBytes(uploadProgress.totalBytes)}</>}
+          <span>·</span>{formatElapsed(elapsed)} elapsed
+        </p>
+        <p className="processing-friendly">{showUpload ? (uploadComplete ? "Upload complete · Preparing video…" : "Sending your video securely…") : friendlyLine(progress?.stage, percent ?? 1)}</p>
         {staleFor >= 20 && <p className="processing-stale" role="status">Still working… Last update {formatElapsed(staleFor)} ago.</p>}
         <details className="processing-details">
           <summary>What’s happening?</summary>
@@ -42,6 +51,11 @@ export function ProcessingState({ filename, reviewMode, progress }: ProcessingSt
       </section>
     </main>
   );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1_000_000) return `${Math.max(0, Math.round(bytes / 1_000))} KB`;
+  return `${Math.max(0, Math.round(bytes / 1_000_000))} MB`;
 }
 
 function formatElapsed(seconds: number): string {

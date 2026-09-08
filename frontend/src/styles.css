@@ -367,9 +367,17 @@ svg { flex: 0 0 auto; }
 .processing-file strong { color: var(--text); font-weight: 600; }
 .processing-lead { margin: -8px 0 22px; color: var(--text); }
 .processing-progress { height: 4px; margin: 0; overflow: hidden; background: var(--surface-muted); }
-.processing-progress span { display: block; height: 100%; background: var(--action); }
+.processing-progress span { position: relative; display: block; height: 100%; overflow: hidden; background: var(--action); }
 .processing-progress .is-determinate { transition: width 450ms ease; }
 .processing-progress .is-indeterminate { width: 38%; animation: indeterminate 1.6s ease-in-out infinite; }
+.processing-progress .is-active::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 30%) 50%, transparent 80%);
+  content: "";
+  transform: translateX(-100%);
+  animation: progress-alive 1.8s ease-in-out infinite;
+}
 .processing-measure { display: flex; align-items: center; gap: 7px; margin: 10px 0 20px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .processing-measure strong { color: var(--text); }
 .processing-friendly { min-height: 22px; margin: 0 0 16px; color: var(--text); font-size: 14px; }
@@ -968,10 +976,16 @@ svg { flex: 0 0 auto; }
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+  .processing-progress .is-active::after { display: none; }
 }
 
 @keyframes indeterminate {
   0% { transform: translateX(-105%); }
   55% { transform: translateX(105%); }
   100% { transform: translateX(270%); }
+}
+
+@keyframes progress-alive {
+  0%, 30% { transform: translateX(-100%); }
+  75%, 100% { transform: translateX(100%); }
 }

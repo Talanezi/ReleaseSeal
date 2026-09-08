@@ -23,7 +23,14 @@ import type {
   GeneratedCaptionDraft,
 } from "../types/preflight";
 import { PRODUCT_NAME } from "../brand";
-import { apiFetch } from "./url";
+import { apiFetch, buildApiUrl } from "./url";
+
+export interface ScanUploadProgress {
+  loadedBytes: number;
+  totalBytes: number | null;
+  percent: number | null;
+  complete: boolean;
+}
 
 export interface RevisionCheckInput {
   previousVideo: File;
@@ -109,7 +116,7 @@ export class PreflightApiError extends Error {
 
 export async function scanPreflight(
   input: PreflightScanInput,
-  options: { signal?: AbortSignal; progressId?: string } = {},
+  options: { signal?: AbortSignal; progressId?: string; onUploadProgress?: (progress: ScanUploadProgress) => void } = {},
 ): Promise<PreflightReport> {
   const form = new FormData();
   form.append("file", input.video, input.video.name);
@@ -123,11 +130,7 @@ export async function scanPreflight(
 
   let response: Response;
   try {
-    response = await apiFetch("/api/v1/preflight/scan", {
-      method: "POST",
-      body: form,
-      signal: options.signal,
-    });
+    response = await uploadScanForm(form, options);
   } catch (error) {
     if (isAbortError(error)) throw error;
     throw new PreflightApiError(
@@ -154,6 +157,73 @@ export async function scanPreflight(
     );
   }
   return payload;
+}
+
+function uploadScanForm(
+  form: FormData,
+  options: { signal?: AbortSignal; onUploadProgress?: (progress: ScanUploadProgress) => void },
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    const signal = options.signal;
+    let settled = false;
+    let latestLoaded = 0;
+    let latestTotal: number | null = null;
+
+    const cleanup = () => signal?.removeEventListener("abort", abortRequest);
+    const finish = (action: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      action();
+    };
+    const abortRequest = () => request.abort();
+
+    request.open("POST", buildApiUrl("/api/v1/preflight/scan", import.meta.env.VITE_API_BASE_URL ?? ""));
+    request.responseType = "text";
+    request.upload.onprogress = (event) => {
+      latestLoaded = event.loaded;
+      latestTotal = event.lengthComputable && event.total > 0 ? event.total : null;
+      options.onUploadProgress?.({
+        loadedBytes: latestLoaded,
+        totalBytes: latestTotal,
+        percent: latestTotal === null ? null : Math.min(100, Math.round((latestLoaded / latestTotal) * 100)),
+        complete: false,
+      });
+    };
+    request.upload.onload = () => {
+      options.onUploadProgress?.({
+        loadedBytes: latestTotal ?? latestLoaded,
+        totalBytes: latestTotal,
+        percent: latestTotal === null ? null : 100,
+        complete: true,
+      });
+    };
+    request.onload = () => finish(() => resolve(new Response(request.responseText, {
+      status: request.status,
+      statusText: request.statusText,
+      headers: parseXhrHeaders(request.getAllResponseHeaders()),
+    })));
+    request.onerror = () => finish(() => reject(new TypeError("The scan upload request failed.")));
+    request.onabort = () => finish(() => reject(new DOMException("The scan upload was aborted.", "AbortError")));
+
+    if (signal?.aborted) {
+      finish(() => reject(new DOMException("The scan upload was aborted.", "AbortError")));
+      return;
+    }
+    signal?.addEventListener("abort", abortRequest, { once: true });
+    request.send(form);
+  });
+}
+
+function parseXhrHeaders(rawHeaders: string): Headers {
+  const headers = new Headers();
+  for (const line of rawHeaders.trim().split(/[\r\n]+/)) {
+    if (!line) continue;
+    const separator = line.indexOf(":");
+    if (separator > 0) headers.append(line.slice(0, separator).trim(), line.slice(separator + 1).trim());
+  }
+  return headers;
 }
 
 export async function extractReleaseContract(brief: string, options: { signal?: AbortSignal } = {}): Promise<ReleaseContract> {

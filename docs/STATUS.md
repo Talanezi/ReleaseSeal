@@ -8,6 +8,8 @@ Status: Complete on 2026-09-07. No provider call was made.
 
 ## Completed
 
+- Final hosted upload polish replaces the Final Export scan's opaque `fetch` upload with an abortable multipart `XMLHttpRequest` using the same API URL, fields, validation, and error contracts. The processing view now presents real browser upload percentage/bytes, holds at an explicit upload-complete preparation state through the backend's receiving/preparing stages, then yields to authoritative scan progress when analysis begins. A restrained activity highlight keeps unchanged backend checkpoints visibly alive and is disabled for reduced-motion users.
+
 - Final hosted-release UI polish removes the obsolete “Local workspace” header indicator and device-local caption wording. Generated caption cues now become a temporary native WebVTT track enabled on Original playback only; Repaired and Review Reel media never inherit original-timeline machine cues, and the track URL is revoked on cleanup. Review Details now has a distinct 24px vertical separation from the generated-caption card.
 
 - Hosted demo fallback now derives only authentic Yellowstone input paths and metadata from the checked-in Judge Proof bundle when the ignored local owner package is absent. Local owner assets remain preferred; hosted Final Export and Revision files still enter normal live API workflows, trusted captions are not invented, obsolete slideshow assets are no longer selected, and Judge Proof result evidence is unchanged.

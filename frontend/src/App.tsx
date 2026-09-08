@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { checkRevision, discardScanProgress, errorPresentation, fetchCapabilities, fetchScanProgress, isAbortError, scanPreflight } from "./api/preflight";
+import type { ScanUploadProgress } from "./api/preflight";
 import { ErrorState } from "./components/ErrorState";
 import { ProcessingState } from "./components/ProcessingState";
 import { ResultsView } from "./components/ResultsView";
@@ -39,6 +40,7 @@ export function App() {
   const [capabilities, setCapabilities] = useState<PreflightCapabilities | null>(null);
   const [capabilityError, setCapabilityError] = useState(false);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<ScanUploadProgress | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
   const activeProgressId = useRef<string | null>(null);
   const requestSequence = useRef(0);
@@ -89,6 +91,7 @@ export function App() {
     setRevisionReport(null);
     setError(null);
     setProgress(null);
+    setUploadProgress(null);
     setView("input");
   }, [capabilities, workflow]);
 
@@ -96,6 +99,7 @@ export function App() {
     setReport(null);
     setError(null);
     setProgress(null);
+    setUploadProgress(null);
     setView("input");
   }, []);
 
@@ -109,6 +113,7 @@ export function App() {
     requestSequence.current = sequence;
     setReport(null);
     setError(null);
+    setUploadProgress({ loadedBytes: 0, totalBytes: null, percent: null, complete: false });
     setView("processing");
 
     try {
@@ -126,13 +131,21 @@ export function App() {
           reviewMode: inputs.reviewMode,
           releaseContract: inputs.releaseContract,
         },
-        { signal: controller.signal, progressId },
+        {
+          signal: controller.signal,
+          progressId,
+          onUploadProgress: (next) => {
+            if (!controller.signal.aborted && requestSequence.current === sequence) setUploadProgress(next);
+          },
+        },
       );
       if (controller.signal.aborted || requestSequence.current !== sequence) return;
       setReport(nextReport);
+      setUploadProgress(null);
       setView("result");
     } catch (scanError) {
       if (controller.signal.aborted || isAbortError(scanError) || requestSequence.current !== sequence) return;
+      setUploadProgress(null);
       setError(errorPresentation(scanError));
       setView("error");
     } finally {
@@ -211,7 +224,7 @@ export function App() {
       )}
       {view === "processing" && (
         workflow === "final"
-          ? <ProcessingState filename={inputs.video?.name ?? "selected video"} reviewMode={inputs.reviewMode} progress={progress} />
+          ? <ProcessingState filename={inputs.video?.name ?? "selected video"} reviewMode={inputs.reviewMode} progress={progress} uploadProgress={uploadProgress} />
           : <RevisionProcessingState previousFilename={revisionInputs.previousVideo?.name ?? "previous cut"} revisedFilename={revisionInputs.revisedVideo?.name ?? "revised cut"} onCancel={cancelRevision} />
       )}
       {view === "result" && workflow === "final" && report && (
