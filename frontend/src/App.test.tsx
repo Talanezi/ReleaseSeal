@@ -10,6 +10,7 @@ import { blockedReport, needsReviewReport, readyReport, revisionCheckReport } fr
 import type { PreflightReport, ScanProgress, ThumbnailAssuranceReport, VerificationReport } from "./types/preflight";
 import { formatTimecode } from "./utils/format";
 import { useState } from "react";
+import proofBundle from "../public/proof/judge-proof.json";
 
 const createObjectURL = vi.fn(() => "blob:releaseseal-local-preview");
 const revokeObjectURL = vi.fn();
@@ -388,25 +389,34 @@ describe("ReleaseSeal frontend", () => {
     expect(screen.getByText(/No AI media upload/i)).toBeInTheDocument();
   });
 
-  it("loads the official demo package into the real scan form", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL) => {
+  it("loads the authentic public demo package and submits it through the real scan flow", async () => {
+    let scannedVideoName: string | null = null;
+    vi.stubGlobal("fetch", vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
       const path = String(url);
       if (path.endsWith("/capabilities")) return Promise.resolve(jsonResponse(capabilitiesFixture()));
-      if (path.endsWith("-title.txt")) return Promise.resolve(new Response("Why Night Trains Are Returning to Europe\n"));
-      if (path.endsWith("-description.txt")) return Promise.resolve(new Response("A concise sample description."));
-      if (path.endsWith("-captions.srt")) return Promise.resolve(new Response("1\n00:00:00,000 --> 00:00:02,000\nNight trains\n"));
-      if (path.endsWith("-thumbnail.png")) return Promise.resolve(new Response(new Blob(["png"], { type: "image/png" })));
-      if (path.endsWith("-demo.mp4")) return Promise.resolve(new Response(new Blob(["video"], { type: "video/mp4" })));
+      if (path.endsWith("demo-manifest.json")) return Promise.resolve(new Response("", { status: 404 }));
+      if (path.endsWith("proof/judge-proof.json")) return Promise.resolve(jsonResponse(proofBundle));
+      if (path.includes("/proof/assets/")) return Promise.resolve(new Response(path.endsWith(".jpg") ? "image" : "video"));
+      if (path.endsWith("/preflight/progress") && init?.method === "POST") return Promise.resolve(jsonResponse(progressFixture()));
+      if (path.includes("/preflight/progress/") && init?.method === "DELETE") return Promise.resolve(new Response(null, { status: 204 }));
+      if (path.includes("/preflight/progress/")) return Promise.resolve(jsonResponse(progressFixture()));
+      if (path.endsWith("/preflight/scan")) {
+        scannedVideoName = ((init?.body as FormData).get("file") as File).name;
+        return Promise.resolve(jsonResponse(needsReviewReport));
+      }
       return Promise.reject(new Error(`Unexpected URL: ${path}`));
     }));
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Load demo" }));
-    expect(await screen.findByTestId("selected-video")).toHaveTextContent("releaseseal-official-demo.mp4");
-    expect(screen.getByLabelText("Title")).toHaveValue("Why Night Trains Are Returning to Europe");
-    expect(screen.getByLabelText("Description")).toHaveValue("A concise sample description.");
-    expect(screen.getByText("releaseseal-official-captions.srt")).toBeInTheDocument();
-    expect(screen.getByText("releaseseal-official-thumbnail.png")).toBeInTheDocument();
+    expect(await screen.findByTestId("selected-video")).toHaveTextContent("yellowstone-final-export.mp4");
+    expect(screen.getByLabelText("Title")).toHaveValue(proofBundle.final_export.title);
+    expect(screen.getByLabelText("Description")).toHaveValue(proofBundle.final_export.description);
+    expect(screen.queryByText(/\.srt$/)).not.toBeInTheDocument();
+    expect(screen.getByText("yellowstone-thumbnail.jpg")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Check release" }));
+    expect(await screen.findByTestId("result-state")).toBeInTheDocument();
+    expect(scannedVideoName).toBe("yellowstone-final-export.mp4");
   });
 
   it("renders real elapsed progress, stale reassurance, and task disclosure", async () => {

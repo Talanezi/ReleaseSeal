@@ -8,6 +8,8 @@ Status: Complete on 2026-09-07. No provider call was made.
 
 ## Completed
 
+- Hosted demo fallback now derives only authentic Yellowstone input paths and metadata from the checked-in Judge Proof bundle when the ignored local owner package is absent. Local owner assets remain preferred; hosted Final Export and Revision files still enter normal live API workflows, trusted captions are not invented, obsolete slideshow assets are no longer selected, and Judge Proof result evidence is unchanged.
+
 - The final deployment pass prepares the full two-entry React build for GitHub Pages under `/ReleaseSeal/`, centralizes an optional public backend origin for every application API request, and keeps local root/proxy behavior unchanged. Static demo and Judge Proof assets now inherit Vite's base path.
 - FastAPI CORS headers and the existing request-origin guard share the exact typed allowlist: localhost, `127.0.0.1`, and `https://talanezi.github.io`; wildcard origins remain invalid. The public Render profile preserves product thresholds while bounding uploads to 250 MiB and expensive concurrency to one.
 - Native Render and official GitHub Pages deployment definitions are checked in but were not executed. Pages fails closed without the non-secret `RELEASESEAL_API_BASE_URL` repository variable; Gemini credentials remain server-side only.

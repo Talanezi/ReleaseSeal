@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
-import { loadFinalExportDemo, loadRevisionDemo, revisionDemoAvailable } from "./demoAssets";
+import { demoAssetLocations, loadFinalExportDemo, loadRevisionDemo, revisionDemoAvailable } from "./demoAssets";
+import proofBundle from "../public/proof/judge-proof.json";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -10,23 +11,54 @@ afterEach(() => {
 });
 
 describe("demo asset manifest", () => {
-  it("uses the tracked Final Export fallback as real File objects when no owner manifest exists", async () => {
+  it("resolves authentic public demo inputs beneath the GitHub Pages base", () => {
+    expect(demoAssetLocations("/ReleaseSeal/")).toEqual({
+      ownerRoot: "/ReleaseSeal/demo/owner",
+      ownerManifest: "/ReleaseSeal/demo/owner/demo-manifest.json",
+      proofRoot: "/ReleaseSeal/proof",
+      proofBundle: "/ReleaseSeal/proof/judge-proof.json",
+    });
+  });
+
+  it("uses authentic tracked proof inputs when no owner manifest exists", async () => {
+    const requested: string[] = [];
     vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
       const path = String(input);
+      requested.push(path);
       if (path.endsWith("demo-manifest.json")) return Promise.resolve(new Response("", { status: 404 }));
-      if (path.endsWith("-title.txt")) return Promise.resolve(new Response("Fallback title\n"));
-      if (path.endsWith("-description.txt")) return Promise.resolve(new Response("Fallback description\n"));
-      if (path.endsWith("-captions.srt")) return Promise.resolve(new Response("captions"));
-      if (path.endsWith("-thumbnail.png")) return Promise.resolve(new Response("image"));
-      if (path.endsWith("-demo.mp4")) return Promise.resolve(new Response("video"));
+      if (path.endsWith("proof/judge-proof.json")) return Promise.resolve(Response.json(proofBundle));
+      if (path.includes("/proof/assets/")) return Promise.resolve(new Response(path.endsWith(".jpg") ? "image" : "video"));
       return Promise.reject(new Error(`Unexpected path ${path}`));
     }));
 
     const demo = await loadFinalExportDemo();
     expect(demo.video).toBeInstanceOf(File);
-    expect(demo.video.name).toBe("releaseseal-official-demo.mp4");
-    expect(demo.title).toBe("Fallback title");
-    expect(await revisionDemoAvailable()).toBe(false);
+    expect(demo.video.name).toBe("yellowstone-final-export.mp4");
+    expect(demo.title).toBe(proofBundle.final_export.title);
+    expect(demo.description).toBe(proofBundle.final_export.description);
+    expect(demo.captions).toBeNull();
+    expect(demo.thumbnail?.name).toBe("yellowstone-thumbnail.jpg");
+    expect(requested.some((path) => path.includes("releaseseal-official-demo.mp4"))).toBe(false);
+    expect(await revisionDemoAvailable()).toBe(true);
+  });
+
+  it("loads the authentic tracked Previous/Revised pair and exact notes", async () => {
+    const requested: string[] = [];
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const path = String(input);
+      requested.push(path);
+      if (path.endsWith("demo-manifest.json")) return Promise.resolve(new Response("", { status: 404 }));
+      if (path.endsWith("proof/judge-proof.json")) return Promise.resolve(Response.json(proofBundle));
+      if (path.includes("/proof/assets/")) return Promise.resolve(new Response("video"));
+      return Promise.reject(new Error(`Unexpected path ${path}`));
+    }));
+
+    const revision = await loadRevisionDemo();
+    expect(revision.previousVideo.name).toBe("yellowstone-revision-previous.mp4");
+    expect(revision.revisedVideo.name).toBe("yellowstone-revision-revised.mp4");
+    expect(revision.notes).toBe("00:24-00:27 Restore the missing picture\n00:54-00:59 Restore the missing audio");
+    expect(requested).toContain("/proof/assets/yellowstone-revision-previous.mp4");
+    expect(requested).toContain("/proof/assets/yellowstone-revision-revised.mp4");
   });
 
   it("loads owner Final Export and Revision assets from one validated manifest", async () => {
